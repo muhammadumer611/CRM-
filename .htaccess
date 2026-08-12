@@ -1,0 +1,26 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Do not apply routing to existing files/folders if you need them (e.g. for frontend assets)
+    # But since this is a pure API backend right now, we route everything to public/index.php
+    
+    # Route all /api/* requests to public/index.php
+    RewriteRule ^api/(.*)$ public/index.php [QSA,L]
+    
+    # Block access to internal directories
+    RewriteRule ^config/.*$ - [F]
+    RewriteRule ^core/.*$ - [F]
+    RewriteRule ^middleware/.*$ - [F]
+    RewriteRule ^models/.*$ - [F]
+    RewriteRule ^services/.*$ - [F]
+    RewriteRule ^logs/.*$ - [F]
+    
+    # Prevent directory listing
+    Options -Indexes
+</IfModule>
+
+<FilesMatch "^\.">
+    # Prevent access to hidden files (.env, .git, etc.)
+    Order allow,deny
+    Deny from all
+</FilesMatch>

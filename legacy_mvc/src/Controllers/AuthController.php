@@ -1,0 +1,65 @@
+<?php
+namespace App\Controllers;
+
+use App\Core\View;
+use App\Core\CSRF;
+use App\Core\Session;
+use App\Services\AuthService;
+
+class AuthController {
+    private $authService;
+
+    public function __construct() {
+        $this->authService = new AuthService();
+    }
+
+    public function loginForm() {
+        if (Session::get('admin_id')) {
+            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/dashboard');
+            exit;
+        }
+
+        $error = Session::get('error');
+        Session::remove('error');
+
+        View::render('auth/login', [
+            'csrf_token' => CSRF::generateToken(),
+            'error' => $error
+        ]);
+    }
+
+    public function login() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            exit;
+        }
+
+        CSRF::verifyToken($_POST['csrf_token'] ?? '');
+
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        if (empty($username) || empty($password)) {
+            Session::set('error', 'Username and password are required.');
+            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/');
+            exit;
+        }
+
+        if ($this->authService->login($username, $password, $ip)) {
+            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/dashboard');
+            exit;
+        } else {
+            Session::set('error', 'Invalid username or password.');
+            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/');
+            exit;
+        }
+    }
+
+    public function logout() {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $this->authService->logout($ip);
+        header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/');
+        exit;
+    }
+}
