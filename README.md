@@ -31,19 +31,19 @@ A complete web-based Hostel Management System built using PHP, MySQL, HTML, CSS 
 ## 📸 Screenshots
 
 ### 🔐 Login
-![Login](screenshots/login.png)
+![Login](screenshort/login.png)
 
 ### 📊 Dashboard
-![Dashboard](screenshots/dashboard.png)
+![Dashboard](screenshort/dashboard.png)
 
 ### 👨‍🎓 Student Management
-![Students](screenshots/addstudent.png)
+![Students](screenshort/addstudent.png)
 
 ### 🏠 Room Management
-![Rooms](screenshots/addroom.png)
+![Rooms](screenshort/addroom.png)
 
 ### 💰 Fee Management
-![Fees](screenshots/feeaddition.png)
+![Fees](screenshort/feeaddition.png)
 
 
 ## 🗄️ Database
