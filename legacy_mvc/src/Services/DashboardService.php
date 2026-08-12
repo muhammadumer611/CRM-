@@ -16,8 +16,7 @@ class DashboardService {
             'active_students' => 0,
             'total_rooms' => 0,
             'available_beds' => 0,
-            'pending_fees' => 0,
-            'open_complaints' => 0
+            'pending_fees' => 0
         ];
 
         $stmt = $this->db->query("SELECT COUNT(*) FROM students WHERE status = 'Active'");
@@ -35,8 +34,6 @@ class DashboardService {
         $stmt = $this->db->query("SELECT COUNT(*) FROM fee_records WHERE status IN ('Pending', 'Partial', 'Overdue')");
         $stats['pending_fees'] = $stmt->fetchColumn();
 
-        $stmt = $this->db->query("SELECT COUNT(*) FROM complaints WHERE status IN ('Open', 'In Progress')");
-        $stats['open_complaints'] = $stmt->fetchColumn();
 
         return $stats;
     }

@@ -55,7 +55,7 @@ class RoomController {
         foreach ($required as $field) {
             if (!isset($_POST[$field]) || $_POST[$field] === '') {
                 Session::set('error', 'Please fill all required fields.');
-                header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/rooms/create');
+                header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms/create');
                 exit;
             }
         }
@@ -64,10 +64,10 @@ class RoomController {
         
         if ($result['success']) {
             Session::set('success', 'Room added successfully.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/rooms');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/rooms/create');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms/create');
         }
         exit;
     }
@@ -76,7 +76,7 @@ class RoomController {
         $room = $this->roomService->getRoom($id);
         if (!$room) {
             Session::set('error', 'Room not found.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/rooms');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms');
             exit;
         }
 
@@ -98,10 +98,10 @@ class RoomController {
         
         if ($result['success']) {
             Session::set('success', 'Room updated successfully.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/rooms');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/rooms/edit/' . $id);
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms/edit/' . $id);
         }
         exit;
     }

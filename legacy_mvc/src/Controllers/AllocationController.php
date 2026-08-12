@@ -52,7 +52,7 @@ class AllocationController {
 
         if (empty($_POST['student_id']) || empty($_POST['room_id']) || empty($_POST['bed_number']) || empty($_POST['joining_date'])) {
             Session::set('error', 'All fields are required.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/allocations/create');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/allocations/create');
             exit;
         }
 
@@ -60,10 +60,10 @@ class AllocationController {
         
         if ($result['success']) {
             Session::set('success', 'Room allocated successfully.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/allocations');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/allocations');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/allocations/create');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/allocations/create');
         }
         exit;
     }
@@ -83,7 +83,7 @@ class AllocationController {
             Session::set('error', $result['error']);
         }
         
-        header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/allocations');
+        header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/allocations');
         exit;
     }
 }

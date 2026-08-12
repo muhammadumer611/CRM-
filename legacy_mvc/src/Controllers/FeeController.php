@@ -60,7 +60,7 @@ class FeeController {
 
         if (empty($_POST['student_id']) || empty($_POST['billing_month']) || empty($_POST['billing_year']) || empty($_POST['amount']) || empty($_POST['due_date'])) {
             Session::set('error', 'All required fields must be filled.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/fees/create');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/create');
             exit;
         }
 
@@ -68,10 +68,10 @@ class FeeController {
         
         if ($result['success']) {
             Session::set('success', 'Fee record created successfully.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/fees');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/fees/create');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/create');
         }
         exit;
     }
@@ -80,7 +80,7 @@ class FeeController {
         $fee = $this->feeService->getFee($id);
         if (!$fee) {
             Session::set('error', 'Fee record not found.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/fees');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees');
             exit;
         }
 
@@ -100,7 +100,7 @@ class FeeController {
 
         if (empty($_POST['paid_amount']) || empty($_POST['payment_method'])) {
             Session::set('error', 'Amount and payment method are required.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/fees/pay/' . $id);
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/pay/' . $id);
             exit;
         }
 
@@ -108,10 +108,10 @@ class FeeController {
         
         if ($result['success']) {
             Session::set('success', 'Payment recorded successfully.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/fees');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/fees/pay/' . $id);
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/pay/' . $id);
         }
         exit;
     }

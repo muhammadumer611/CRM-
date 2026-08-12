@@ -1,4 +1,4 @@
-<?php $config = require __DIR__ . '/../../config/app.php'; ?>
+<?php $config = require APP_ROOT . '/config/app.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

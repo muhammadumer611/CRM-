@@ -1,4 +1,4 @@
-<?php $config = require __DIR__ . '/../../config/app.php'; ?>
+<?php $config = require APP_ROOT . '/config/app.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -90,9 +90,6 @@
             </a>
             <a href="<?php echo $config['base_url']; ?>/fees" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'fee') !== false ? 'active' : ''; ?>">
                 <i class="fas fa-money-bill-wave"></i> Fees
-            </a>
-            <a href="<?php echo $config['base_url']; ?>/complaints" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'complaint') !== false ? 'active' : ''; ?>">
-                <i class="fas fa-exclamation-circle"></i> Complaints
             </a>
         </div>
     </div>

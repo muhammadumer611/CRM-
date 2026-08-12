@@ -1,4 +1,4 @@
-<?php $config = require __DIR__ . '/../../../config/app.php'; ?>
+<?php $config = require APP_ROOT . '/config/app.php'; ?>
 <style>
     /* Custom Tabs & Modals to replace missing Bootstrap JS */
     .custom-tabs { display: flex; list-style: none; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }

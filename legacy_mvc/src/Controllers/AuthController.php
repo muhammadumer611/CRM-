@@ -15,7 +15,7 @@ class AuthController {
 
     public function loginForm() {
         if (Session::get('admin_id')) {
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/dashboard');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/dashboard');
             exit;
         }
 
@@ -42,16 +42,16 @@ class AuthController {
 
         if (empty($username) || empty($password)) {
             Session::set('error', 'Username and password are required.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
             exit;
         }
 
         if ($this->authService->login($username, $password, $ip)) {
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/dashboard');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/dashboard');
             exit;
         } else {
             Session::set('error', 'Invalid username or password.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
             exit;
         }
     }
@@ -59,7 +59,7 @@ class AuthController {
     public function logout() {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $this->authService->logout($ip);
-        header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/');
+        header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
         exit;
     }
 }

@@ -4,7 +4,7 @@ namespace App\Core;
 class Auth {
     public static function check() {
         if (!Session::get('admin_id')) {
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
             exit;
         }
     }

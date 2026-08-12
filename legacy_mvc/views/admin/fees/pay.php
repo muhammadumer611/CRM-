@@ -1,4 +1,4 @@
-<?php $config = require __DIR__ . '/../../../config/app.php'; ?>
+<?php $config = require APP_ROOT . '/config/app.php'; ?>
 <div class="card" style="max-width: 600px; margin: 0 auto;">
     <div class="card-header">
         <h3 class="card-title">Record Payment</h3>

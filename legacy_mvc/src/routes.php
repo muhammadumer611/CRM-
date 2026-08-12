@@ -34,10 +34,6 @@ $router->add('POST', '/fees/store', 'FeeController', 'store');
 $router->add('GET', '/fees/pay/{id}', 'FeeController', 'pay');
 $router->add('POST', '/fees/storePayment/{id}', 'FeeController', 'storePayment');
 
-// Complaint routes
-$router->add('GET', '/complaints', 'ComplaintController', 'index');
-$router->add('GET', '/complaints/edit/{id}', 'ComplaintController', 'edit');
-$router->add('POST', '/complaints/update/{id}', 'ComplaintController', 'update');
 
 // Alumni routes
 $router->add('GET', '/alumni', 'AlumniController', 'index');

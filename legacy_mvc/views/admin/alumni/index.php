@@ -1,4 +1,4 @@
-<?php $config = require __DIR__ . '/../../../config/app.php'; ?>
+<?php $config = require APP_ROOT . '/config/app.php'; ?>
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title m-0">Alumni Records</h3>

@@ -56,7 +56,7 @@ class StudentController {
         foreach ($required as $field) {
             if (empty($_POST[$field])) {
                 Session::set('error', 'Please fill all required fields.');
-                header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/students/create');
+                header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/create');
                 exit;
             }
         }
@@ -65,10 +65,10 @@ class StudentController {
         
         if ($result['success']) {
             Session::set('success', 'Student added successfully.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/students');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/students/create');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/create');
         }
         exit;
     }
@@ -77,7 +77,7 @@ class StudentController {
         $student = $this->studentService->getStudent($id);
         if (!$student) {
             Session::set('error', 'Student not found.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/students');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
             exit;
         }
 
@@ -99,10 +99,10 @@ class StudentController {
         
         if ($result['success']) {
             Session::set('success', 'Student updated successfully.');
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/students');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require __DIR__ . '/../../config/app.php')['base_url'] . '/students/edit/' . $id);
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/edit/' . $id);
         }
         exit;
     }

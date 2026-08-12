@@ -1,4 +1,4 @@
-<?php $config = require __DIR__ . '/../../../config/app.php'; ?>
+<?php $config = require APP_ROOT . '/config/app.php'; ?>
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Add New Student</h3>

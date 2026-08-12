@@ -4,6 +4,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+define('APP_ROOT', dirname(__DIR__));
+
 // Simple autoloader for PSR-4 style
 spl_autoload_register(function ($class) {
     $prefix = 'App\\';

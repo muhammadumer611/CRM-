@@ -4,7 +4,7 @@ namespace App\Core;
 class Session {
     public static function init() {
         if (session_status() === PHP_SESSION_NONE) {
-            $config = require __DIR__ . '/../../config/app.php';
+            $config = require APP_ROOT . '/config/app.php';
             session_name($config['session_name'] ?? 'PHPSESSID');
             
             // Security settings

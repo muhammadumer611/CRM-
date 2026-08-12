@@ -9,7 +9,7 @@ class Database {
     private $pdo;
 
     private function __construct() {
-        $config = require __DIR__ . '/../../config/database.php';
+        $config = require APP_ROOT . '/config/database.php';
         
         $dsn = "mysql:host={$config['host']};dbname={$config['database']};charset={$config['charset']}";
         $options = [
@@ -21,14 +21,9 @@ class Database {
         try {
             $this->pdo = new PDO($dsn, $config['username'], $config['password'], $options);
         } catch (PDOException $e) {
+            // In a real application, you might want to handle this more gracefully
             error_log("Database connection failed: " . $e->getMessage());
-            
-            $appConfig = require __DIR__ . '/../../config/app.php';
-            if (($appConfig['environment'] ?? 'production') === 'development') {
-                die("Database connection failed. PDO Exception: " . $e->getMessage());
-            } else {
-                die("Database connection failed. Please contact the administrator.");
-            }
+            die("Database connection failed.");
         }
     }
 
