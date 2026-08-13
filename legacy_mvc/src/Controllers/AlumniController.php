@@ -9,17 +9,18 @@ class AlumniController {
     private $alumniService;
 
     public function __construct() {
-        Auth::check();
         $this->alumniService = new AlumniService();
     }
 
     public function index() {
+        Auth::check();
         View::render('admin/alumni/index', [
             'title' => 'Alumni Management'
         ], 'admin');
     }
 
     public function apiGetAll() {
+        Auth::checkAPI();
         header('Content-Type: application/json');
         
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -49,6 +50,7 @@ class AlumniController {
     }
 
     public function apiGetById($id) {
+        Auth::checkAPI();
         header('Content-Type: application/json');
         try {
             $data = $this->alumniService->getAlumniById($id);
@@ -72,6 +74,7 @@ class AlumniController {
     }
 
     public function apiGetByStudentId($studentIdStr) {
+        Auth::checkAPI();
         header('Content-Type: application/json');
         try {
             $data = $this->alumniService->getAlumniByOriginalStudentId($studentIdStr);
@@ -104,6 +107,7 @@ class AlumniController {
     }
 
     public function apiTransfer() {
+        Auth::checkAPI();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405); exit;
         }

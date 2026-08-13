@@ -9,17 +9,18 @@ class HistoryController {
     private $historyService;
 
     public function __construct() {
-        Auth::check();
         $this->historyService = new StudentHistoryService();
     }
 
     public function index() {
+        Auth::check();
         View::render('admin/history/index', [
             'title' => 'Student History & Audit Trail'
         ], 'admin');
     }
 
     public function apiGetAll() {
+        Auth::checkAPI();
         header('Content-Type: application/json');
         
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -53,6 +54,7 @@ class HistoryController {
     }
 
     public function apiGetStudent($studentId) {
+        Auth::checkAPI();
         header('Content-Type: application/json');
         try {
             $data = $this->historyService->searchHistory(['student_id' => $studentId], 1, 100);
@@ -74,6 +76,7 @@ class HistoryController {
     }
 
     public function apiGetById($id) {
+        Auth::checkAPI();
         header('Content-Type: application/json');
         try {
             $data = $this->historyService->getHistoryRecord($id);
@@ -95,6 +98,7 @@ class HistoryController {
     }
 
     public function apiCount() {
+        Auth::checkAPI();
         header('Content-Type: application/json');
         try {
             $data = $this->historyService->searchHistory([], 1, 1);

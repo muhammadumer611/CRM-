@@ -32,7 +32,11 @@ class Router {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
 
                 if ($route['controller'] !== 'AuthController') {
-                    Auth::check();
+                    if (stripos($route['action'], 'api') === 0) {
+                        Auth::checkAPI();
+                    } else {
+                        Auth::check();
+                    }
                 }
 
                 $controllerName = "\\App\\Controllers\\" . $route['controller'];
