@@ -23,7 +23,6 @@ class Router {
         }
 
         $method = $_SERVER['REQUEST_METHOD'];
-        // Handle method spoofing if needed (e.g., _method in POST)
         if ($method === 'POST' && isset($_POST['_method'])) {
             $method = strtoupper($_POST['_method']);
         }
@@ -31,7 +30,11 @@ class Router {
         foreach ($this->routes as $route) {
             if ($route['method'] === $method && preg_match($route['path'], $url, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
-                
+
+                if ($route['controller'] !== 'AuthController') {
+                    Auth::check();
+                }
+
                 $controllerName = "\\App\\Controllers\\" . $route['controller'];
                 if (class_exists($controllerName)) {
                     $controller = new $controllerName();

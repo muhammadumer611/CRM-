@@ -15,10 +15,13 @@ $router->add('PUT', '/api/rooms/{id}/enable', function($params) { (new RoomContr
 
 // Fee Management Routes
 use Controllers\FeeController;
+$router->add('GET', '/api/fees/dashboard', function() { (new FeeController())->dashboard(); });
 $router->add('GET', '/api/fees/statistics', function() { (new FeeController())->statistics(); });
 $router->add('GET', '/api/fees', function() { (new FeeController())->index(); });
 $router->add('POST', '/api/fees', function() { (new FeeController())->create(); });
 $router->add('GET', '/api/fees/{id}', function($params) { (new FeeController())->show($params); });
+$router->add('GET', '/api/fees/{id}/payments', function($params) { (new FeeController())->paymentHistory($params); });
+$router->add('GET', '/api/fees/{id}/receipt', function($params) { (new FeeController())->receipt($params); });
 $router->add('GET', '/api/fees/student/{student_id}', function($params) { (new FeeController())->studentFees($params); });
 $router->add('GET', '/api/fees/student/{student_id}/summary', function($params) { (new FeeController())->studentSummary($params); });
 $router->add('POST', '/api/fees/{id}/payment', function($params) { (new FeeController())->recordPayment($params); });

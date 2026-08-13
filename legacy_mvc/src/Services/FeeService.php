@@ -5,6 +5,7 @@ use App\Repositories\FeeRepository;
 use App\Repositories\StudentRepository;
 use App\Repositories\AdminRepository;
 use App\Core\Session;
+use App\Services\AuditLogger;
 
 class FeeService {
     private $feeRepo;
@@ -50,6 +51,14 @@ class FeeService {
         $id = $this->feeRepo->create($dbData);
         
         if ($id) {
+            AuditLogger::logAdminAction(
+                'INVOICE_CREATED',
+                'fee',
+                $id,
+                'Fee invoice created for student ' . $student['student_id_str'] . ' for month ' . $dbData['billing_month'] . '/' . $dbData['billing_year'],
+                null,
+                $dbData
+            );
             $this->adminRepo->logAction(Session::get('admin_id'), 'Create Fee', "Created fee for student ID: {$student['student_id_str']}", $_SERVER['REMOTE_ADDR']);
             return ['success' => true, 'id' => $id];
         }
@@ -78,6 +87,14 @@ class FeeService {
         $paymentDate = date('Y-m-d');
         
         if ($this->feeRepo->updatePayment($id, $paidAmount, $data['payment_method'], $data['transaction_ref'], $status, $paymentDate)) {
+            AuditLogger::logAdminAction(
+                'PAYMENT_RECORDED',
+                'fee',
+                $id,
+                'Payment recorded for student ' . $fee['student_id_str'] . ' amount Rs. ' . number_format($paidAmount, 2),
+                ['remaining_before' => $remaining],
+                ['amount' => $paidAmount, 'payment_method' => $data['payment_method'], 'status' => $status]
+            );
             $this->adminRepo->logAction(Session::get('admin_id'), 'Pay Fee', "Recorded payment of Rs. {$paidAmount} for fee ID: {$id}", $_SERVER['REMOTE_ADDR']);
             return ['success' => true];
         }

@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Repositories\RoomRepository;
 use App\Repositories\AdminRepository;
 use App\Core\Session;
+use App\Services\AuditLogger;
 
 class RoomService {
     private $roomRepo;
@@ -49,6 +50,14 @@ class RoomService {
         $id = $this->roomRepo->create($dbData);
         
         if ($id) {
+            AuditLogger::logAdminAction(
+                'ROOM_CREATED',
+                'room',
+                $id,
+                'Room created: ' . $dbData['room_number'] . ' in block ' . $dbData['block'],
+                null,
+                $dbData
+            );
             $this->adminRepo->logAction(Session::get('admin_id'), 'Create Room', "Created room {$dbData['room_number']} in Block {$dbData['block']}", $_SERVER['REMOTE_ADDR']);
             return ['success' => true, 'id' => $id];
         }
@@ -99,6 +108,26 @@ class RoomService {
         ];
 
         if ($this->roomRepo->update($id, $dbData)) {
+            $changes = [];
+            $oldValues = [];
+            foreach ($dbData as $key => $value) {
+                if (isset($room[$key]) && $room[$key] !== $value) {
+                    $changes[$key] = $value;
+                    $oldValues[$key] = $room[$key];
+                }
+            }
+
+            if (!empty($changes)) {
+                AuditLogger::logAdminAction(
+                    'ROOM_UPDATED',
+                    'room',
+                    $id,
+                    'Room configuration updated: ' . $dbData['room_number'],
+                    $oldValues,
+                    $changes
+                );
+            }
+
             $this->adminRepo->logAction(Session::get('admin_id'), 'Update Room', "Updated room ID: {$id}", $_SERVER['REMOTE_ADDR']);
             return ['success' => true];
         }

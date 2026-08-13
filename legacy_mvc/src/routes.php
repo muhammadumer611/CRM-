@@ -34,6 +34,18 @@ $router->add('POST', '/fees/store', 'FeeController', 'store');
 $router->add('GET', '/fees/pay/{id}', 'FeeController', 'pay');
 $router->add('POST', '/fees/storePayment/{id}', 'FeeController', 'storePayment');
 
+// Reports routes
+$router->add('GET', '/reports', 'ReportsController', 'index');
+$router->add('GET', '/reports/export/csv', 'ReportsController', 'exportCsv');
+
+// Notification routes
+$router->add('GET', '/notifications', 'NotificationController', 'index');
+$router->add('POST', '/notifications/mark-read/{id}', 'NotificationController', 'markRead');
+$router->add('POST', '/notifications/mark-all-read', 'NotificationController', 'markAllRead');
+
+// Audit log routes
+$router->add('GET', '/audit-logs', 'AuditLogsController', 'index');
+$router->add('GET', '/audit-logs/{id}', 'AuditLogsController', 'show');
 
 // Alumni routes
 $router->add('GET', '/alumni', 'AlumniController', 'index');

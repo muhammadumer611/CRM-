@@ -62,11 +62,15 @@ CREATE TABLE room_allocations (
 
 CREATE TABLE fee_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_number VARCHAR(50) NULL,
     student_id INT NOT NULL,
     billing_month INT NOT NULL,
     billing_year INT NOT NULL,
+    invoice_date DATE NOT NULL DEFAULT (CURRENT_DATE),
     amount DECIMAL(10,2) NOT NULL,
-    paid_amount DECIMAL(10,2) DEFAULT 0,
+    additional_charges DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     due_date DATE NOT NULL,
     payment_date DATE NULL,
     status ENUM('Paid', 'Pending', 'Partial', 'Overdue') DEFAULT 'Pending',
@@ -76,9 +80,54 @@ CREATE TABLE fee_records (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT,
-    UNIQUE KEY (student_id, billing_month, billing_year)
+    UNIQUE KEY (student_id, billing_month, billing_year),
+    UNIQUE KEY (invoice_number),
+    KEY idx_fee_records_student_period (student_id, billing_year, billing_month),
+    KEY idx_fee_records_status_due (status, due_date)
 );
 
+CREATE TABLE fee_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method ENUM('Cash', 'Bank Transfer', 'Online', 'Other') NOT NULL,
+    transaction_ref VARCHAR(100) NULL,
+    remarks TEXT NULL,
+    received_by_admin INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (invoice_id) REFERENCES fee_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (received_by_admin) REFERENCES admins(id) ON DELETE SET NULL,
+    KEY idx_fee_payments_invoice (invoice_id, payment_date),
+    KEY idx_fee_payments_date (payment_date)
+);
+
+ALTER TABLE fee_records
+    ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(50) NULL AFTER id,
+    ADD COLUMN IF NOT EXISTS additional_charges DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER amount,
+    ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER additional_charges,
+    ADD COLUMN IF NOT EXISTS invoice_date DATE NOT NULL DEFAULT (CURRENT_DATE) AFTER billing_year;
+
+ALTER TABLE fee_records
+    ADD UNIQUE KEY IF NOT EXISTS uk_fee_invoice_number (invoice_number);
+
+CREATE TABLE IF NOT EXISTS fee_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method ENUM('Cash', 'Bank Transfer', 'Online', 'Other') NOT NULL,
+    transaction_ref VARCHAR(100) NULL,
+    remarks TEXT NULL,
+    received_by_admin INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (invoice_id) REFERENCES fee_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (received_by_admin) REFERENCES admins(id) ON DELETE SET NULL,
+    KEY idx_fee_payments_invoice (invoice_id, payment_date),
+    KEY idx_fee_payments_date (payment_date)
+);
 
 CREATE TABLE student_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -118,6 +167,25 @@ CREATE TABLE system_logs (
     ip_address VARCHAR(45) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL
+);
+
+CREATE TABLE notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(30) NOT NULL DEFAULT 'system',
+    priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+    entity_type VARCHAR(50) NULL,
+    entity_id INT NULL,
+    notification_key VARCHAR(255) NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    read_at TIMESTAMP NULL,
+    UNIQUE KEY uk_notifications_key (notification_key),
+    KEY idx_notifications_is_read (is_read),
+    KEY idx_notifications_type (type),
+    KEY idx_notifications_priority (priority),
+    KEY idx_notifications_created_at (created_at)
 );
 
 -- Insert a default admin account (username: admin, password: password)

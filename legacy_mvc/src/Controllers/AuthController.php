@@ -36,24 +36,36 @@ class AuthController {
 
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
 
-        $username = trim($_POST['username'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $username = trim((string)($_POST['username'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
+        $config = require APP_ROOT . '/config/app.php';
+        $attempts = $this->authService->getFailedLoginAttempts($ip, $username);
+
+        if ($attempts >= (int)($config['login_attempt_limit'] ?? 5)) {
+            Session::set('error', 'Too many login attempts. Please try again later.');
+            header('Location: ' . $config['base_url'] . '/');
+            exit;
+        }
+
         if (empty($username) || empty($password)) {
-            Session::set('error', 'Username and password are required.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
+            $this->authService->recordFailedLogin($ip, $username);
+            Session::set('error', 'Invalid username or password.');
+            header('Location: ' . $config['base_url'] . '/');
             exit;
         }
 
         if ($this->authService->login($username, $password, $ip)) {
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/dashboard');
-            exit;
-        } else {
-            Session::set('error', 'Invalid username or password.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
+            $this->authService->clearFailedLoginAttempts($ip, $username);
+            header('Location: ' . $config['base_url'] . '/dashboard');
             exit;
         }
+
+        $this->authService->recordFailedLogin($ip, $username);
+        Session::set('error', 'Invalid username or password.');
+        header('Location: ' . $config['base_url'] . '/');
+        exit;
     }
 
     public function logout() {

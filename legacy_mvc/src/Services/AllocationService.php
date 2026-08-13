@@ -8,6 +8,7 @@ use App\Repositories\AdminRepository;
 use App\Core\Session;
 use App\Core\Database;
 use App\Services\StudentHistoryService;
+use App\Services\AuditLogger;
 use Exception;
 use PDO;
 
@@ -91,6 +92,15 @@ class AllocationService {
             );
 
             $this->db->commit();
+
+            AuditLogger::logAdminAction(
+                'ROOM_ALLOCATED',
+                'allocation',
+                $allocationId,
+                'Student ' . $student['student_id_str'] . ' allocated to room ' . $room['room_number'] . ', bed ' . $bedNumber,
+                null,
+                ['student_id' => $studentId, 'room_id' => $roomId, 'bed_number' => $bedNumber, 'joining_date' => $date]
+            );
             
             $this->adminRepo->logAction(Session::get('admin_id'), 'Room Allocation', "Allocated {$student['student_id_str']} to Room {$room['room_number']}", $_SERVER['REMOTE_ADDR']);
             
@@ -144,6 +154,15 @@ class AllocationService {
             );
 
             $this->db->commit();
+
+            AuditLogger::logAdminAction(
+                'ROOM_ALLOCATION_CLOSED',
+                'allocation',
+                $allocationId,
+                'Allocation closed for student ID ' . $alloc['student_id'] . ' from room ' . $room['room_number'],
+                ['room_id' => $alloc['room_id'], 'bed_number' => $alloc['bed_number'], 'joining_date' => $alloc['joining_date']],
+                ['leaving_date' => $date]
+            );
             
             $this->adminRepo->logAction(Session::get('admin_id'), 'Room Deallocation', "Deallocated ID: $allocationId", $_SERVER['REMOTE_ADDR']);
             

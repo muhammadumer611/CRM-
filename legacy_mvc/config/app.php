@@ -21,6 +21,17 @@ return [
     'base_url' => $protocol . '://' . $host . $base_dir,
     
     'session_name' => 'HMS_SECURE_SESSION',
-    
+    'session_timeout' => 7200,
+    'login_attempt_limit' => 5,
+    'login_attempt_window' => 300,
+    'login_lockout_duration' => 300,
     'environment' => 'development', // 'development' or 'production'
+    'session' => [
+        'name' => 'HMS_SECURE_SESSION',
+        'lifetime' => 7200,
+        'secure' => false,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ],
+    'notification_reminder_days' => 3
 ];

@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Repositories\StudentRepository;
 use App\Repositories\AdminRepository;
 use App\Core\Session;
+use App\Services\AuditLogger;
 
 class StudentService {
     private $studentRepo;
@@ -58,6 +59,15 @@ class StudentService {
         $id = $this->studentRepo->create($dbData);
         
         if ($id) {
+            AuditLogger::logAdminAction(
+                'STUDENT_CREATED',
+                'student',
+                $id,
+                'Student profile created: ' . $dbData['student_id_str'],
+                null,
+                $dbData
+            );
+
             $this->adminRepo->logAction(Session::get('admin_id'), 'Create Student', "Created student ID: {$dbData['student_id_str']}", $_SERVER['REMOTE_ADDR']);
             
             \App\Services\StudentHistoryService::record(
@@ -102,7 +112,7 @@ class StudentService {
 
         if ($this->studentRepo->update($id, $dbData)) {
             $this->adminRepo->logAction(Session::get('admin_id'), 'Update Student', "Updated student ID: {$student['student_id_str']}", $_SERVER['REMOTE_ADDR']);
-            
+
             $changes = [];
             $oldValues = [];
             foreach ($dbData as $key => $value) {
@@ -125,6 +135,15 @@ class StudentService {
                         $desc = 'Student enabled by administrator.';
                     }
                 }
+
+                AuditLogger::logAdminAction(
+                    $eventType,
+                    'student',
+                    $id,
+                    $desc,
+                    $oldValues,
+                    $changes
+                );
                 
                 \App\Services\StudentHistoryService::record(
                     $id,

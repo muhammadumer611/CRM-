@@ -11,5 +11,6 @@ return [
         'secure' => false, // Set to true if using HTTPS
         'httponly' => true,
         'samesite' => 'Strict'
-    ]
+    ],
+    'notification_reminder_days' => 3
 ];

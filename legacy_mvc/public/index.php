@@ -21,6 +21,11 @@ spl_autoload_register(function ($class) {
     }
 });
 
+// Secure default headers before any output
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
 // Initialize Session
 \App\Core\Session::init();
 

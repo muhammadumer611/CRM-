@@ -10,16 +10,30 @@ class CSRF {
     }
 
     public static function verifyToken($token) {
-        if (!Session::get('csrf_token') || !hash_equals(Session::get('csrf_token'), $token)) {
-            die("CSRF token validation failed.");
+        $expected = Session::get('csrf_token');
+        $provided = is_string($token) ? $token : '';
+
+        if (empty($expected) || !hash_equals($expected, $provided)) {
+            Session::remove('csrf_token');
+            Session::set('error', 'Invalid request token.');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
+            exit;
         }
+
+        Session::remove('csrf_token');
         return true;
     }
 
     public static function verifyTokenJson($token) {
-        if (!Session::get('csrf_token') || !hash_equals(Session::get('csrf_token'), $token)) {
-            throw new \Exception("CSRF token validation failed.");
+        $expected = Session::get('csrf_token');
+        $provided = is_string($token) ? $token : '';
+
+        if (empty($expected) || !hash_equals($expected, $provided)) {
+            Session::remove('csrf_token');
+            throw new \Exception('CSRF token validation failed.');
         }
+
+        Session::remove('csrf_token');
         return true;
     }
 }

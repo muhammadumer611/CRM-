@@ -25,6 +25,8 @@ set_exception_handler(function (\Throwable $e) {
     \Core\Response::error($message, 500);
 });
 
+session_start();
+
 // Parse Request Body for JSON payloads
 $requestBody = [];
 if ($_SERVER['CONTENT_TYPE'] === 'application/json') {

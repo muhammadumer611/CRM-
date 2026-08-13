@@ -25,6 +25,16 @@
         .topbar-title { font-size: 1.25rem; font-weight: 600; }
         .user-menu { display: flex; align-items: center; gap: 1rem; }
         .logout-btn { color: var(--danger); font-weight: 500; font-size: 0.9rem; }
+        .notification-wrap { position: relative; }
+        .notification-bell { position: relative; color: var(--text); cursor: pointer; }
+        .notification-badge { position: absolute; top: -8px; right: -12px; background: #ef4444; color: white; border-radius: 999px; min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; padding: 0 5px; }
+        .notification-dropdown { position: absolute; right: 0; top: 42px; width: 320px; background: #0f172a; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.25); display: none; z-index: 50; }
+        .notification-wrap:hover .notification-dropdown, .notification-wrap:focus-within .notification-dropdown { display: block; }
+        .notification-item { display: block; padding: 0.75rem 1rem; border-bottom:1px solid var(--border); }
+        .notification-item:hover { background: rgba(56,189,248,0.06); }
+        .notification-item.unread { background: rgba(14,165,233,0.04); }
+        .notification-item-title { font-weight: 600; margin-bottom: 0.2rem; }
+        .notification-item-meta { font-size: 0.75rem; color: var(--text-muted); }
         
         .content { padding: 2rem; overflow-y: auto; flex: 1; }
         .card { background-color: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
@@ -91,6 +101,12 @@
             <a href="<?php echo $config['base_url']; ?>/fees" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'fee') !== false ? 'active' : ''; ?>">
                 <i class="fas fa-money-bill-wave"></i> Fees
             </a>
+            <a href="<?php echo $config['base_url']; ?>/notifications" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'notification') !== false ? 'active' : ''; ?>">
+                <i class="fas fa-bell"></i> Notifications
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/audit-logs" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'audit') !== false ? 'active' : ''; ?>">
+                <i class="fas fa-history"></i> Audit Logs
+            </a>
         </div>
     </div>
     
@@ -98,6 +114,35 @@
         <div class="topbar">
             <div class="topbar-title"><?php echo htmlspecialchars($title ?? 'Dashboard'); ?></div>
             <div class="user-menu">
+                <div class="notification-wrap">
+                    <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-bell" aria-label="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <?php $notificationService = new \App\Services\NotificationService(); $unreadCount = $notificationService->getUnreadCount(); ?>
+                        <?php if ($unreadCount > 0): ?>
+                            <span class="notification-badge"><?php echo (int)$unreadCount; ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <div class="notification-dropdown">
+                        <?php $recent = $notificationService->getRecentUnread(5); ?>
+                        <?php if (empty($recent)): ?>
+                            <div class="notification-item">
+                                <div class="notification-item-title">No new notifications</div>
+                                <div class="notification-item-meta">You're all caught up.</div>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($recent as $item): ?>
+                                <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item unread">
+                                    <div class="notification-item-title"><?php echo htmlspecialchars($item['title']); ?></div>
+                                    <div class="notification-item-meta"><?php echo htmlspecialchars(substr($item['message'], 0, 70)); ?><?php echo strlen((string)$item['message']) > 70 ? '...' : ''; ?></div>
+                                    <div class="notification-item-meta"><?php echo htmlspecialchars(date('M d, H:i', strtotime($item['created_at']))); ?></div>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item" style="text-align:center; font-weight:600;">
+                            View All Notifications
+                        </a>
+                    </div>
+                </div>
                 <span><i class="fas fa-user-circle"></i> <?php echo htmlspecialchars(\App\Core\Auth::user()); ?></span>
                 <a href="<?php echo $config['base_url']; ?>/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
