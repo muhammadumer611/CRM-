@@ -34,18 +34,31 @@ A complete web-based Hostel Management System built using PHP, MySQL, HTML, CSS 
 ![Login](screenshort/login.png)
 
 ### 📊 Dashboard
-![Dashboard](screenshort/dashboard.png)
+![Dashboard](screenshort/Dashboard.png)
 
 ### 👨‍🎓 Student Management
-![Students](screenshort/addstudent.png)
+![Students](screenshort/students.png)
 
 ### 🏠 Room Management
-![Rooms](screenshort/addroom.png)
+![Rooms](screenshort/Room.png)
 
 ### 💰 Fee Management
-![Fees](screenshort/feeaddition.png)
+![Fees](screenshort/Fees.png)
+
+### 💰 Notification Management
+![Fees](screenshort/Notification.png)
 
 
+### 💰 Fee Management
+![Fees](screenshort/Alumni.png)
+
+
+### 💰 Fee Management
+![Fees](screenshort/RepoAnalytics.png)
+
+
+### 💰 Fee Management
+![Fees](screenshort/Allocation.png)
 ## 🗄️ Database
 
 The application uses MySQL with a normalized relational database architecture.

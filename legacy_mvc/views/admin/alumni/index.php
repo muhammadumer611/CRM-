@@ -174,6 +174,59 @@ function updatePagination(pagination) {
     document.getElementById('nextPage').disabled = (pagination.current_page >= pagination.total_pages);
 }
 
+function getStatusBadgeMarkup(status) {
+    const normalized = (status || '').toString().trim();
+    const label = normalized || 'Unknown';
+    const lower = normalized.toLowerCase();
+
+    if (lower.includes('cleared')) {
+        return `<span class="status-badge badge-success">${escapeHTML(label)}</span>`;
+    }
+    if (lower.includes('pending')) {
+        return `<span class="status-badge badge-warning">${escapeHTML(label)}</span>`;
+    }
+    if (lower.includes('overdue') || lower.includes('due')) {
+        return `<span class="status-badge badge-danger">${escapeHTML(label)}</span>`;
+    }
+    return `<span class="status-badge badge-secondary">${escapeHTML(label)}</span>`;
+}
+
+function parseJsonSafely(value) {
+    if (!value) return {};
+    if (typeof value === 'object') return value;
+
+    try {
+        return JSON.parse(value);
+    } catch (error) {
+        return {};
+    }
+}
+
+function renderDetailSection(title, iconClass, fields) {
+    const fieldMarkup = fields.map((field, index) => {
+        const isFullWidth = field.fullWidth === true;
+        const value = field.value ?? 'N/A';
+        return `
+            <div class="detail-item${isFullWidth ? ' detail-item-full' : ''}">
+                <span class="detail-label">${escapeHTML(field.label)}</span>
+                <span class="detail-value${field.muted ? ' detail-value-muted' : ''}">${field.html ? field.html : escapeHTML(value)}</span>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="alumni-section">
+            <div class="section-header">
+                <i class="${iconClass}"></i>
+                <h3>${escapeHTML(title)}</h3>
+            </div>
+            <div class="details-grid">
+                ${fieldMarkup}
+            </div>
+        </div>
+    `;
+}
+
 function viewDetails(id) {
     const modal = document.getElementById('alumniDetailsModal');
     modal.style.display = 'block';
@@ -187,44 +240,61 @@ function viewDetails(id) {
         .then(response => {
             if (response.success) {
                 const r = response.data;
-                const guardian = r.guardian_info ? JSON.parse(r.guardian_info) : {};
-                
+                const guardian = parseJsonSafely(r.guardian_info);
+                const studentFields = [
+                    { label: 'Original Student ID', value: r.original_student_id },
+                    { label: 'Alumni ID', value: r.id },
+                    { label: 'Name', value: r.name },
+                    { label: 'CNIC', value: r.cnic },
+                    { label: 'Phone', value: r.phone },
+                    { label: 'Fee Status', html: getStatusBadgeMarkup(r.final_fee_status) }
+                ];
+
+                const accommodationFields = [
+                    { label: 'Previous Room', value: `${r.previous_room || 'N/A'}${r.previous_bed ? ` (Bed: ${r.previous_bed})` : ''}` },
+                    { label: 'Joining Date', value: r.joining_date || 'N/A' },
+                    { label: 'Leaving Date', value: r.leaving_date || 'N/A' },
+                    { label: 'Reason', value: r.leaving_reason || 'N/A' },
+                    { label: 'Remarks', value: r.remarks || 'No remarks provided.', fullWidth: true }
+                ];
+
+                const guardianFields = [
+                    { label: 'Guardian Name', value: guardian.name || 'N/A' },
+                    { label: 'Relationship', value: guardian.relation || 'N/A' },
+                    { label: 'Guardian Phone', value: guardian.phone || 'N/A' },
+                    { label: 'Guardian CNIC', value: guardian.cnic || 'N/A' }
+                ];
+
+                const additionalInfo = [
+                    r.additional_info,
+                    r.additional_information,
+                    r.notes,
+                    r.status,
+                    r.student_status
+                ].find(value => value !== null && value !== undefined && value !== '');
+
+                let additionalMarkup = '';
+                if (additionalInfo) {
+                    additionalMarkup = `
+                        <div class="alumni-section">
+                            <div class="section-header">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <h3>Additional Information</h3>
+                            </div>
+                            <div class="detail-item detail-item-full">
+                                <span class="detail-label">Notes</span>
+                                <span class="detail-note">${escapeHTML(additionalInfo)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 body.innerHTML = `
-                    <div class="row mb-3">
-                        <div class="col-sm-6"><strong>Alumni ID:</strong> ${escapeHTML(r.id)}</div>
-                        <div class="col-sm-6"><strong>Original Student ID:</strong> <span class="badge bg-dark">${escapeHTML(r.original_student_id)}</span></div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-sm-6"><strong>Name:</strong> ${escapeHTML(r.name)}</div>
-                        <div class="col-sm-6"><strong>CNIC:</strong> ${escapeHTML(r.cnic)}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-sm-6"><strong>Phone:</strong> ${escapeHTML(r.phone)}</div>
-                        <div class="col-sm-6"><strong>Fee Status:</strong> ${escapeHTML(r.final_fee_status)}</div>
-                    </div>
-                    <hr>
-                    <h6 class="mb-3">Accommodation & Duration</h6>
-                    <div class="row mb-3">
-                        <div class="col-sm-6"><strong>Previous Room:</strong> ${escapeHTML(r.previous_room || 'N/A')} (Bed: ${escapeHTML(r.previous_bed || 'N/A')})</div>
-                        <div class="col-sm-6"><strong>Joining Date:</strong> ${escapeHTML(r.joining_date || 'N/A')}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-sm-6"><strong>Leaving Date:</strong> ${escapeHTML(r.leaving_date)}</div>
-                        <div class="col-sm-6"><strong>Reason:</strong> ${escapeHTML(r.leaving_reason)}</div>
-                    </div>
-                    <div class="mb-3">
-                        <strong>Remarks:</strong>
-                        <div class="p-2 bg-light border mt-1">${escapeHTML(r.remarks || 'No remarks provided.')}</div>
-                    </div>
-                    <hr>
-                    <h6 class="mb-3">Guardian Information</h6>
-                    <div class="row mb-3">
-                        <div class="col-sm-6"><strong>Name:</strong> ${escapeHTML(guardian.name || 'N/A')}</div>
-                        <div class="col-sm-6"><strong>Relation:</strong> ${escapeHTML(guardian.relation || 'N/A')}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-sm-6"><strong>Phone:</strong> ${escapeHTML(guardian.phone || 'N/A')}</div>
-                        <div class="col-sm-6"><strong>CNIC:</strong> ${escapeHTML(guardian.cnic || 'N/A')}</div>
+                    <div class="alumni-details">
+                        ${renderDetailSection('Student Information', 'fa-solid fa-user-graduate', studentFields)}
+                        ${renderDetailSection('Accommodation & Duration', 'fa-solid fa-house-user', accommodationFields)}
+                        ${renderDetailSection('Guardian Information', 'fa-solid fa-user-shield', guardianFields)}
+                        ${additionalMarkup}
                     </div>
                 `;
             }
