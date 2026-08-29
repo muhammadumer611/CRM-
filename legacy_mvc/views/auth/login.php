@@ -8,10 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; display: flex; align-items: center; justify-content: center; min-height: 100vh; color: #f8fafc; }
+        html, body { min-height: 100%; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; display: flex; align-items: center; justify-content: center; min-height: 100vh; color: #f8fafc; padding: 1rem; overflow-x: hidden; }
         .login-container { background-color: #1e293b; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 400px; }
         .login-header { text-align: center; margin-bottom: 2rem; }
-        .login-header h1 { font-size: 1.5rem; color: #38bdf8; font-weight: 600; margin-bottom: 0.5rem; }
+        .login-header h1 { font-size: clamp(1.3rem, 4vw, 1.7rem); color: #38bdf8; font-weight: 600; margin-bottom: 0.5rem; }
         .login-header p { color: #94a3b8; font-size: 0.9rem; }
         .form-group { margin-bottom: 1.5rem; }
         .form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; color: #cbd5e1; }
@@ -21,6 +22,13 @@
         .btn-submit:hover { background-color: #0369a1; }
         .alert { padding: 0.75rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.875rem; text-align: center; }
         .alert-error { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+        @media (max-width: 480px) {
+            body { padding: 0.75rem; }
+            .login-container { padding: 1.25rem; border-radius: 10px; }
+            .form-group { margin-bottom: 1rem; }
+            .btn-submit { min-height: 46px; }
+        }
     </style>
 </head>
 <body>

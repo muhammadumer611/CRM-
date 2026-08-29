@@ -47,6 +47,9 @@ $router->add('POST', '/notifications/mark-all-read', 'NotificationController', '
 $router->add('GET', '/audit-logs', 'AuditLogsController', 'index');
 $router->add('GET', '/audit-logs/{id}', 'AuditLogsController', 'show');
 
+// Database status routes
+$router->add('GET', '/db-status', 'DatabaseStatusController', 'index');
+
 // Alumni routes
 $router->add('GET', '/alumni', 'AlumniController', 'index');
 $router->add('GET', '/api/alumni', 'AlumniController', 'apiGetAll');

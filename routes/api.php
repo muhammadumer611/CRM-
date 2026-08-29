@@ -4,6 +4,69 @@ use Utils\Router;
 
 $router = new Router();
 
+$router->add('GET', '/', function() {
+    header('Location: /api/rooms', true, 302);
+    exit;
+});
+
+$router->add('GET', '/health', function() {
+    echo json_encode([
+        'success' => true,
+        'message' => 'Hostel Management API is running.',
+        'data' => [
+            'status' => 'ok',
+            'database' => 'mysql'
+        ]
+    ]);
+    exit;
+});
+
+$router->add('GET', '/api/db-status', function() {
+    $config = require __DIR__ . '/../config/database.php';
+    $requiredTables = [
+        'admins','students','rooms','room_allocations','fee_records','fee_payments',
+        'student_history','alumni','system_logs','notifications'
+    ];
+
+    $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
+    try {
+        $pdo = new PDO($dsn, $config['user'], $config['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $database = $pdo->query("SELECT DATABASE()")->fetchColumn();
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        $present = array_flip($tables);
+        $status = [];
+        foreach ($requiredTables as $table) {
+            $status[] = [
+                'table' => $table,
+                'exists' => isset($present[$table])
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Database connection successful.',
+            'data' => [
+                'database' => $database,
+                'server' => $config['host'],
+                'connected' => true,
+                'tables' => $status
+            ]
+        ]);
+    } catch (Throwable $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Database connection failed.',
+            'data' => [
+                'database' => $config['dbname'],
+                'server' => $config['host'],
+                'connected' => false,
+                'error' => $e->getMessage()
+            ]
+        ]);
+    }
+    exit;
+});
+
 // Room Management Routes
 $router->add('GET', '/api/rooms/statistics', function() { (new RoomController())->statistics(); });
 $router->add('GET', '/api/rooms', function() { (new RoomController())->index(); });
