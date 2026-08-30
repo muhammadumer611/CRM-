@@ -16,7 +16,8 @@ class DashboardService {
             'active_students' => 0,
             'total_rooms' => 0,
             'available_beds' => 0,
-            'pending_fees' => 0
+            'pending_fees' => 0,
+            'total_collection' => 0
         ];
 
         $stmt = $this->db->query("SELECT COUNT(*) FROM students WHERE status = 'Active'");
@@ -34,6 +35,8 @@ class DashboardService {
         $stmt = $this->db->query("SELECT COUNT(*) FROM fee_records WHERE status IN ('Pending', 'Partial', 'Overdue')");
         $stats['pending_fees'] = $stmt->fetchColumn();
 
+        $collectionStmt = $this->db->query("SELECT COALESCE(SUM(amount), 0) AS total_collection FROM fee_payments WHERE status <> 'Reversed' AND amount > 0");
+        $stats['total_collection'] = (float)($collectionStmt->fetchColumn() ?: 0);
 
         return $stats;
     }

@@ -1,15 +1,15 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
 <div class="row">
     <div class="col-md-4">
+        <a href="<?php echo $config['base_url']; ?>/fees/collection" class="card" style="display: block; background: linear-gradient(135deg, #10b981, #059669); color: white;">
+            <h3>Total Collection</h3>
+            <h2>Rs. <?php echo number_format((float)($stats['total_collection'] ?? 0), 2); ?></h2>
+        </a>
+    </div>
+    <div class="col-md-4">
         <div class="card" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
             <h3>Active Students</h3>
             <h2><?php echo $stats['active_students'] ?? 0; ?> <small style="font-size: 1rem; opacity: 0.8;">/ <?php echo $stats['total_students'] ?? 0; ?></small></h2>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
-            <h3>Available Beds</h3>
-            <h2><?php echo $stats['available_beds'] ?? 0; ?></h2>
         </div>
     </div>
     <div class="col-md-4">

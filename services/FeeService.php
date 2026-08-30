@@ -124,14 +124,17 @@ class FeeService {
             $newPaidAmount = (float)$invoice['paid_amount'] + $paymentAmount;
             $paymentDate = date('Y-m-d');
             $newStatus = $this->calculateStatus($totalAmount, $newPaidAmount, $invoice['due_date']);
+            $receiptNumber = $this->repository->generateReceiptNumber($db);
 
             $this->repository->createPayment($feeId, [
+                'receipt_number' => $receiptNumber,
                 'amount' => $paymentAmount,
                 'payment_date' => $paymentDate,
                 'payment_method' => $method,
                 'transaction_ref' => $ref,
                 'remarks' => $remarks,
-                'received_by_admin' => $adminId ?? ($_SESSION['admin_id'] ?? null)
+                'received_by_admin' => $adminId ?? ($_SESSION['admin_id'] ?? null),
+                'status' => 'Completed'
             ], $db);
 
             $this->repository->updateInvoicePayment($feeId, $newPaidAmount, $newStatus, $method, $ref, $paymentDate, $db);
@@ -158,10 +161,24 @@ class FeeService {
     public function getDashboardData() {
         return [
             'summary' => $this->repository->getDashboardSummary(),
+            'collection' => $this->repository->getCollectionSummary(),
             'recent_payments' => $this->repository->getRecentPayments(5),
             'recent_invoices' => $this->repository->getRecentInvoices(5),
             'overdue_invoices' => $this->repository->getOverdueInvoices(5)
         ];
+    }
+
+    public function getCollectionSummary(array $filters = []) {
+        $summary = $this->repository->getCollectionSummary($filters);
+        return [
+            'total_collection' => (float)($summary['total_collection'] ?? 0),
+            'payment_count' => (int)($summary['payment_count'] ?? 0),
+            'latest_payment_date' => $summary['latest_payment_date'] ?? null
+        ];
+    }
+
+    public function getCollectionPayments(array $filters = [], $limit = 50, $offset = 0) {
+        return $this->repository->getCollectionRows($filters, $limit, $offset);
     }
 
     public function getPaymentHistory($invoiceId) {

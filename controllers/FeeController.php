@@ -137,6 +137,39 @@ class FeeController {
         }
     }
 
+    public function collectionSummary() {
+        $this->requireAdmin();
+        try {
+            $filters = $_GET;
+            $summary = $this->service->getCollectionSummary($filters);
+            Response::success('Collection summary retrieved successfully.', ['summary' => $summary]);
+        } catch (Exception $e) {
+            Response::error('Failed to retrieve collection summary.', 500);
+        }
+    }
+
+    public function collectionRecords() {
+        $this->requireAdmin();
+        try {
+            $filters = $_GET;
+            $page = max(1, (int)($filters['page'] ?? 1));
+            $limit = max(1, min(100, (int)($filters['limit'] ?? 50)));
+            $offset = ($page - 1) * $limit;
+
+            $summary = $this->service->getCollectionSummary($filters);
+            $payments = $this->service->getCollectionPayments($filters, $limit, $offset);
+            Response::success('Collection records retrieved successfully.', [
+                'summary' => $summary,
+                'payments' => $payments,
+                'page' => $page,
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+        } catch (Exception $e) {
+            Response::error('Failed to retrieve collection records.', 500);
+        }
+    }
+
     public function recordPayment($params) {
         $this->requireAdmin();
         global $requestBody;

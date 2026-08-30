@@ -26,6 +26,19 @@ class FeeService {
         ];
     }
 
+    public function getCollectionSummary(array $filters = []) {
+        $summary = $this->feeRepo->getCollectionSummary($filters);
+        return [
+            'total_collection' => (float)($summary['total_collection'] ?? 0),
+            'payment_count' => (int)($summary['payment_count'] ?? 0),
+            'latest_payment_date' => $summary['latest_payment_date'] ?? null,
+        ];
+    }
+
+    public function getCollectionRows(array $filters = [], $limit = 50, $offset = 0) {
+        return $this->feeRepo->getCollectionRows($filters, $limit, $offset);
+    }
+
     public function getFee($id) {
         return $this->feeRepo->findById($id);
     }

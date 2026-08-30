@@ -91,6 +91,107 @@ class FeeRepository {
         return $stmt->fetchColumn();
     }
 
+    public function getCollectionSummary(array $filters = []) {
+        $where = $this->buildCollectionWhere($filters);
+        $sql = "
+            SELECT
+                COALESCE(SUM(fp.amount), 0) AS total_collection,
+                COUNT(fp.id) AS payment_count,
+                MAX(fp.payment_date) AS latest_payment_date
+            FROM fee_payments fp
+            JOIN fee_records fr ON fr.id = fp.invoice_id
+            JOIN students s ON s.id = fr.student_id
+            WHERE fp.status <> 'Reversed'
+              AND fp.amount > 0
+              {$where['sql']}
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($where['params']);
+        return $stmt->fetch();
+    }
+
+    public function getCollectionRows(array $filters = [], $limit = 50, $offset = 0) {
+        $where = $this->buildCollectionWhere($filters);
+        $sql = "
+            SELECT
+                fp.id,
+                s.full_name AS student_name,
+                s.student_id_str AS student_id,
+                fp.amount AS amount_received,
+                fp.payment_date,
+                fp.payment_method,
+                fp.receipt_number,
+                fr.billing_month,
+                fr.billing_year,
+                CONCAT(fr.billing_month, '/', fr.billing_year) AS billing_period,
+                fp.status,
+                fp.transaction_ref
+            FROM fee_payments fp
+            JOIN fee_records fr ON fr.id = fp.invoice_id
+            JOIN students s ON s.id = fr.student_id
+            WHERE fp.status <> 'Reversed'
+              AND fp.amount > 0
+              {$where['sql']}
+            ORDER BY fp.payment_date DESC, fp.id DESC
+            LIMIT :limit OFFSET :offset
+        ";
+        $stmt = $this->db->prepare($sql);
+        foreach ($where['params'] as $key => $value) {
+            $stmt->bindValue(':' . $key, $value);
+        }
+        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    private function buildCollectionWhere(array $filters = []) {
+        $sql = '';
+        $params = [];
+        $dateFilter = $filters['date_filter'] ?? 'this_month';
+
+        if (!empty($filters['student_id'])) {
+            $sql .= ' AND fr.student_id = :student_id';
+            $params['student_id'] = (int)$filters['student_id'];
+        }
+
+        if (!empty($filters['payment_method'])) {
+            $sql .= ' AND fp.payment_method = :payment_method';
+            $params['payment_method'] = trim((string)$filters['payment_method']);
+        }
+
+        if (!empty($filters['start_date'])) {
+            $sql .= ' AND fp.payment_date >= :start_date';
+            $params['start_date'] = $filters['start_date'];
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= ' AND fp.payment_date <= :end_date';
+            $params['end_date'] = $filters['end_date'];
+        }
+
+        if (empty($filters['start_date']) && empty($filters['end_date'])) {
+            switch ($dateFilter) {
+                case 'today':
+                    $sql .= ' AND fp.payment_date = CURDATE()';
+                    break;
+                case 'this_month':
+                    $sql .= ' AND fp.payment_date >= DATE_FORMAT(CURDATE(), "%Y-%m-01") AND fp.payment_date <= LAST_DAY(CURDATE())';
+                    break;
+                case 'this_year':
+                    $sql .= ' AND fp.payment_date >= DATE_FORMAT(CURDATE(), "%Y-01-01") AND fp.payment_date <= DATE_FORMAT(CURDATE(), "%Y-12-31")';
+                    break;
+                case 'custom':
+                    break;
+                default:
+                    $sql .= ' AND fp.payment_date >= DATE_FORMAT(CURDATE(), "%Y-%m-01") AND fp.payment_date <= LAST_DAY(CURDATE())';
+                    break;
+            }
+        }
+
+        return ['sql' => $sql, 'params' => $params];
+    }
+
     public function findById($id) {
         $stmt = $this->db->prepare("
             SELECT f.*, s.full_name, s.student_id_str 

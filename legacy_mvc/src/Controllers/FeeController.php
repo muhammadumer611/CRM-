@@ -91,6 +91,25 @@ class FeeController {
         ], 'admin');
     }
 
+    public function collection() {
+        $filters = [
+            'date_filter' => $_GET['date_filter'] ?? 'this_month',
+            'start_date' => $_GET['start_date'] ?? '',
+            'end_date' => $_GET['end_date'] ?? '',
+            'payment_method' => $_GET['payment_method'] ?? '',
+        ];
+
+        $payments = $this->feeService->getCollectionRows($filters, 50, 0);
+        $summary = $this->feeService->getCollectionSummary($filters);
+
+        View::render('admin/fees/collection', [
+            'title' => 'Total Collection',
+            'filters' => $filters,
+            'payments' => $payments,
+            'summary' => $summary,
+        ], 'admin');
+    }
+
     public function storePayment($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405); exit;

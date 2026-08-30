@@ -30,6 +30,7 @@ $router->add('POST', '/allocations/remove/{id}', 'AllocationController', 'remove
 
 // Fee routes
 $router->add('GET', '/fees', 'FeeController', 'index');
+$router->add('GET', '/fees/collection', 'FeeController', 'collection');
 $router->add('GET', '/fees/create', 'FeeController', 'create');
 $router->add('POST', '/fees/store', 'FeeController', 'store');
 $router->add('GET', '/fees/pay/{id}', 'FeeController', 'pay');

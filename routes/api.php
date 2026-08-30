@@ -80,6 +80,8 @@ $router->add('PUT', '/api/rooms/{id}/enable', function($params) { (new RoomContr
 use Controllers\FeeController;
 $router->add('GET', '/api/fees/dashboard', function() { (new FeeController())->dashboard(); });
 $router->add('GET', '/api/fees/statistics', function() { (new FeeController())->statistics(); });
+$router->add('GET', '/api/fees/collection-summary', function() { (new FeeController())->collectionSummary(); });
+$router->add('GET', '/api/fees/collection', function() { (new FeeController())->collectionRecords(); });
 $router->add('GET', '/api/fees', function() { (new FeeController())->index(); });
 $router->add('POST', '/api/fees', function() { (new FeeController())->create(); });
 $router->add('GET', '/api/fees/{id}', function($params) { (new FeeController())->show($params); });
