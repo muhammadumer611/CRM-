@@ -13,6 +13,7 @@ $router->add('GET', '/students/create', 'StudentController', 'create');
 $router->add('POST', '/students/store', 'StudentController', 'store');
 $router->add('GET', '/students/edit/{id}', 'StudentController', 'edit');
 $router->add('POST', '/students/update/{id}', 'StudentController', 'update');
+$router->add('GET', '/students/account/{id}', 'StudentController', 'account');
 
 // Room routes
 $router->add('GET', '/rooms', 'RoomController', 'index');
@@ -33,6 +34,7 @@ $router->add('GET', '/fees/create', 'FeeController', 'create');
 $router->add('POST', '/fees/store', 'FeeController', 'store');
 $router->add('GET', '/fees/pay/{id}', 'FeeController', 'pay');
 $router->add('POST', '/fees/storePayment/{id}', 'FeeController', 'storePayment');
+$router->add('GET', '/fees/receipt/{id}', 'FeeController', 'receipt');
 
 // Reports routes
 $router->add('GET', '/reports', 'ReportsController', 'index');

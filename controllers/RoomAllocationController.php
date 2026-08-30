@@ -16,19 +16,30 @@ class RoomAllocationController {
     public function create() {
         global $requestBody;
         
+        $allocationType = strtoupper(trim((string)($requestBody['allocation_type'] ?? 'BED')));
+        if (!in_array($allocationType, ['BED', 'FULL_ROOM'], true)) {
+            $allocationType = 'BED';
+        }
+        if ($allocationType === 'FULL_ROOM') {
+            $requestBody['bed_number'] = 0;
+        }
+
         $validator = new Validator($requestBody);
         $rules = [
             'student_id' => 'required|integer',
             'room_id' => 'required|integer',
-            'bed_number' => 'required|integer|positive_number',
             'joining_date' => 'required|date'
         ];
+        if ($allocationType !== 'FULL_ROOM') {
+            $rules['bed_number'] = 'required|integer|positive_number';
+        }
 
         if (!$validator->validate($rules)) {
             Response::error('Validation failed.', 422, $validator->getErrors());
         }
 
         try {
+            $requestBody['allocation_type'] = $allocationType;
             $id = $this->service->allocateStudent($requestBody);
             Response::json(true, 'Student allocated successfully.', ['id' => $id], null, 201);
         } catch (Exception $e) {

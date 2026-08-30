@@ -132,8 +132,13 @@ class AllocationService {
             $this->allocRepo->closeAllocation($allocationId, $date, $this->db);
 
             // Update Room Occupancy
-            $newOccupied = max(0, $room['occupied_beds'] - 1);
-            $newStatus = ($newOccupied == 0) ? 'Available' : 'Partially Occupied';
+            if ((int)$alloc['bed_number'] === 0) {
+                $newOccupied = 0;
+                $newStatus = 'Available';
+            } else {
+                $newOccupied = max(0, $room['occupied_beds'] - 1);
+                $newStatus = ($newOccupied == 0) ? 'Available' : 'Partially Occupied';
+            }
             
             if ($room['status'] === 'Disabled') {
                 $newStatus = 'Disabled';

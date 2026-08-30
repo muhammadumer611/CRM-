@@ -6,6 +6,7 @@ use App\Core\View;
 use App\Core\Session;
 use App\Core\CSRF;
 use App\Services\StudentService;
+use App\Services\StudentAccountService;
 
 class StudentController {
     private $studentService;
@@ -51,7 +52,6 @@ class StudentController {
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
 
-        // Basic required field validation could be done here or in service
         $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation'];
         foreach ($required as $field) {
             if (empty($_POST[$field])) {
@@ -64,7 +64,7 @@ class StudentController {
         $result = $this->studentService->createStudent($_POST);
         
         if ($result['success']) {
-            Session::set('success', 'Student added successfully.');
+            Session::set('success', 'Student admitted successfully.');
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
         } else {
             Session::set('error', $result['error']);
@@ -105,5 +105,24 @@ class StudentController {
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/edit/' . $id);
         }
         exit;
+    }
+
+    public function account($id) {
+        $student = $this->studentService->getStudent($id);
+        if (!$student) {
+            Session::set('error', 'Student not found.');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
+            exit;
+        }
+
+        $accountService = new StudentAccountService();
+        $account = $accountService->getStudentAccount($id);
+
+        View::render('admin/students/account', [
+            'title' => 'Student Account Statement',
+            'student' => $student,
+            'account' => $account,
+            'csrf_token' => CSRF::generateToken()
+        ], 'admin');
     }
 }

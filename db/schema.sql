@@ -89,18 +89,37 @@ CREATE TABLE fee_records (
 CREATE TABLE fee_payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_id INT NOT NULL,
+    receipt_number VARCHAR(50) NOT NULL UNIQUE,
     amount DECIMAL(10,2) NOT NULL,
     payment_date DATE NOT NULL,
-    payment_method ENUM('Cash', 'Bank Transfer', 'Online', 'Other') NOT NULL,
+    payment_method ENUM('Cash', 'Bank Transfer', 'Online', 'Card', 'Other') NOT NULL,
     transaction_ref VARCHAR(100) NULL,
     remarks TEXT NULL,
     received_by_admin INT NULL,
+    status ENUM('Completed','Reversed') NOT NULL DEFAULT 'Completed',
+    reversed_by_admin INT NULL,
+    reversed_at TIMESTAMP NULL,
+    reversal_reason TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (invoice_id) REFERENCES fee_records(id) ON DELETE CASCADE,
     FOREIGN KEY (received_by_admin) REFERENCES admins(id) ON DELETE SET NULL,
+    FOREIGN KEY (reversed_by_admin) REFERENCES admins(id) ON DELETE SET NULL,
     KEY idx_fee_payments_invoice (invoice_id, payment_date),
-    KEY idx_fee_payments_date (payment_date)
+    KEY idx_fee_payments_date (payment_date),
+    KEY idx_fee_payments_receipt_number (receipt_number)
+);
+
+CREATE TABLE IF NOT EXISTS payment_allocations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    payment_id INT NOT NULL,
+    invoice_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    allocated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (payment_id) REFERENCES fee_payments(id) ON DELETE CASCADE,
+    FOREIGN KEY (invoice_id) REFERENCES fee_records(id) ON DELETE CASCADE,
+    KEY idx_payment_allocations_payment (payment_id),
+    KEY idx_payment_allocations_invoice (invoice_id)
 );
 
 ALTER TABLE fee_records
@@ -163,8 +182,13 @@ CREATE TABLE system_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     admin_id INT NULL,
     action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(100) NULL,
+    entity_id INT NULL,
     description TEXT NOT NULL,
+    old_values JSON NULL,
+    new_values JSON NULL,
     ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL
 );

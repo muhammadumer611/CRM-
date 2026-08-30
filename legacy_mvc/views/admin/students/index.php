@@ -56,8 +56,7 @@
                         </td>
                         <td>
                             <a href="<?php echo $config['base_url']; ?>/students/edit/<?php echo $student['id']; ?>" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
-                            <!-- Future: View student profile -->
-                            <!-- <a href="<?php echo $config['base_url']; ?>/students/show/<?php echo $student['id']; ?>" class="btn btn-sm" style="background-color: #475569; color: white;"><i class="fas fa-eye"></i></a> -->
+                            <a href="<?php echo $config['base_url']; ?>/students/account/<?php echo $student['id']; ?>" class="btn btn-sm" style="background-color: #475569; color: white;"><i class="fas fa-eye"></i></a>
                         </td>
                     </tr>
                     <?php endforeach; ?>

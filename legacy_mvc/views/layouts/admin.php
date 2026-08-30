@@ -174,9 +174,6 @@
                 <a href="<?php echo $config['base_url']; ?>/rooms" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'room') !== false ? 'active' : ''; ?>">
                     <i class="fas fa-bed"></i> Rooms
                 </a>
-                <a href="<?php echo $config['base_url']; ?>/allocations" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'allocation') !== false ? 'active' : ''; ?>">
-                    <i class="fas fa-key"></i> Allocations
-                </a>
                 <a href="<?php echo $config['base_url']; ?>/fees" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'fee') !== false ? 'active' : ''; ?>">
                     <i class="fas fa-money-bill-wave"></i> Fees
                 </a>

@@ -85,7 +85,8 @@ class StudentRepository {
         return 'STU-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
     }
 
-    public function create($data) {
+    public function create($data, $pdo = null) {
+        $db = $pdo ?? $this->db;
         $sql = "INSERT INTO students (
             student_id_str, full_name, cnic, phone, email, blood_group, address,
             guardian_name, guardian_phone, guardian_cnic, relation, status
@@ -94,9 +95,9 @@ class StudentRepository {
             :guardian_name, :guardian_phone, :guardian_cnic, :relation, :status
         )";
         
-        $stmt = $this->db->prepare($sql);
+        $stmt = $db->prepare($sql);
         $stmt->execute($data);
-        return $this->db->lastInsertId();
+        return $db->lastInsertId();
     }
 
     public function update($id, $data) {

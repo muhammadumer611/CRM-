@@ -108,11 +108,38 @@ class FeeController {
         
         if ($result['success']) {
             Session::set('success', 'Payment recorded successfully.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/receipt/' . $result['payment_id']);
         } else {
             Session::set('error', $result['error']);
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/pay/' . $id);
         }
         exit;
+    }
+
+    public function receipt($paymentId) {
+        $db = \App\Core\Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT fp.*, fr.invoice_number, fr.student_id, fr.amount AS invoice_amount, fr.additional_charges, fr.discount, fr.paid_amount AS invoice_paid, fr.billing_month, fr.billing_year, fr.due_date, s.full_name, s.student_id_str, a.username AS admin_username FROM fee_payments fp JOIN fee_records fr ON fr.id = fp.invoice_id JOIN students s ON s.id = fr.student_id LEFT JOIN admins a ON a.id = fp.received_by_admin WHERE fp.id = ?");
+        $stmt->execute([$paymentId]);
+        $payment = $stmt->fetch();
+
+        if (!$payment) {
+            Session::set('error', 'Receipt not found.');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees');
+            exit;
+        }
+
+        $totalInvoice = (float)$payment['invoice_amount'] + (float)$payment['additional_charges'] - (float)$payment['discount'];
+        $allocations = $this->feeService->getPaymentAllocations($paymentId);
+        $previousOutstanding = max(0, $totalInvoice - (float)$payment['invoice_paid']);
+        $remainingOutstanding = max(0, $totalInvoice - ((float)$payment['invoice_paid'] + (float)$payment['amount']));
+
+        View::render('admin/fees/receipt', [
+            'title' => 'Payment Receipt',
+            'payment' => $payment,
+            'allocations' => $allocations,
+            'total_invoice' => $totalInvoice,
+            'previous_outstanding' => $previousOutstanding,
+            'remaining_outstanding' => $remainingOutstanding
+        ], 'admin');
     }
 }
