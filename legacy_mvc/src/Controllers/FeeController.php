@@ -110,6 +110,23 @@ class FeeController {
         ], 'admin');
     }
 
+    public function securityDeposits() {
+        $filters = [
+            'student_id' => $_GET['student_id'] ?? '',
+            'status' => $_GET['status'] ?? '',
+        ];
+
+        $summary = $this->feeService->getSecurityDepositSummary();
+        $deposits = $this->feeService->getSecurityDeposits($filters);
+
+        View::render('admin/fees/security-deposits', [
+            'title' => 'Security Deposits',
+            'filters' => $filters,
+            'summary' => $summary,
+            'deposits' => $deposits,
+        ], 'admin');
+    }
+
     public function storePayment($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405); exit;

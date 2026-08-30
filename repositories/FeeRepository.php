@@ -280,6 +280,184 @@ class FeeRepository {
         return $stmt->fetchAll();
     }
 
+    public function getSecurityDepositSummary() {
+        $stmt = $this->db->query("SELECT
+            COALESCE(SUM(CASE WHEN status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED') THEN remaining_amount ELSE 0 END), 0) AS total_held,
+            COUNT(CASE WHEN status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED') THEN 1 END) AS held_students,
+            COALESCE(SUM(CASE WHEN transaction_type = 'REFUND' THEN amount ELSE 0 END), 0) AS total_refunded,
+            COALESCE(SUM(CASE WHEN transaction_type IN ('ADJUSTMENT','FORFEIT') THEN amount ELSE 0 END), 0) AS total_deducted
+            FROM security_deposits sd
+            LEFT JOIN security_deposit_transactions sdt ON sdt.security_deposit_id = sd.id");
+        $row = $stmt->fetch();
+        return [
+            'total_held' => (float)($row['total_held'] ?? 0),
+            'held_students' => (int)($row['held_students'] ?? 0),
+            'total_refunded' => (float)($row['total_refunded'] ?? 0),
+            'total_deducted' => (float)($row['total_deducted'] ?? 0),
+        ];
+    }
+
+    public function getSecurityDepositRows(array $filters = []) {
+        $sql = "SELECT
+                s.id AS student_id,
+                s.full_name AS student_name,
+                s.student_id_str,
+                s.cnic,
+                COALESCE(ra.joining_date, s.created_at) AS admission_date,
+                sd.original_amount AS security_amount,
+                COALESCE(SUM(CASE WHEN sdt.transaction_type IN ('ADJUSTMENT', 'FORFEIT') THEN sdt.amount ELSE 0 END), 0) AS amount_deducted,
+                COALESCE(SUM(CASE WHEN sdt.transaction_type = 'REFUND' THEN sdt.amount ELSE 0 END), 0) AS amount_refunded,
+                sd.remaining_amount AS current_balance,
+                CASE
+                    WHEN sd.status = 'REFUNDED' THEN 'Refunded'
+                    WHEN sd.status = 'FORFEITED' THEN 'Settled'
+                    WHEN sd.remaining_amount > 0 AND COALESCE(SUM(CASE WHEN sdt.transaction_type IN ('ADJUSTMENT', 'FORFEIT') THEN sdt.amount ELSE 0 END), 0) > 0 THEN 'Partially Deducted'
+                    WHEN sd.remaining_amount <= 0 THEN 'Settled'
+                    ELSE 'Held'
+                END AS deposit_status
+            FROM students s
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN security_deposits sd ON sd.student_id = s.id
+            LEFT JOIN security_deposit_transactions sdt ON sdt.security_deposit_id = sd.id
+            WHERE 1=1";
+        $params = [];
+        if (!empty($filters['student_id'])) {
+            $sql .= ' AND s.id = :student_id';
+            $params['student_id'] = (int)$filters['student_id'];
+        }
+        if (!empty($filters['status'])) {
+            $sql .= ' AND sd.status = :status';
+            $params['status'] = strtoupper(trim((string)$filters['status']));
+        }
+        $sql .= ' GROUP BY s.id, s.full_name, s.student_id_str, s.cnic, ra.joining_date, s.created_at, sd.id, sd.original_amount, sd.remaining_amount, sd.status ORDER BY s.id DESC';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function getStudentSecurityDeposit($studentId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("SELECT * FROM security_deposits WHERE student_id = :student_id ORDER BY id DESC LIMIT 1 FOR UPDATE");
+        $stmt->execute(['student_id' => (int)$studentId]);
+        return $stmt->fetch();
+    }
+
+    public function createSecurityDeposit(int $studentId, float $originalAmount, float $remainingAmount, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO security_deposits (student_id, original_amount, remaining_amount, status) VALUES (:student_id, :original_amount, :remaining_amount, 'HELD')");
+        $stmt->execute([
+            'student_id' => (int)$studentId,
+            'original_amount' => (float)$originalAmount,
+            'remaining_amount' => (float)$remainingAmount,
+        ]);
+        return (int)$db->lastInsertId();
+    }
+
+    public function updateSecurityDepositTotals(int $depositId, float $originalAmount, float $remainingAmount, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("UPDATE security_deposits SET original_amount = :original_amount, remaining_amount = :remaining_amount WHERE id = :id");
+        $stmt->execute([
+            'original_amount' => (float)$originalAmount,
+            'remaining_amount' => (float)$remainingAmount,
+            'id' => (int)$depositId,
+        ]);
+        return $this->syncSecurityDepositStatus($depositId, $db);
+    }
+
+    public function syncSecurityDepositStatus(int $depositId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("SELECT sd.*, COALESCE(SUM(CASE WHEN sdt.transaction_type IN ('ADJUSTMENT','FORFEIT') THEN sdt.amount ELSE 0 END), 0) AS deducted, COALESCE(SUM(CASE WHEN sdt.transaction_type = 'REFUND' THEN sdt.amount ELSE 0 END), 0) AS refunded FROM security_deposits sd LEFT JOIN security_deposit_transactions sdt ON sdt.security_deposit_id = sd.id WHERE sd.id = :id GROUP BY sd.id");
+        $stmt->execute(['id' => (int)$depositId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return false;
+        }
+
+        $newStatus = 'HELD';
+        $remaining = (float)($row['remaining_amount'] ?? 0);
+        $deducted = (float)($row['deducted'] ?? 0);
+        $refunded = (float)($row['refunded'] ?? 0);
+        if ($remaining <= 0 && $refunded > 0) {
+            $newStatus = 'REFUNDED';
+        } elseif ($remaining <= 0 && $deducted > 0) {
+            $newStatus = 'SETTLED';
+        } elseif ($remaining > 0 && $deducted > 0) {
+            $newStatus = 'ADJUSTED';
+        }
+
+        $db->prepare("UPDATE security_deposits SET status = :status WHERE id = :id")->execute([
+            'status' => $newStatus,
+            'id' => (int)$depositId,
+        ]);
+        return $newStatus;
+    }
+
+    public function addSecurityDepositTransaction(int $depositId, string $transactionType, float $amount, string $reason, string $reference = null, int $adminId = null, string $date = null, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, reference_number, created_by_admin, created_at) VALUES (:security_deposit_id, :transaction_type, :amount, :reason, :reference_number, :created_by_admin, :created_at)");
+        $stmt->execute([
+            'security_deposit_id' => (int)$depositId,
+            'transaction_type' => strtoupper(trim((string)$transactionType)),
+            'amount' => (float)$amount,
+            'reason' => trim((string)$reason),
+            'reference_number' => $reference ?: null,
+            'created_by_admin' => $adminId ?: null,
+            'created_at' => $date ?: date('Y-m-d'),
+        ]);
+        return (int)$db->lastInsertId();
+    }
+
+    public function hasActiveSecurityRefund(int $depositId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("SELECT COUNT(*) FROM security_deposit_transactions WHERE security_deposit_id = :security_deposit_id AND transaction_type = 'REFUND'");
+        $stmt->execute(['security_deposit_id' => (int)$depositId]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    public function createRefundRecord(int $studentId, float $amount, string $reason, string $paymentMethod, string $reference, int $adminId, string $date, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO refunds (refund_number, student_id, amount, refund_date, reason, payment_method, reference_number, processed_by_admin, status) VALUES (:refund_number, :student_id, :amount, :refund_date, :reason, :payment_method, :reference_number, :processed_by_admin, 'Processed')");
+        $refundNumber = $reference ?: $this->generateSecurityRefundNumber($db);
+        $stmt->execute([
+            'refund_number' => $refundNumber,
+            'student_id' => (int)$studentId,
+            'amount' => (float)$amount,
+            'refund_date' => $date,
+            'reason' => trim((string)$reason),
+            'payment_method' => trim((string)$paymentMethod) ?: 'Cash',
+            'reference_number' => $reference ?: $refundNumber,
+            'processed_by_admin' => $adminId ?: null,
+        ]);
+        return (int)$db->lastInsertId();
+    }
+
+    public function generateSecurityRefundNumber($pdo = null) {
+        $db = $pdo ?? $this->db;
+        $prefix = 'SDR-' . date('Ymd') . '-';
+        for ($i = 0; $i < 50; $i++) {
+            $suffix = str_pad((string)random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+            $candidate = $prefix . $suffix;
+            $stmt = $db->prepare("SELECT id FROM refunds WHERE refund_number = :refund_number LIMIT 1");
+            $stmt->execute(['refund_number' => $candidate]);
+            if (!$stmt->fetch()) {
+                return $candidate;
+            }
+        }
+        throw new Exception('Unable to generate a unique security refund reference.');
+    }
+
+    public function logSystemAudit(int $studentId, string $action, string $description, array $payload, int $adminId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO system_logs (admin_id, action, entity_type, entity_id, description, new_values, created_at) VALUES (:admin_id, :action, 'student', :entity_id, :description, :new_values, NOW())");
+        $stmt->execute([
+            'admin_id' => $adminId ?: null,
+            'action' => trim((string)$action),
+            'entity_id' => (int)$studentId,
+            'description' => trim((string)$description),
+            'new_values' => json_encode($payload, JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
     private function buildCollectionWhere(array $filters = []) {
         $sql = '';
         $params = [];

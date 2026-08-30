@@ -181,6 +181,141 @@ class FeeService {
         return $this->repository->getCollectionRows($filters, $limit, $offset);
     }
 
+    public function getSecurityDepositSummary() {
+        return $this->repository->getSecurityDepositSummary();
+    }
+
+    public function getSecurityDeposits(array $filters = []) {
+        return $this->repository->getSecurityDepositRows($filters);
+    }
+
+    public function recordSecurityDeposit(int $studentId, float $amount, int $adminId, string $reference = null, string $reason = 'Security deposit received', string $paymentDate = null) {
+        if ($studentId <= 0) {
+            throw new Exception('Student is required.');
+        }
+        if ($amount <= 0) {
+            throw new Exception('Security deposit amount must be greater than zero.');
+        }
+
+        return TransactionHelper::execute(function(PDO $db) use ($studentId, $amount, $adminId, $reference, $reason, $paymentDate) {
+            $deposit = $this->repository->getStudentSecurityDeposit($studentId, $db);
+            if ($deposit) {
+                $newOriginal = (float)$deposit['original_amount'] + $amount;
+                $newRemaining = (float)$deposit['remaining_amount'] + $amount;
+                $this->repository->updateSecurityDepositTotals((int)$deposit['id'], $newOriginal, $newRemaining, $db);
+                $depositId = (int)$deposit['id'];
+            } else {
+                $depositId = $this->repository->createSecurityDeposit($studentId, $amount, $amount, $db);
+            }
+
+            $this->repository->addSecurityDepositTransaction($depositId, 'HOLD', $amount, $reason, $reference, $adminId, $paymentDate ?: date('Y-m-d'), $db);
+            Logger::info("Security deposit received for student #{$studentId}: amount {$amount}");
+            $this->repository->logSystemAudit($studentId, 'SECURITY_DEPOSIT_RECEIVED', "Security deposit received for student #{$studentId}. Amount: {$amount}.", [
+                'amount' => $amount,
+                'reference' => $reference,
+                'status' => 'HELD'
+            ], $adminId, $db);
+            return ['id' => $depositId, 'amount' => $amount];
+        });
+    }
+
+    public function applySecurityDeduction(int $studentId, float $amount, string $reason, int $adminId, string $reference = null, string $date = null) {
+        if ($studentId <= 0) {
+            throw new Exception('Student is required.');
+        }
+        if ($amount <= 0) {
+            throw new Exception('Deduction amount must be greater than zero.');
+        }
+
+        return TransactionHelper::execute(function(PDO $db) use ($studentId, $amount, $reason, $adminId, $reference, $date) {
+            $deposit = $this->repository->getStudentSecurityDeposit($studentId, $db);
+            if (!$deposit) {
+                throw new Exception('No security deposit found for this student.');
+            }
+
+            $remaining = (float)$deposit['remaining_amount'];
+            if ($amount > $remaining) {
+                throw new Exception('Deduction exceeds the remaining security deposit balance.');
+            }
+
+            $newRemaining = $remaining - $amount;
+            $this->repository->updateSecurityDepositTotals((int)$deposit['id'], (float)$deposit['original_amount'], $newRemaining, $db);
+            $this->repository->addSecurityDepositTransaction((int)$deposit['id'], 'ADJUSTMENT', $amount, $reason, $reference, $adminId, $date ?: date('Y-m-d'), $db);
+            $this->repository->syncSecurityDepositStatus((int)$deposit['id'], $db);
+
+            Logger::info("Security deduction applied for student #{$studentId}: amount {$amount} reason {$reason}");
+            $this->repository->logSystemAudit($studentId, 'SECURITY_DEDUCTION', "Security deduction for student #{$studentId}. Amount: {$amount}. Reason: {$reason}", [
+                'before' => $remaining,
+                'deduction' => $amount,
+                'after' => $newRemaining,
+                'reference' => $reference
+            ], $adminId, $db);
+            return ['status' => 'success', 'remaining_balance' => $newRemaining];
+        });
+    }
+
+    public function refundSecurityDeposit(int $studentId, float $amount, int $adminId, string $reason = 'Security refund', string $reference = null, string $paymentMethod = 'Cash', string $date = null) {
+        if ($studentId <= 0) {
+            throw new Exception('Student is required.');
+        }
+        if ($amount <= 0) {
+            throw new Exception('Refund amount must be greater than zero.');
+        }
+
+        return TransactionHelper::execute(function(PDO $db) use ($studentId, $amount, $adminId, $reason, $reference, $paymentMethod, $date) {
+            $deposit = $this->repository->getStudentSecurityDeposit($studentId, $db);
+            if (!$deposit) {
+                throw new Exception('No security deposit found for this student.');
+            }
+
+            $remaining = (float)$deposit['remaining_amount'];
+            if ($amount > $remaining) {
+                throw new Exception('Refund cannot exceed the remaining security deposit balance.');
+            }
+
+            $existingRefund = $this->repository->hasActiveSecurityRefund((int)$deposit['id'], $db);
+            if ($existingRefund) {
+                throw new Exception('A refund has already been recorded for this security deposit.');
+            }
+
+            $refundNumber = $this->repository->generateSecurityRefundNumber($db);
+            $refundRecordId = $this->repository->createRefundRecord((int)$studentId, $amount, $reason, $paymentMethod, $reference ?: $refundNumber, $adminId, $date ?: date('Y-m-d'), $db);
+            $newRemaining = $remaining - $amount;
+            $this->repository->updateSecurityDepositTotals((int)$deposit['id'], (float)$deposit['original_amount'], $newRemaining, $db);
+            $this->repository->addSecurityDepositTransaction((int)$deposit['id'], 'REFUND', $amount, $reason, $reference ?: $refundNumber, $adminId, $date ?: date('Y-m-d'), $db);
+            $this->repository->syncSecurityDepositStatus((int)$deposit['id'], $db);
+
+            $refundReference = $reference ?: $refundNumber;
+            Logger::info("Security refund processed for student #{$studentId}: amount {$amount}, reference {$refundReference}");
+            $this->repository->logSystemAudit($studentId, 'SECURITY_REFUND', "Security refunded to student #{$studentId}. Amount: {$amount}. Receipt: {$refundReference}", [
+                'before' => $remaining,
+                'refund_amount' => $amount,
+                'after' => $newRemaining,
+                'reference' => $refundReference
+            ], $adminId, $db);
+            return ['refund_id' => $refundRecordId, 'reference' => $refundReference, 'remaining_balance' => $newRemaining];
+        });
+    }
+
+    public function settleStudentSecurityDeposit(int $studentId, float $deductionAmount, string $reason, int $adminId, string $reference = null, string $date = null, string $paymentMethod = 'Cash') {
+        $deposit = $this->repository->getStudentSecurityDeposit($studentId);
+        if (!$deposit) {
+            throw new Exception('No security deposit found for this student.');
+        }
+
+        $currentBalance = (float)$deposit['remaining_amount'];
+        $refundAmount = max(0.0, $currentBalance - $deductionAmount);
+        if ($deductionAmount > $currentBalance) {
+            throw new Exception('Deduction cannot exceed the current security balance.');
+        }
+
+        if ($refundAmount > 0) {
+            return $this->refundSecurityDeposit($studentId, $refundAmount, $adminId, $reason, $reference, $paymentMethod, $date ?: date('Y-m-d'));
+        }
+
+        return $this->applySecurityDeduction($studentId, $deductionAmount, $reason, $adminId, $reference, $date ?: date('Y-m-d'));
+    }
+
     public function getPaymentHistory($invoiceId) {
         return $this->repository->getPaymentHistory($invoiceId);
     }
