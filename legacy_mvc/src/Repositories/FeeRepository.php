@@ -91,6 +91,105 @@ class FeeRepository {
         return $stmt->fetchColumn();
     }
 
+    public function getPendingFeesSummary(array $filters = []) {
+        $where = $this->buildPendingFeeWhere($filters);
+        $sql = "
+            SELECT
+                COALESCE(SUM((fr.amount + fr.additional_charges - fr.discount) - fr.paid_amount), 0) AS total_pending_amount,
+                COUNT(DISTINCT fr.student_id) AS pending_student_count,
+                COUNT(*) AS invoice_count
+            FROM fee_records fr
+            JOIN students s ON s.id = fr.student_id
+            {$where['sql']}
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($where['params']);
+        return $stmt->fetch();
+    }
+
+    public function getPendingFeeRows(array $filters = []) {
+        $where = $this->buildPendingFeeWhere($filters);
+        $sql = "
+            SELECT
+                fr.id,
+                fr.invoice_number,
+                fr.billing_month,
+                fr.billing_year,
+                fr.amount,
+                fr.additional_charges,
+                fr.discount,
+                fr.paid_amount,
+                (fr.amount + fr.additional_charges - fr.discount) AS invoice_total,
+                (fr.amount + fr.additional_charges - fr.discount - fr.paid_amount) AS pending_amount,
+                fr.due_date,
+                fr.status,
+                s.full_name AS student_name,
+                s.student_id_str AS student_id,
+                COALESCE(r.monthly_fee, fr.amount) AS monthly_fee
+            FROM fee_records fr
+            JOIN students s ON s.id = fr.student_id
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN rooms r ON r.id = ra.room_id
+            {$where['sql']}
+            ORDER BY fr.billing_year DESC, fr.billing_month DESC, fr.due_date ASC, fr.id DESC
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($where['params']);
+        return $stmt->fetchAll();
+    }
+
+    private function buildPendingFeeWhere(array $filters = []) {
+        $sql = " WHERE (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount ";
+        $params = [];
+
+        if (!empty($filters['student_id'])) {
+            $sql .= " AND fr.student_id = :student_id";
+            $params['student_id'] = (int)$filters['student_id'];
+        }
+
+        if (!empty($filters['search'])) {
+            $sql .= " AND (s.full_name LIKE :search OR s.student_id_str LIKE :search)";
+            $params['search'] = '%' . trim((string)$filters['search']) . '%';
+        }
+
+        if (!empty($filters['status'])) {
+            $sql .= " AND fr.status = :status";
+            $params['status'] = $this->normalizePendingStatusFilter($filters['status']);
+        }
+
+        if (!empty($filters['month'])) {
+            $sql .= " AND fr.billing_month = :month";
+            $params['month'] = (int)$filters['month'];
+        }
+
+        if (!empty($filters['year'])) {
+            $sql .= " AND fr.billing_year = :year";
+            $params['year'] = (int)$filters['year'];
+        }
+
+        if (!empty($filters['period'])) {
+            $period = strtolower((string)$filters['period']);
+            if ($period === 'current_month') {
+                $sql .= " AND fr.billing_year = YEAR(CURDATE()) AND fr.billing_month = MONTH(CURDATE())";
+            } elseif ($period === 'previous_months') {
+                $sql .= " AND (fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month < MONTH(CURDATE())))";
+            }
+        }
+
+        return ['sql' => $sql, 'params' => $params];
+    }
+
+    private function normalizePendingStatusFilter($status) {
+        $status = strtolower(trim((string)$status));
+        $map = [
+            'pending' => 'Pending',
+            'partially_paid' => 'Partial',
+            'partial' => 'Partial',
+            'overdue' => 'Overdue'
+        ];
+        return $map[$status] ?? $status;
+    }
+
     public function getCollectionSummary(array $filters = []) {
         $where = $this->buildCollectionWhere($filters);
         $sql = "

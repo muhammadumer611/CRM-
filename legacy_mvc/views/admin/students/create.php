@@ -151,6 +151,15 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
                 <label class="form-label">Allocation Remarks</label>
                 <input type="text" name="allocation_remarks" class="form-control" placeholder="Optional remarks">
             </div>
+
+            <div class="col-md-12 form-group room-field full-room-occupants-section" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <label class="form-label" style="margin:0;">Full Room Occupants</label>
+                    <button type="button" class="btn btn-sm" id="addOccupantBtn" style="background:#1e293b; color:white;">+ Add Occupant</button>
+                </div>
+                <small class="text-muted" style="display:block; margin-bottom:0.75rem;">The primary student is the fee-paying tenant. Add each room member here without generating extra monthly hostel invoices.</small>
+                <div id="occupantList"></div>
+            </div>
         </div>
 
         <h4 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Financial Setup</h4>
@@ -218,6 +227,9 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
     const roomCheckbox = document.getElementById('enableRoomAllocation');
     const roomFields = document.querySelectorAll('.room-field');
     const bedOnlyFields = document.querySelectorAll('.bed-only');
+    const fullRoomOccupantsSection = document.querySelector('.full-room-occupants-section');
+    const occupantList = document.getElementById('occupantList');
+    const addOccupantBtn = document.getElementById('addOccupantBtn');
     const roomSelect = document.getElementById('roomSelect');
     const bedNumberInput = document.getElementById('bedNumberInput');
     const bedHelp = document.getElementById('bedHelp');
@@ -330,6 +342,49 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
         }
     }
 
+    function buildOccupantRow(index) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'row';
+        wrapper.style.marginBottom = '0.75rem';
+        wrapper.innerHTML = `
+            <div class="col-md-3 form-group">
+                <label class="form-label">Name</label>
+                <input type="text" name="room_occupants[${index}][full_name]" class="form-control" placeholder="Occupant name">
+            </div>
+            <div class="col-md-3 form-group">
+                <label class="form-label">CNIC</label>
+                <input type="text" name="room_occupants[${index}][cnic]" class="form-control" pattern="[0-9]{13}" placeholder="13 digits">
+            </div>
+            <div class="col-md-2 form-group">
+                <label class="form-label">Phone</label>
+                <input type="text" name="room_occupants[${index}][phone]" class="form-control" placeholder="03xx...">
+            </div>
+            <div class="col-md-3 form-group">
+                <label class="form-label">Relation</label>
+                <input type="text" name="room_occupants[${index}][relation]" class="form-control" placeholder="Brother / Friend">
+            </div>
+            <div class="col-md-1 form-group" style="display:flex; align-items:flex-end;">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-occupant-btn" aria-label="Remove occupant">Remove</button>
+            </div>
+        `;
+
+        wrapper.querySelector('.remove-occupant-btn').addEventListener('click', function() {
+            wrapper.remove();
+        });
+
+        return wrapper;
+    }
+
+    function ensureDefaultOccupantRows() {
+        if (!occupantList) return;
+        const currentRows = occupantList.querySelectorAll('.row').length;
+        if (currentRows >= 2) return;
+
+        for (let i = currentRows; i < 2; i++) {
+            occupantList.appendChild(buildOccupantRow(i));
+        }
+    }
+
     function syncAllocationType() {
         const type = document.querySelector('input[name="allocation_type"]:checked')?.value || 'BED';
         allocationTypeHidden.value = type;
@@ -337,13 +392,24 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
         bedOnlyFields.forEach(field => {
             field.style.display = isBed ? 'block' : 'none';
         });
+        if (fullRoomOccupantsSection) {
+            fullRoomOccupantsSection.style.display = isBed ? 'none' : 'block';
+        }
         if (!isBed) {
             bedNumberInput.value = 0;
             bedHelp.textContent = 'Full room allocation does not require a bed number.';
             roomSelect.value = '';
+            ensureDefaultOccupantRows();
         }
         renderRoomOptions(type);
         refreshSummary();
+    }
+
+    if (addOccupantBtn) {
+        addOccupantBtn.addEventListener('click', function() {
+            const nextIndex = occupantList.querySelectorAll('.row').length;
+            occupantList.appendChild(buildOccupantRow(nextIndex));
+        });
     }
 
     roomCheckbox.addEventListener('change', function() {
@@ -364,6 +430,10 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
     document.querySelectorAll('input[name="allocation_type"]').forEach(input => {
         input.addEventListener('change', syncAllocationType);
     });
+
+    if (occupantList) {
+        ensureDefaultOccupantRows();
+    }
 
     roomSelect.addEventListener('change', function() {
         const option = this.selectedOptions[0];

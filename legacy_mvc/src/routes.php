@@ -31,6 +31,7 @@ $router->add('POST', '/allocations/remove/{id}', 'AllocationController', 'remove
 // Fee routes
 $router->add('GET', '/fees', 'FeeController', 'index');
 $router->add('GET', '/fees/collection', 'FeeController', 'collection');
+$router->add('GET', '/fees/pending', 'FeeController', 'pending');
 $router->add('GET', '/fees/security-deposits', 'FeeController', 'securityDeposits');
 $router->add('GET', '/fees/create', 'FeeController', 'create');
 $router->add('POST', '/fees/store', 'FeeController', 'store');

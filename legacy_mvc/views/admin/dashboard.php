@@ -20,10 +20,11 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+        <a href="<?php echo $config['base_url']; ?>/fees/pending" class="card" style="display: block; background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
             <h3>Pending Fees</h3>
-            <h2><?php echo $stats['pending_fees'] ?? 0; ?></h2>
-        </div>
+            <h2>Rs. <?php echo number_format((float)($stats['pending_fees'] ?? 0), 2); ?></h2>
+            <div style="font-size: 0.8rem; opacity: 0.9; margin-top: 0.25rem;">Across <?php echo (int)($stats['pending_fee_students'] ?? 0); ?> students</div>
+        </a>
     </div>
 </div>
 

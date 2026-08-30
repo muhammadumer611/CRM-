@@ -36,8 +36,10 @@ class DashboardService {
         $stmt = $this->db->query("SELECT SUM(total_beds - occupied_beds) FROM rooms WHERE status != 'Disabled'");
         $stats['available_beds'] = $stmt->fetchColumn() ?: 0;
 
-        $stmt = $this->db->query("SELECT COUNT(*) FROM fee_records WHERE status IN ('Pending', 'Partial', 'Overdue')");
-        $stats['pending_fees'] = $stmt->fetchColumn();
+        $pendingStmt = $this->db->query("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) AS total_pending_amount, COUNT(DISTINCT student_id) AS pending_student_count FROM fee_records WHERE (amount + additional_charges - discount) > paid_amount");
+        $pendingSummary = $pendingStmt->fetch();
+        $stats['pending_fees'] = (float)($pendingSummary['total_pending_amount'] ?? 0);
+        $stats['pending_fee_students'] = (int)($pendingSummary['pending_student_count'] ?? 0);
 
         $collectionStmt = $this->db->query("SELECT COALESCE(SUM(amount), 0) AS total_collection FROM fee_payments WHERE status <> 'Reversed' AND amount > 0");
         $stats['total_collection'] = (float)($collectionStmt->fetchColumn() ?: 0);

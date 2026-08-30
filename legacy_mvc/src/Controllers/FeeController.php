@@ -110,6 +110,27 @@ class FeeController {
         ], 'admin');
     }
 
+    public function pending() {
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'student_id' => $_GET['student_id'] ?? '',
+            'month' => $_GET['month'] ?? '',
+            'year' => $_GET['year'] ?? '',
+            'period' => $_GET['period'] ?? 'current_month',
+            'status' => $_GET['status'] ?? '',
+        ];
+
+        $rows = $this->feeService->getPendingFees($filters);
+        $summary = $this->feeService->getPendingFeesSummary($filters);
+
+        View::render('admin/fees/pending', [
+            'title' => 'Pending Fees',
+            'filters' => $filters,
+            'rows' => $rows,
+            'summary' => $summary,
+        ], 'admin');
+    }
+
     public function securityDeposits() {
         $filters = [
             'student_id' => $_GET['student_id'] ?? '',

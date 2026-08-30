@@ -168,6 +168,67 @@ class StudentService {
                 }
             }
 
+            if ($allocationType === 'FULL_ROOM') {
+                $rawOccupants = $data['room_occupants'] ?? [];
+                if (!is_array($rawOccupants)) {
+                    $rawOccupants = [];
+                }
+
+                $normalizedOccupants = [];
+                $seenCnics = [];
+                foreach ($rawOccupants as $index => $occupant) {
+                    if (!is_array($occupant)) {
+                        continue;
+                    }
+
+                    $fullName = trim((string)($occupant['full_name'] ?? ''));
+                    $cnic = trim((string)($occupant['cnic'] ?? ''));
+                    $phone = trim((string)($occupant['phone'] ?? ''));
+                    $relation = trim((string)($occupant['relation'] ?? ''));
+
+                    if ($fullName === '' && $cnic === '' && $phone === '' && $relation === '') {
+                        continue;
+                    }
+
+                    if (!preg_match('/^[0-9]{13}$/', $cnic)) {
+                        throw new \Exception('Each full-room occupant must have a valid 13-digit CNIC.');
+                    }
+
+                    if (isset($seenCnics[$cnic])) {
+                        throw new \Exception('Duplicate occupant CNIC detected in the same full-room allocation.');
+                    }
+
+                    $existingOccupant = $this->db->prepare("SELECT id FROM room_occupants WHERE cnic = ? LIMIT 1");
+                    $existingOccupant->execute([$cnic]);
+                    if ($existingOccupant->fetch()) {
+                        throw new \Exception('Occupant CNIC already exists in the system for a different room allocation.');
+                    }
+
+                    $normalizedOccupants[] = [
+                        'full_name' => $fullName,
+                        'cnic' => $cnic,
+                        'phone' => $phone,
+                        'relation' => $relation,
+                    ];
+                    $seenCnics[$cnic] = true;
+                }
+
+                if (count($normalizedOccupants) === 0) {
+                    throw new \Exception('A full-room allocation requires at least one occupant record.');
+                }
+
+                $occupantInsert = $this->db->prepare("INSERT INTO room_occupants (room_allocation_id, full_name, cnic, phone, relation) VALUES (?, ?, ?, ?, ?)");
+                foreach ($normalizedOccupants as $occupant) {
+                    $occupantInsert->execute([
+                        $roomAllocationId,
+                        $occupant['full_name'],
+                        $occupant['cnic'],
+                        $occupant['phone'],
+                        $occupant['relation'],
+                    ]);
+                }
+            }
+
             $monthlyFee = isset($data['monthly_fee']) ? (float)$data['monthly_fee'] : 0.0;
             $securityDeposit = isset($data['security_deposit']) ? (float)$data['security_deposit'] : 0.0;
             $discount = isset($data['discount']) ? (float)$data['discount'] : 0.0;

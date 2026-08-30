@@ -295,15 +295,50 @@ try {
     $partialFullRoom = insertRoom($db, $createdRoomIds, 'AVAILV-PARTFULL-' . date('His'), 'E', 4, 1, 'Partially Occupied');
     $partialFullStudent = insertStudent($db, $createdStudentIds, 'PARTFULL', 'Partial Full Room Student', makeCnic('2004'));
     insertActiveAllocation($db, $createdAllocationIds, $partialFullStudent, $partialFullRoom, 1, 'partial-full-room');
-    $fullRoomPartialResult = $studentService->createStudent([
-        'full_name' => 'Full Room Partial Reject',
+    $fullRoomEmpty = insertRoom($db, $createdRoomIds, 'AVAILV-FULL-EMPTY-REQ-' . date('His'), 'F', 4, 0, 'Available');
+    $fullRoomMissingOccupant = $studentService->createStudent([
+        'full_name' => 'Full Room Missing Occupant',
         'cnic' => makeCnic('2005'),
         'phone' => '03000000011',
-        'email' => 'fullpartial@example.com',
+        'email' => 'fullmissingoccupant@example.com',
         'address' => 'Test address',
         'guardian_name' => 'Guardian',
         'guardian_phone' => '03000000012',
         'guardian_cnic' => '5555555555555',
+        'relation' => 'Brother',
+        'status' => 'Active',
+        'room_allocation_enabled' => '1',
+        'room_id' => $fullRoomEmpty,
+        'allocation_type' => 'FULL_ROOM',
+        'bed_number' => 0,
+        'joining_date' => '2026-08-30',
+        'monthly_fee' => 15000,
+        'security_deposit' => 0,
+        'discount' => 0,
+        'initial_payment' => 0,
+        'payment_method' => 'Cash',
+        'transaction_ref' => 'AVAIL-FULL-MISSING-OCCUPANT',
+        'first_billing_month' => 8,
+        'first_billing_year' => 2026,
+        'due_date' => '2026-09-05',
+        'financial_setup_enabled' => '1'
+    ]);
+    $fullRoomMissingOccupantPass = !($fullRoomMissingOccupant['success'] ?? false) && stripos($fullRoomMissingOccupant['error'] ?? '', 'occupant') !== false;
+    if ($fullRoomMissingOccupantPass) {
+        recordResult($tests, 'FULL_ROOM occupant requirement', 'PASS', 'FULL_ROOM rejected without occupant records: ' . ($fullRoomMissingOccupant['error'] ?? 'unknown error'));
+    } else {
+        recordResult($tests, 'FULL_ROOM occupant requirement', 'FAIL', 'FULL_ROOM unexpectedly allowed no occupant data: ' . json_encode($fullRoomMissingOccupant));
+    }
+
+    $fullRoomPartialResult = $studentService->createStudent([
+        'full_name' => 'Full Room Partial Reject',
+        'cnic' => makeCnic('2006'),
+        'phone' => '03000000013',
+        'email' => 'fullpartial@example.com',
+        'address' => 'Test address',
+        'guardian_name' => 'Guardian',
+        'guardian_phone' => '03000000014',
+        'guardian_cnic' => '6666666666666',
         'relation' => 'Brother',
         'status' => 'Active',
         'room_allocation_enabled' => '1',
@@ -320,7 +355,11 @@ try {
         'first_billing_month' => 8,
         'first_billing_year' => 2026,
         'due_date' => '2026-09-05',
-        'financial_setup_enabled' => '1'
+        'financial_setup_enabled' => '1',
+        'room_occupants' => [
+            ['full_name' => 'Partial Room Occupant One', 'cnic' => makeCnic('2011'), 'phone' => '03000000015', 'relation' => 'Brother'],
+            ['full_name' => 'Partial Room Occupant Two', 'cnic' => makeCnic('2012'), 'phone' => '03000000016', 'relation' => 'Friend'],
+        ]
     ]);
     $fullRoomPartialPass = !($fullRoomPartialResult['success'] ?? false);
     if ($fullRoomPartialPass) {
@@ -333,11 +372,11 @@ try {
     $fullRoomResultA = $studentService->createStudent([
         'full_name' => 'Full Room A',
         'cnic' => makeCnic('3002'),
-        'phone' => '03000000013',
+        'phone' => '03000000017',
         'email' => 'fullrooma@example.com',
         'address' => 'Full room test',
         'guardian_name' => 'Guardian',
-        'guardian_phone' => '03000000014',
+        'guardian_phone' => '03000000018',
         'guardian_cnic' => '6666666666666',
         'relation' => 'Father',
         'status' => 'Active',
@@ -355,7 +394,11 @@ try {
         'first_billing_month' => 8,
         'first_billing_year' => 2026,
         'due_date' => '2026-09-05',
-        'financial_setup_enabled' => '1'
+        'financial_setup_enabled' => '1',
+        'room_occupants' => [
+            ['full_name' => 'Full Room Occupant A1', 'cnic' => makeCnic('3011'), 'phone' => '03000000019', 'relation' => 'Brother'],
+            ['full_name' => 'Full Room Occupant A2', 'cnic' => makeCnic('3012'), 'phone' => '03000000020', 'relation' => 'Friend'],
+        ]
     ]);
 
     if (!($fullRoomResultA['success'] ?? false)) {

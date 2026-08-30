@@ -60,6 +60,20 @@ CREATE TABLE room_allocations (
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS room_occupants (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    room_allocation_id INT NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    cnic VARCHAR(15) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    relation VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (room_allocation_id) REFERENCES room_allocations(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_room_occupant_cnic (cnic),
+    KEY idx_room_occupants_allocation (room_allocation_id)
+);
+
 CREATE TABLE fee_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_number VARCHAR(50) NULL,

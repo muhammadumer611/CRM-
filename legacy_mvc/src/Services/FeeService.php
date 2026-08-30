@@ -39,6 +39,28 @@ class FeeService {
         return $this->feeRepo->getCollectionRows($filters, $limit, $offset);
     }
 
+    public function getPendingFeesSummary(array $filters = []) {
+        $summary = $this->feeRepo->getPendingFeesSummary($filters);
+        return [
+            'total_pending_amount' => (float)($summary['total_pending_amount'] ?? 0),
+            'pending_student_count' => (int)($summary['pending_student_count'] ?? 0),
+            'invoice_count' => (int)($summary['invoice_count'] ?? 0),
+        ];
+    }
+
+    public function getPendingFees(array $filters = []) {
+        $rows = $this->feeRepo->getPendingFeeRows($filters);
+        foreach ($rows as &$row) {
+            $row['monthly_fee'] = (float)($row['monthly_fee'] ?? ($row['amount'] ?? 0));
+            $row['amount_paid'] = (float)($row['paid_amount'] ?? 0);
+            $row['pending_amount'] = (float)($row['pending_amount'] ?? max(0, ((float)($row['invoice_total'] ?? 0)) - $row['amount_paid']));
+            $row['display_status'] = $this->normalizePendingDisplayStatus($row['status'] ?? 'Pending');
+            $row['billing_period'] = date('F', mktime(0, 0, 0, (int)($row['billing_month'] ?? 1), 1, (int)($row['billing_year'] ?? date('Y')))) . ' ' . ($row['billing_year'] ?? date('Y'));
+        }
+        unset($row);
+        return $rows;
+    }
+
     public function getFee($id) {
         return $this->feeRepo->findById($id);
     }
@@ -575,6 +597,20 @@ class FeeService {
         }
         if ($dueDate && date('Y-m-d') > $dueDate) {
             return 'Overdue';
+        }
+        return 'Pending';
+    }
+
+    private function normalizePendingDisplayStatus($status) {
+        $status = trim((string)$status);
+        if ($status === 'Partial') {
+            return 'Partially Paid';
+        }
+        if ($status === 'Overdue') {
+            return 'Overdue';
+        }
+        if ($status === 'Paid') {
+            return 'Paid';
         }
         return 'Pending';
     }
