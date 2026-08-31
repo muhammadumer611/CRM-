@@ -28,12 +28,9 @@ class AllocationController {
     }
 
     public function create() {
-        $studentRepo = new StudentRepository();
-        $roomRepo = new RoomRepository();
-        
-        $students = $studentRepo->findAll(['status' => 'Active'], 1000, 0);
-        $roomsQuery = $roomRepo->findAll([], 1000, 0);
-        $rooms = array_filter($roomsQuery, function($r) { return $r['status'] !== 'Disabled' && $r['status'] !== 'Occupied'; });
+        $students = $this->allocService->getUnallocatedActiveStudents();
+        $roomService = new \App\Services\RoomService();
+        $rooms = $roomService->getAllAvailableRooms();
 
         View::render('admin/allocations/create', [
             'title' => 'New Allocation',
@@ -41,6 +38,25 @@ class AllocationController {
             'rooms' => $rooms,
             'csrf_token' => CSRF::generateToken()
         ], 'admin');
+    }
+
+    public function apiAvailableBeds($roomId) {
+        header('Content-Type: application/json');
+        $roomService = new \App\Services\RoomService();
+        $res = $roomService->getAvailableBeds((int)$roomId);
+        if ($res['success']) {
+            echo json_encode([
+                'success' => true,
+                'data' => $res['data']
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => $res['error'] ?? 'Room not found.'
+            ]);
+        }
+        exit;
     }
 
     public function store() {
@@ -51,7 +67,7 @@ class AllocationController {
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
 
         if (empty($_POST['student_id']) || empty($_POST['room_id']) || empty($_POST['bed_number']) || empty($_POST['joining_date'])) {
-            Session::set('error', 'All fields are required.');
+            Session::set('error', 'Please select student, room, bed number, and joining date.');
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/allocations/create');
             exit;
         }
@@ -87,3 +103,4 @@ class AllocationController {
         exit;
     }
 }
+

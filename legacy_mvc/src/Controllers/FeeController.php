@@ -6,7 +6,6 @@ use App\Core\View;
 use App\Core\Session;
 use App\Core\CSRF;
 use App\Services\FeeService;
-use App\Repositories\StudentRepository;
 
 class FeeController {
     private $feeService;
@@ -17,36 +16,36 @@ class FeeController {
     }
 
     public function index() {
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $page = $page > 0 ? $page : 1;
+        $page    = max(1, (int)($_GET['page'] ?? 1));
         $perPage = 15;
         
         $filters = [
             'search' => $_GET['search'] ?? '',
             'status' => $_GET['status'] ?? '',
-            'month' => $_GET['month'] ?? '',
-            'year' => $_GET['year'] ?? ''
+            'month'  => $_GET['month']  ?? '',
+            'year'   => $_GET['year']   ?? ''
         ];
 
-        $result = $this->feeService->getAllFees($filters, $page, $perPage);
+        $result   = $this->feeService->getAllFees($filters, $page, $perPage);
+        $summary  = $this->feeService->getFinancialSummary();
         
         View::render('admin/fees/index', [
-            'title' => 'Fee Management',
-            'fees' => $result['data'],
-            'total' => $result['total'],
-            'page' => $page,
+            'title'   => 'Fee Management',
+            'fees'    => $result['data'],
+            'total'   => $result['total'],
+            'page'    => $page,
             'perPage' => $perPage,
-            'filters' => $filters
+            'filters' => $filters,
+            'summary' => $summary
         ], 'admin');
     }
 
     public function create() {
-        $studentRepo = new StudentRepository();
-        $students = $studentRepo->findAll(['status' => 'Active'], 1000, 0);
+        $students = $this->feeService->getActiveStudentsForFee();
 
         View::render('admin/fees/create', [
-            'title' => 'Create Fee',
-            'students' => $students,
+            'title'      => 'Create Fee Invoice',
+            'students'   => $students,
             'csrf_token' => CSRF::generateToken()
         ], 'admin');
     }
@@ -57,21 +56,22 @@ class FeeController {
         }
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
+        $config = require APP_ROOT . '/config/app.php';
 
-        if (empty($_POST['student_id']) || empty($_POST['billing_month']) || empty($_POST['billing_year']) || empty($_POST['amount']) || empty($_POST['due_date'])) {
-            Session::set('error', 'All required fields must be filled.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/create');
+        if (empty($_POST['student_id']) || empty($_POST['billing_month']) || empty($_POST['billing_year'])) {
+            Session::set('error', 'Student, billing month, and year are required.');
+            header('Location: ' . $config['base_url'] . '/fees/create');
             exit;
         }
 
         $result = $this->feeService->createFee($_POST);
         
         if ($result['success']) {
-            Session::set('success', 'Fee record created successfully.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees');
+            Session::set('success', 'Fee invoice created successfully.');
+            header('Location: ' . $config['base_url'] . '/fees');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/create');
+            header('Location: ' . $config['base_url'] . '/fees/create');
         }
         exit;
     }
@@ -80,13 +80,17 @@ class FeeController {
         $fee = $this->feeService->getFee($id);
         if (!$fee) {
             Session::set('error', 'Fee record not found.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees');
+            $config = require APP_ROOT . '/config/app.php';
+            header('Location: ' . $config['base_url'] . '/fees');
             exit;
         }
 
+        $payments = $this->feeService->getFeePayments($id);
+
         View::render('admin/fees/pay', [
-            'title' => 'Record Payment',
-            'fee' => $fee,
+            'title'      => 'Record Payment',
+            'fee'        => $fee,
+            'payments'   => $payments,
             'csrf_token' => CSRF::generateToken()
         ], 'admin');
     }
@@ -154,21 +158,27 @@ class FeeController {
         }
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
+        $config = require APP_ROOT . '/config/app.php';
 
         if (empty($_POST['paid_amount']) || empty($_POST['payment_method'])) {
             Session::set('error', 'Amount and payment method are required.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/pay/' . $id);
+            header('Location: ' . $config['base_url'] . '/fees/pay/' . $id);
             exit;
         }
 
         $result = $this->feeService->payFee($id, $_POST);
         
         if ($result['success']) {
+<<<<<<< HEAD
             Session::set('success', 'Payment recorded successfully.');
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/receipt/' . $result['payment_id']);
+=======
+            Session::set('success', 'Payment recorded successfully. Receipt: ' . $result['receipt_number']);
+            header('Location: ' . $config['base_url'] . '/fees/pay/' . $id);
+>>>>>>> 962ef01 (Update HMS)
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/pay/' . $id);
+            header('Location: ' . $config['base_url'] . '/fees/pay/' . $id);
         }
         exit;
     }

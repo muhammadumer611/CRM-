@@ -50,8 +50,11 @@ class Validator {
                     if ($rule === 'pak_phone' && !preg_match('/^(03)[0-9]{2}-?[0-9]{7}$/', $value)) {
                         $this->addError($field, 'Must be a valid Pakistani phone number (e.g. 0300-1234567).');
                     }
-                    if ($rule === 'cnic' && !preg_match('/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/', $value)) {
-                        $this->addError($field, 'Must be a valid CNIC format (12345-1234567-1).');
+                    if ($rule === 'cnic') {
+                        $cleanCnic = preg_replace('/[^0-9]/', '', (string)$value);
+                        if (strlen($cleanCnic) !== 13) {
+                            $this->addError($field, 'Must be a valid 13-digit CNIC (e.g. 12345-1234567-1 or 1234512345671).');
+                        }
                     }
                     if (strpos($rule, 'enum:') === 0) {
                         $options = explode(',', substr($rule, 5));

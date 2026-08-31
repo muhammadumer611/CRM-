@@ -6,7 +6,11 @@ use App\Core\View;
 use App\Core\Session;
 use App\Core\CSRF;
 use App\Services\StudentService;
+<<<<<<< HEAD
 use App\Services\StudentAccountService;
+=======
+use App\Services\RoomService;
+>>>>>>> 962ef01 (Update HMS)
 
 class StudentController {
     private $studentService;
@@ -17,9 +21,8 @@ class StudentController {
     }
 
     public function index() {
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $page = $page > 0 ? $page : 1;
-        $perPage = 10;
+        $page    = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 15;
         
         $filters = [
             'search' => $_GET['search'] ?? '',
@@ -29,19 +32,23 @@ class StudentController {
         $result = $this->studentService->getAllStudents($filters, $page, $perPage);
         
         View::render('admin/students/index', [
-            'title' => 'Students',
+            'title'    => 'Students',
             'students' => $result['data'],
-            'total' => $result['total'],
-            'page' => $page,
-            'perPage' => $perPage,
-            'filters' => $filters
+            'total'    => $result['total'],
+            'page'     => $page,
+            'perPage'  => $perPage,
+            'filters'  => $filters
         ], 'admin');
     }
 
     public function create() {
+        $roomService = new RoomService();
+        $rooms = $roomService->getAllAvailableRooms();
+
         View::render('admin/students/create', [
-            'title' => 'Add Student',
-            'csrf_token' => CSRF::generateToken()
+            'title'      => 'New Student Onboarding',
+            'csrf_token' => CSRF::generateToken(),
+            'rooms'      => $rooms
         ], 'admin');
     }
 
@@ -52,23 +59,33 @@ class StudentController {
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
 
+<<<<<<< HEAD
+=======
+        $config = require APP_ROOT . '/config/app.php';
+
+>>>>>>> 962ef01 (Update HMS)
         $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation'];
         foreach ($required as $field) {
-            if (empty($_POST[$field])) {
-                Session::set('error', 'Please fill all required fields.');
-                header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/create');
+            if (empty(trim($_POST[$field] ?? ''))) {
+                Session::set('error', 'Please fill all required fields: ' . str_replace('_', ' ', $field) . '.');
+                header('Location: ' . $config['base_url'] . '/students/create');
                 exit;
             }
         }
 
-        $result = $this->studentService->createStudent($_POST);
+        $result = $this->studentService->onboardStudent($_POST);
         
         if ($result['success']) {
+<<<<<<< HEAD
             Session::set('success', 'Student admitted successfully.');
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
+=======
+            Session::set('success', 'Student ' . htmlspecialchars($result['student_id_str']) . ' onboarded successfully.');
+            header('Location: ' . $config['base_url'] . '/students');
+>>>>>>> 962ef01 (Update HMS)
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/create');
+            header('Location: ' . $config['base_url'] . '/students/create');
         }
         exit;
     }
@@ -77,14 +94,20 @@ class StudentController {
         $student = $this->studentService->getStudent($id);
         if (!$student) {
             Session::set('error', 'Student not found.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
+            $config = require APP_ROOT . '/config/app.php';
+            header('Location: ' . $config['base_url'] . '/students');
             exit;
         }
 
+        $feeHistory      = $this->studentService->getStudentFeeHistory($id);
+        $securityDeposit = $this->studentService->getStudentSecurityDeposit($id);
+
         View::render('admin/students/edit', [
-            'title' => 'Edit Student',
-            'student' => $student,
-            'csrf_token' => CSRF::generateToken()
+            'title'           => 'Edit Student — ' . htmlspecialchars($student['full_name']),
+            'student'         => $student,
+            'feeHistory'      => $feeHistory,
+            'securityDeposit' => $securityDeposit,
+            'csrf_token'      => CSRF::generateToken()
         ], 'admin');
     }
 
@@ -94,15 +117,71 @@ class StudentController {
         }
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
+        $config = require APP_ROOT . '/config/app.php';
 
         $result = $this->studentService->updateStudent($id, $_POST);
         
         if ($result['success']) {
             Session::set('success', 'Student updated successfully.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
+            header('Location: ' . $config['base_url'] . '/students');
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/edit/' . $id);
+            header('Location: ' . $config['base_url'] . '/students/edit/' . $id);
+        }
+        exit;
+    }
+
+    public function show($id) {
+        $student = $this->studentService->getStudent($id);
+        if (!$student) {
+            Session::set('error', 'Student not found.');
+            $config = require APP_ROOT . '/config/app.php';
+            header('Location: ' . $config['base_url'] . '/students');
+            exit;
+        }
+
+        $feeHistory      = $this->studentService->getStudentFeeHistory($id);
+        $securityDeposit = $this->studentService->getStudentSecurityDeposit($id);
+
+        View::render('admin/students/show', [
+            'title'           => 'Student Profile — ' . htmlspecialchars($student['full_name']),
+            'student'         => $student,
+            'feeHistory'      => $feeHistory,
+            'securityDeposit' => $securityDeposit,
+            'csrf_token'      => CSRF::generateToken()
+        ], 'admin');
+    }
+
+    public function checkout($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+        
+        CSRF::verifyToken($_POST['csrf_token'] ?? '');
+        $config = require APP_ROOT . '/config/app.php';
+
+        $leavingDate = !empty($_POST['leaving_date']) ? $_POST['leaving_date'] : date('Y-m-d');
+        $leavingReason = !empty($_POST['leaving_reason']) ? trim($_POST['leaving_reason']) : 'Course Completed';
+        $remarks = trim($_POST['remarks'] ?? '');
+        $securityDeduction = isset($_POST['security_deduction']) && $_POST['security_deduction'] !== '' ? (float)$_POST['security_deduction'] : 0.0;
+        $securityRefundRemarks = trim($_POST['security_refund_remarks'] ?? '');
+
+        $alumniService = new \App\Services\AlumniService();
+        $result = $alumniService->convertToAlumni(
+            $id,
+            $leavingDate,
+            $leavingReason,
+            $remarks,
+            $securityDeduction,
+            $securityRefundRemarks
+        );
+
+        if ($result['success']) {
+            Session::set('success', 'Student checkout completed successfully and marked as alumni.');
+            header('Location: ' . $config['base_url'] . '/alumni');
+        } else {
+            Session::set('error', $result['error']);
+            header('Location: ' . $config['base_url'] . '/students/view/' . $id);
         }
         exit;
     }

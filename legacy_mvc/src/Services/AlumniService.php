@@ -7,6 +7,7 @@ use App\Repositories\FeeRepository;
 use App\Core\Database;
 use App\Core\Session;
 use App\Services\StudentHistoryService;
+use App\Services\AuditLogger;
 use Exception;
 use PDO;
 
@@ -14,16 +15,18 @@ class AlumniService {
     private $alumniRepo;
     private $studentRepo;
     private $feeRepo;
+    private $adminRepo;
     private $db;
 
     public function __construct() {
         $this->alumniRepo = new AlumniRepository();
         $this->studentRepo = new StudentRepository();
         $this->feeRepo = new FeeRepository();
+        $this->adminRepo = new \App\Repositories\AdminRepository();
         $this->db = Database::getInstance()->getConnection();
     }
 
-    public function convertToAlumni($studentId, $leavingDate, $leavingReason, $remarks = '') {
+    public function convertToAlumni($studentId, $leavingDate, $leavingReason, $remarks = '', $securityDeduction = 0.0, $securityRefundRemarks = '') {
         $this->db->beginTransaction();
 
         try {
@@ -92,6 +95,47 @@ class AlumniService {
                 $stmtUpdateRoom->execute([$newOccupied, $newStatus, $prevRoomId]);
             }
 
+            // Process Security Deposit Settlement (if any deposit was held)
+            $stmtSD = $this->db->prepare("SELECT * FROM security_deposits WHERE student_id = ? AND status IN ('HELD', 'PARTIALLY_REFUNDED') FOR UPDATE");
+            $stmtSD->execute([$studentId]);
+            $securityDeposit = $stmtSD->fetch();
+
+            $depositSettlement = null;
+            if ($securityDeposit) {
+                $rem = (float)$securityDeposit['remaining_amount'];
+                $deduction = min($rem, max(0.0, (float)$securityDeduction));
+                $refund = $rem - $deduction;
+                $adminId = Session::get('admin_id');
+
+                if ($deduction > 0) {
+                    $stmtTx1 = $this->db->prepare("
+                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin)
+                        VALUES (?, 'ADJUSTMENT', ?, ?, ?)
+                    ");
+                    $stmtTx1->execute([$securityDeposit['id'], $deduction, $securityRefundRemarks ?: 'Deduction upon checkout', $adminId]);
+                }
+
+                if ($refund > 0) {
+                    $stmtTx2 = $this->db->prepare("
+                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin)
+                        VALUES (?, 'REFUND', ?, ?, ?)
+                    ");
+                    $stmtTx2->execute([$securityDeposit['id'], $refund, $securityRefundRemarks ?: 'Refunded upon checkout', $adminId]);
+                }
+
+                $newDepositStatus = ($refund > 0) ? 'REFUNDED' : 'FORFEITED';
+                $stmtUpdateSD = $this->db->prepare("UPDATE security_deposits SET remaining_amount = 0.00, status = ? WHERE id = ?");
+                $stmtUpdateSD->execute([$newDepositStatus, $securityDeposit['id']]);
+
+                $depositSettlement = [
+                    'original_amount' => (float)$securityDeposit['original_amount'],
+                    'deducted' => $deduction,
+                    'refunded' => $refund,
+                    'status' => $newDepositStatus,
+                    'remarks' => $securityRefundRemarks
+                ];
+            }
+
             // Create Alumni Record
             $guardianInfo = json_encode([
                 'name' => $student['guardian_name'],
@@ -122,35 +166,50 @@ class AlumniService {
             // Create History Record
             $oldValue = [
                 'status' => 'Active',
-                'room_allocation' => $alloc ? ['room' => $prevRoomStr, 'bed' => $prevBed] : null
+                'room_allocation' => $alloc ? ['room' => $prevRoomStr, 'bed' => $prevBed] : null,
+                'security_deposit' => $securityDeposit ? ['status' => $securityDeposit['status'], 'remaining' => $securityDeposit['remaining_amount']] : null
             ];
             $newValue = [
                 'status' => 'Inactive',
                 'alumni_id' => $alumniId,
-                'leaving_date' => $leavingDate
+                'leaving_date' => $leavingDate,
+                'security_settlement' => $depositSettlement
             ];
             
             StudentHistoryService::record(
                 $studentId,
                 'STUDENT_MARKED_ALUMNI',
-                "Student {$student['student_id_str']} was marked as alumni. Reason: {$leavingReason}.",
+                "Student {$student['student_id_str']} was marked as alumni. Reason: {$leavingReason}." . ($depositSettlement ? " Security Deposit Refund: Rs. " . number_format($depositSettlement['refunded'], 2) . " (Deducted: Rs. " . number_format($depositSettlement['deducted'], 2) . ")" : ""),
                 $oldValue,
                 $newValue,
+                Session::get('admin_id'),
                 $this->db
             );
 
             $this->db->commit();
-            return ['success' => true, 'alumni_id' => $alumniId];
+
+            AuditLogger::logAdminAction(
+                'STUDENT_CHECKOUT',
+                'alumni',
+                $alumniId,
+                "Student {$student['student_id_str']} checked out and converted to alumni. Room released: " . ($prevRoomStr ?? 'None'),
+                $oldValue,
+                $newValue
+            );
+
+            return ['success' => true, 'alumni_id' => $alumniId, 'deposit_settlement' => $depositSettlement];
             
         } catch (Exception $e) {
             $this->db->rollBack();
-            // Log technical error
-            \App\Repositories\AdminRepository::logAction(Session::get('admin_id'), 'Error', 'Alumni conversion failed: ' . $e->getMessage(), $_SERVER['REMOTE_ADDR']);
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            $this->adminRepo->logAction(Session::get('admin_id'), 'Error', 'Alumni conversion failed: ' . $e->getMessage(), $ip);
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
-    public function getAllAlumni($filters, $page, $perPage) {
+    public function getAllAlumni($filters = [], $page = 1, $perPage = 25) {
+        $page = max(1, (int)$page);
+        $perPage = max(1, (int)$perPage);
         $offset = ($page - 1) * $perPage;
         $result = $this->alumniRepo->findAll($filters, $perPage, $offset);
         

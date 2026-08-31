@@ -261,4 +261,85 @@ class RoomRepository {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($data);
     }
+
+    public function getActiveAllocationsForRoom($roomId) {
+        $stmt = $this->db->prepare("
+            SELECT ra.id, ra.student_id, ra.room_id, ra.bed_number, ra.joining_date, ra.status,
+                   s.full_name as student_name, s.student_id_str
+            FROM room_allocations ra
+            JOIN students s ON ra.student_id = s.id
+            WHERE ra.room_id = ? AND ra.status = 'Active'
+            ORDER BY ra.bed_number ASC
+        ");
+        $stmt->execute([$roomId]);
+        return $stmt->fetchAll();
+    }
+
+    public function countActiveAllocations($roomId) {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+        $stmt->execute([$roomId]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function countTotalAllocations($roomId) {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ?");
+        $stmt->execute([$roomId]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function updateOccupancyAndStatus($roomId, $occupiedBeds, $status) {
+        $stmt = $this->db->prepare("UPDATE rooms SET occupied_beds = :occupied_beds, status = :status WHERE id = :id");
+        return $stmt->execute([
+            'id' => $roomId,
+            'occupied_beds' => (int)$occupiedBeds,
+            'status' => $status
+        ]);
+    }
+
+    public function getAllAvailableRooms() {
+        $stmt = $this->db->query("
+            SELECT * FROM rooms 
+            WHERE status != 'Disabled' AND status != 'Occupied' AND total_beds > occupied_beds
+            ORDER BY block ASC, room_number ASC
+        ");
+        return $stmt->fetchAll();
+    }
+
+    public function reconcileOccupancy($roomId = null) {
+        if ($roomId) {
+            $room = $this->findById($roomId);
+            if (!$room) return false;
+            $activeCount = $this->countActiveAllocations($roomId);
+            $status = $room['status'];
+            if ($status !== 'Disabled') {
+                if ($activeCount === 0) {
+                    $status = 'Available';
+                } elseif ($activeCount >= (int)$room['total_beds']) {
+                    $status = 'Occupied';
+                } else {
+                    $status = 'Partially Occupied';
+                }
+            }
+            $this->updateOccupancyAndStatus($roomId, $activeCount, $status);
+            return true;
+        }
+
+        $rooms = $this->db->query("SELECT id, total_beds, status FROM rooms")->fetchAll();
+        foreach ($rooms as $r) {
+            $activeCount = $this->countActiveAllocations($r['id']);
+            $status = $r['status'];
+            if ($status !== 'Disabled') {
+                if ($activeCount === 0) {
+                    $status = 'Available';
+                } elseif ($activeCount >= (int)$r['total_beds']) {
+                    $status = 'Occupied';
+                } else {
+                    $status = 'Partially Occupied';
+                }
+            }
+            $this->updateOccupancyAndStatus($r['id'], $activeCount, $status);
+        }
+        return true;
+    }
 }
+

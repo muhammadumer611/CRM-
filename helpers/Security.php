@@ -15,6 +15,9 @@ class Security {
     }
 
     public static function generateCsrfToken() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -22,7 +25,12 @@ class Security {
     }
 
     public static function verifyCsrfToken($token) {
-        if (empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $expected = $_SESSION['csrf_token'] ?? '';
+        $provided = is_string($token) ? $token : '';
+        if (empty($expected) || empty($provided) || !hash_equals($expected, $provided)) {
             return false;
         }
         return true;

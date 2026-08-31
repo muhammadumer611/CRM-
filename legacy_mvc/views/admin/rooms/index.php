@@ -30,28 +30,42 @@
             <thead>
                 <tr>
                     <th>Room No</th>
-                    <th>Block/Floor</th>
+                    <th>Block / Floor</th>
                     <th>Type</th>
-                    <th>Beds (Occ/Total)</th>
-                    <th>Fees/Deposit</th>
+                    <th>Beds Capacity</th>
+                    <th>Occupancy</th>
+                    <th>Fees / Deposit</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($rooms)): ?>
-                    <tr><td colspan="7" style="text-align: center; padding: 2rem;">No rooms found.</td></tr>
+                    <tr><td colspan="8" style="text-align: center; padding: 2rem;">No rooms found.</td></tr>
                 <?php else: ?>
                     <?php foreach ($rooms as $room): ?>
+                    <?php 
+                        $totalBeds = (int)$room['total_beds'];
+                        $occupiedBeds = (int)$room['occupied_beds'];
+                        $availableBeds = max(0, $totalBeds - $occupiedBeds);
+                        $percent = $totalBeds > 0 ? round(($occupiedBeds / $totalBeds) * 100) : 0;
+                    ?>
                     <tr>
                         <td><strong><?php echo htmlspecialchars($room['room_number']); ?></strong></td>
-                        <td><?php echo htmlspecialchars($room['block']); ?> / <?php echo htmlspecialchars($room['floor']); ?></td>
-                        <td><?php echo htmlspecialchars($room['room_type']); ?></td>
+                        <td><?php echo htmlspecialchars($room['block']); ?> <small style="color: var(--text-muted);">/ Floor <?php echo htmlspecialchars($room['floor']); ?></small></td>
+                        <td><span class="badge" style="background-color: #334155;"><?php echo htmlspecialchars($room['room_type']); ?></span></td>
                         <td>
-                            <?php echo $room['occupied_beds']; ?> / <?php echo $room['total_beds']; ?>
-                            <div style="width: 100%; height: 4px; background: #334155; margin-top: 4px; border-radius: 2px;">
-                                <?php $percent = $room['total_beds'] > 0 ? ($room['occupied_beds'] / $room['total_beds']) * 100 : 0; ?>
-                                <div style="height: 100%; width: <?php echo $percent; ?>%; background: <?php echo $percent == 100 ? 'var(--danger)' : 'var(--primary)'; ?>; border-radius: 2px;"></div>
+                            <strong><?php echo $totalBeds; ?> Beds</strong><br>
+                            <small style="color: #34d399;"><?php echo $availableBeds; ?> Available</small> &bull;
+                            <small style="color: #f87171;"><?php echo $occupiedBeds; ?> Occupied</small>
+                        </td>
+                        <td style="min-width: 140px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px;">
+                                <span><?php echo $occupiedBeds; ?>/<?php echo $totalBeds; ?></span>
+                                <span><strong><?php echo $percent; ?>%</strong></span>
+                            </div>
+                            <div style="width: 100%; height: 6px; background: #334155; border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: <?php echo $percent; ?>%; background: <?php echo $percent == 100 ? 'var(--danger)' : ($percent > 0 ? 'var(--primary)' : 'var(--success)'); ?>; border-radius: 3px;"></div>
                             </div>
                         </td>
                         <td>
@@ -70,7 +84,7 @@
                             <?php endif; ?>
                         </td>
                         <td>
-                            <a href="<?php echo $config['base_url']; ?>/rooms/edit/<?php echo $room['id']; ?>" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
+                            <a href="<?php echo $config['base_url']; ?>/rooms/edit/<?php echo $room['id']; ?>" class="btn btn-sm btn-primary" title="Edit Room"><i class="fas fa-edit"></i> Edit</a>
                         </td>
                     </tr>
                     <?php endforeach; ?>

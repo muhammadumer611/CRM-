@@ -8,10 +8,9 @@
 return [
     'host' => 'localhost',
     'database' => 'hms_db',
-    
-    // For local XAMPP development, username is usually 'root' and password is empty
+    'dbname' => 'hms_db',
     'username' => 'root',
+    'user' => 'root',
     'password' => '',
-    
     'charset' => 'utf8mb4'
 ];

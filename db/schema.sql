@@ -56,6 +56,10 @@ CREATE TABLE room_allocations (
     remarks TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    active_bed_flag VARCHAR(64) AS (IF(status = 'Active', CONCAT(room_id, '_', bed_number), NULL)) VIRTUAL,
+    active_student_flag VARCHAR(64) AS (IF(status = 'Active', CAST(student_id AS CHAR), NULL)) VIRTUAL,
+    UNIQUE KEY uk_active_room_bed (active_bed_flag),
+    UNIQUE KEY uk_active_student (active_student_flag),
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT,
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT
 );

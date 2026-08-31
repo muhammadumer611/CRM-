@@ -37,8 +37,15 @@ class StudentHistoryRepository {
         $params = [];
 
         if (!empty($filters['student_id'])) {
-            $query .= " AND h.student_id = :student_id";
-            $params['student_id'] = $filters['student_id'];
+            $val = trim((string)$filters['student_id']);
+            if (is_numeric($val)) {
+                $query .= " AND (h.student_id = :student_id OR s.student_id_str LIKE :student_id_str)";
+                $params['student_id'] = (int)$val;
+                $params['student_id_str'] = '%' . $val . '%';
+            } else {
+                $query .= " AND s.student_id_str = :student_id_str";
+                $params['student_id_str'] = $val;
+            }
         }
         if (!empty($filters['event_type'])) {
             $query .= " AND h.event_type = :event_type";
@@ -57,8 +64,13 @@ class StudentHistoryRepository {
             $params['date_to'] = $filters['date_to'];
         }
         if (!empty($filters['keyword'])) {
-            $query .= " AND (h.description LIKE :keyword OR h.event_type LIKE :keyword)";
-            $params['keyword'] = '%' . $filters['keyword'] . '%';
+            $kw = '%' . trim((string)$filters['keyword']) . '%';
+            $query .= " AND (h.description LIKE :kw1 OR h.event_type LIKE :kw2 OR s.full_name LIKE :kw3 OR s.student_id_str LIKE :kw4 OR CAST(h.student_id AS CHAR) LIKE :kw5)";
+            $params['kw1'] = $kw;
+            $params['kw2'] = $kw;
+            $params['kw3'] = $kw;
+            $params['kw4'] = $kw;
+            $params['kw5'] = $kw;
         }
 
         $query .= " ORDER BY h.created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;

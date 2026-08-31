@@ -141,7 +141,12 @@
             .modal-header, .modal-body { padding-left: 1rem; padding-right: 1rem; }
         }
 
+        /* Mobile sidebar overlay */
+        .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+        .hamburger-btn { display:none; background:none; border:1px solid var(--border); color:var(--text); border-radius:6px; padding:0.4rem 0.6rem; cursor:pointer; font-size:1rem; }
+
         @media (max-width: 768px) {
+<<<<<<< HEAD
             .col-md-6, .col-md-4 { width: 100%; }
             .row { margin: 0; }
             .content { padding: 0.75rem; }
@@ -154,10 +159,23 @@
             .topbar-title { max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .notification-wrap { display: none; }
             .btn { width: 100%; justify-content: center; }
+=======
+            .detail-grid { grid-template-columns: 1fr; }
+            .modal-dialog { width:100%; }
+            .modal-header, .modal-body { padding-left:1rem; padding-right:1rem; }
+            .content { padding:1rem; }
+            .sidebar { position:fixed; left:-260px; top:0; height:100vh; z-index:100; transition:left 0.3s ease; }
+            .sidebar.open { left:0; }
+            .sidebar-overlay.show { display:block; }
+            .hamburger-btn { display:inline-flex; align-items:center; gap:0.4rem; }
+            .main-content { width:100%; }
+            td, th { padding:0.6rem 0.5rem; font-size:0.82rem; }
+>>>>>>> 962ef01 (Update HMS)
         }
     </style>
 </head>
 <body>
+<<<<<<< HEAD
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
     <div class="app-shell">
         <aside class="sidebar" id="sidebar">
@@ -200,6 +218,84 @@
                             <?php if ($unreadCount > 0): ?>
                                 <span class="notification-badge"><?php echo (int)$unreadCount; ?></span>
                             <?php endif; ?>
+=======
+    <!-- Mobile sidebar overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            HMS Admin
+        </div>
+        <div class="sidebar-nav">
+            <a href="<?php echo $config['base_url']; ?>/dashboard" class="nav-item <?php echo preg_match('#/dashboard#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/students" class="nav-item <?php echo preg_match('#/student#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-user-graduate"></i> Students
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/rooms" class="nav-item <?php echo preg_match('#/room#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-door-open"></i> Rooms
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/allocations" class="nav-item <?php echo preg_match('#/allocation#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-bed"></i> Allocations
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/fees" class="nav-item <?php echo preg_match('#/fee#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-money-bill-wave"></i> Fees
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/alumni" class="nav-item <?php echo preg_match('#/alumni#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-user-check"></i> Alumni
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/reports" class="nav-item <?php echo preg_match('#/report#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-chart-bar"></i> Reports
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/history" class="nav-item <?php echo preg_match('#/history#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-clock"></i> History
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/notifications" class="nav-item <?php echo preg_match('#/notification#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-bell"></i> Notifications
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/audit-logs" class="nav-item <?php echo preg_match('#/audit#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-shield-alt"></i> Audit Logs
+            </a>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="topbar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="topbar-title"><?php echo htmlspecialchars($title ?? 'Dashboard'); ?></div>
+            </div>
+            <div class="user-menu">
+                <div class="notification-wrap">
+                    <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-bell" aria-label="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <?php $notificationService = new \App\Services\NotificationService(); $unreadCount = $notificationService->getUnreadCount(); ?>
+                        <?php if ($unreadCount > 0): ?>
+                            <span class="notification-badge"><?php echo (int)$unreadCount; ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <div class="notification-dropdown">
+                        <?php $recent = $notificationService->getRecentUnread(5); ?>
+                        <?php if (empty($recent)): ?>
+                            <div class="notification-item">
+                                <div class="notification-item-title">No new notifications</div>
+                                <div class="notification-item-meta">You're all caught up.</div>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($recent as $item): ?>
+                                <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item unread">
+                                    <div class="notification-item-title"><?php echo htmlspecialchars($item['title']); ?></div>
+                                    <div class="notification-item-meta"><?php echo htmlspecialchars(substr($item['message'], 0, 70)); ?><?php echo strlen((string)$item['message']) > 70 ? '...' : ''; ?></div>
+                                    <div class="notification-item-meta"><?php echo htmlspecialchars(date('M d, H:i', strtotime($item['created_at']))); ?></div>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item" style="text-align:center; font-weight:600;">
+                            View All Notifications
+>>>>>>> 962ef01 (Update HMS)
                         </a>
                         <div class="notification-dropdown">
                             <?php $recent = $notificationService->getRecentUnread(5); ?>
@@ -245,6 +341,7 @@
         </div>
     </div>
 
+<<<<<<< HEAD
     <script>
         (function () {
             const menuToggle = document.getElementById('menuToggle');
@@ -276,5 +373,21 @@
             });
         })();
     </script>
+=======
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var o = document.getElementById('sidebarOverlay');
+    s.classList.toggle('open');
+    o.classList.toggle('show');
+}
+// Close sidebar when a nav link is clicked on mobile
+document.querySelectorAll('.sidebar .nav-item').forEach(function(el) {
+    el.addEventListener('click', function() {
+        if (window.innerWidth <= 768) toggleSidebar();
+    });
+});
+</script>
+>>>>>>> 962ef01 (Update HMS)
 </body>
 </html>

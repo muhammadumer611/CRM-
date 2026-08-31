@@ -31,51 +31,101 @@ class AllocationService {
         return $this->allocRepo->findAllActive();
     }
 
+    public function getUnallocatedActiveStudents() {
+        $stmt = $this->db->query("
+            SELECT s.id, s.full_name, s.student_id_str, s.cnic, s.phone 
+            FROM students s
+            LEFT JOIN room_allocations ra ON s.id = ra.student_id AND ra.status = 'Active'
+            WHERE s.status = 'Active' AND ra.id IS NULL
+            ORDER BY s.full_name ASC
+        ");
+        return $stmt->fetchAll();
+    }
+
     public function allocateRoom($data) {
-        $studentId = $data['student_id'];
-        $roomId = $data['room_id'];
-        $bedNumber = (int)$data['bed_number'];
-        $date = $data['joining_date'];
+        $studentId = (int)($data['student_id'] ?? 0);
+        $roomId = (int)($data['room_id'] ?? 0);
+        $bedNumber = (int)($data['bed_number'] ?? 0);
+        $date = !empty($data['joining_date']) ? $data['joining_date'] : date('Y-m-d');
+        $remarks = !empty($data['remarks']) ? trim($data['remarks']) : null;
+
+        if ($studentId <= 0) {
+            return ['success' => false, 'error' => 'Please select a valid student.'];
+        }
+
+        if ($roomId <= 0) {
+            return ['success' => false, 'error' => 'Please select a valid room.'];
+        }
+
+        if ($bedNumber <= 0) {
+            return ['success' => false, 'error' => 'Please select a valid bed number.'];
+        }
 
         $this->db->beginTransaction();
 
         try {
-            $student = $this->studentRepo->findById($studentId);
+            // Lock student check
+            $stmtStudent = $this->db->prepare("SELECT * FROM students WHERE id = ? FOR UPDATE");
+            $stmtStudent->execute([$studentId]);
+            $student = $stmtStudent->fetch();
+
             if (!$student || $student['status'] !== 'Active') {
                 throw new Exception("Student is not active or does not exist.");
             }
 
-            // Lock room for update to prevent race conditions in occupancy calculation
+            // Check if student already has an active allocation
+            $stmtStudentAlloc = $this->db->prepare("SELECT id FROM room_allocations WHERE student_id = ? AND status = 'Active' FOR UPDATE");
+            $stmtStudentAlloc->execute([$studentId]);
+            if ($stmtStudentAlloc->fetch()) {
+                throw new Exception("Student already has an active room allocation.");
+            }
+
+            // Lock room row for update to prevent concurrent duplicate allocations
             $stmtRoom = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
             $stmtRoom->execute([$roomId]);
             $room = $stmtRoom->fetch();
 
-            if (!$room || $room['status'] === 'Disabled') {
-                throw new Exception("Room is not available.");
+            if (!$room) {
+                throw new Exception("Room could not be found.");
             }
 
-            if ($room['occupied_beds'] >= $room['total_beds']) {
-                throw new Exception("Room is full. No available beds.");
+            if ($room['status'] === 'Disabled') {
+                throw new Exception("This room is currently disabled and unavailable for allocation.");
             }
 
-            if ($bedNumber < 1 || $bedNumber > $room['total_beds']) {
-                throw new Exception("Invalid bed number for this room.");
+            $totalBeds = (int)$room['total_beds'];
+
+            if ($bedNumber < 1 || $bedNumber > $totalBeds) {
+                throw new Exception("Selected bed does not exist in this room. Valid beds are 1 to {$totalBeds}.");
             }
 
-            if ($this->allocRepo->getActiveAllocationByStudent($studentId, $this->db)) {
-                throw new Exception("Student is already allocated to a room.");
+            // Check if that bed already has an ACTIVE allocation
+            $stmtBedAlloc = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND bed_number = ? AND status = 'Active' FOR UPDATE");
+            $stmtBedAlloc->execute([$roomId, $bedNumber]);
+            if ($stmtBedAlloc->fetch()) {
+                throw new Exception("Selected bed is already occupied.");
             }
 
-            if ($this->allocRepo->getActiveAllocationByRoomAndBed($roomId, $bedNumber, $this->db)) {
-                throw new Exception("This bed is already occupied.");
+            // Verify room has capacity
+            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+            $stmtCount->execute([$roomId]);
+            $currentOccupied = (int)$stmtCount->fetchColumn();
+
+            if ($currentOccupied >= $totalBeds) {
+                throw new Exception("Room is already at full capacity ({$totalBeds}/{$totalBeds} beds occupied).");
             }
 
-            // Create Allocation
-            $allocationId = $this->allocRepo->create($studentId, $roomId, $bedNumber, $date, $this->db);
+            // Insert new Allocation
+            $stmtInsert = $this->db->prepare("
+                INSERT INTO room_allocations (student_id, room_id, bed_number, joining_date, status, remarks)
+                VALUES (?, ?, ?, ?, 'Active', ?)
+            ");
+            $stmtInsert->execute([$studentId, $roomId, $bedNumber, $date, $remarks]);
+            $allocationId = $this->db->lastInsertId();
 
-            // Update Room Occupancy
-            $newOccupied = $room['occupied_beds'] + 1;
-            $newStatus = ($newOccupied >= $room['total_beds']) ? 'Occupied' : 'Partially Occupied';
+            // Reconcile Room Occupancy
+            $newOccupied = $currentOccupied + 1;
+            $newStatus = ($newOccupied >= $totalBeds) ? 'Occupied' : 'Partially Occupied';
             
             $stmtUpdateRoom = $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?");
             $stmtUpdateRoom->execute([$newOccupied, $newStatus, $roomId]);
@@ -88,6 +138,7 @@ class AllocationService {
                 "Allocated to Room {$roomStr}, Bed {$bedNumber}.",
                 null,
                 ['room' => $roomStr, 'bed' => $bedNumber, 'joining_date' => $date],
+                Session::get('admin_id'),
                 $this->db
             );
 
@@ -97,28 +148,34 @@ class AllocationService {
                 'ROOM_ALLOCATED',
                 'allocation',
                 $allocationId,
-                'Student ' . $student['student_id_str'] . ' allocated to room ' . $room['room_number'] . ', bed ' . $bedNumber,
+                'Student ' . $student['student_id_str'] . ' allocated to room ' . $room['room_number'] . ' (Bed ' . $bedNumber . ')',
                 null,
                 ['student_id' => $studentId, 'room_id' => $roomId, 'bed_number' => $bedNumber, 'joining_date' => $date]
             );
             
-            $this->adminRepo->logAction(Session::get('admin_id'), 'Room Allocation', "Allocated {$student['student_id_str']} to Room {$room['room_number']}", $_SERVER['REMOTE_ADDR']);
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            $this->adminRepo->logAction(Session::get('admin_id'), 'Room Allocation', "Allocated {$student['student_id_str']} to Room {$room['room_number']} Bed {$bedNumber}", $ip);
             
-            return ['success' => true];
+            return ['success' => true, 'id' => $allocationId];
         } catch (Exception $e) {
             $this->db->rollBack();
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
-    public function deallocateRoom($allocationId, $date) {
+    public function deallocateRoom($allocationId, $date = null) {
+        $allocationId = (int)$allocationId;
+        $date = !empty($date) ? $date : date('Y-m-d');
+
         $this->db->beginTransaction();
 
         try {
-            $alloc = $this->allocRepo->getActiveAllocationById($allocationId, $this->db);
+            $stmtAlloc = $this->db->prepare("SELECT * FROM room_allocations WHERE id = ? AND status = 'Active' FOR UPDATE");
+            $stmtAlloc->execute([$allocationId]);
+            $alloc = $stmtAlloc->fetch();
 
             if (!$alloc) {
-                throw new Exception("Active allocation not found.");
+                throw new Exception("Active allocation record not found.");
             }
 
             $stmtRoom = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
@@ -129,8 +186,11 @@ class AllocationService {
                 throw new Exception("Associated room not found.");
             }
 
-            $this->allocRepo->closeAllocation($allocationId, $date, $this->db);
+            // Close allocation
+            $stmtClose = $this->db->prepare("UPDATE room_allocations SET status = 'Closed', leaving_date = ? WHERE id = ?");
+            $stmtClose->execute([$date, $allocationId]);
 
+<<<<<<< HEAD
             // Update Room Occupancy
             if ((int)$alloc['bed_number'] === 0) {
                 $newOccupied = 0;
@@ -142,6 +202,22 @@ class AllocationService {
             
             if ($room['status'] === 'Disabled') {
                 $newStatus = 'Disabled';
+=======
+            // Reconcile Room Occupancy
+            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+            $stmtCount->execute([$alloc['room_id']]);
+            $newOccupied = (int)$stmtCount->fetchColumn();
+
+            $newStatus = $room['status'];
+            if ($newStatus !== 'Disabled') {
+                if ($newOccupied === 0) {
+                    $newStatus = 'Available';
+                } elseif ($newOccupied < (int)$room['total_beds']) {
+                    $newStatus = 'Partially Occupied';
+                } else {
+                    $newStatus = 'Occupied';
+                }
+>>>>>>> 962ef01 (Update HMS)
             }
             
             $stmtUpdateRoom = $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?");
@@ -155,6 +231,7 @@ class AllocationService {
                 "Deallocated from Room {$roomStr}, Bed {$alloc['bed_number']}.",
                 ['room' => $roomStr, 'bed' => $alloc['bed_number']],
                 ['leaving_date' => $date],
+                Session::get('admin_id'),
                 $this->db
             );
 
@@ -164,12 +241,13 @@ class AllocationService {
                 'ROOM_ALLOCATION_CLOSED',
                 'allocation',
                 $allocationId,
-                'Allocation closed for student ID ' . $alloc['student_id'] . ' from room ' . $room['room_number'],
+                'Allocation closed for student ID ' . $alloc['student_id'] . ' from room ' . $room['room_number'] . ' Bed ' . $alloc['bed_number'],
                 ['room_id' => $alloc['room_id'], 'bed_number' => $alloc['bed_number'], 'joining_date' => $alloc['joining_date']],
                 ['leaving_date' => $date]
             );
             
-            $this->adminRepo->logAction(Session::get('admin_id'), 'Room Deallocation', "Deallocated ID: $allocationId", $_SERVER['REMOTE_ADDR']);
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            $this->adminRepo->logAction(Session::get('admin_id'), 'Room Deallocation', "Deallocated ID: $allocationId", $ip);
             
             return ['success' => true];
         } catch (Exception $e) {
@@ -178,3 +256,4 @@ class AllocationService {
         }
     }
 }
+

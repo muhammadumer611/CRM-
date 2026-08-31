@@ -3,6 +3,7 @@ namespace App\Core;
 
 class CSRF {
     public static function generateToken() {
+        Session::init();
         if (!Session::get('csrf_token')) {
             Session::set('csrf_token', bin2hex(random_bytes(32)));
         }
@@ -10,30 +11,29 @@ class CSRF {
     }
 
     public static function verifyToken($token) {
+        Session::init();
         $expected = Session::get('csrf_token');
         $provided = is_string($token) ? $token : '';
 
-        if (empty($expected) || !hash_equals($expected, $provided)) {
-            Session::remove('csrf_token');
-            Session::set('error', 'Invalid request token.');
+        if (empty($expected) || empty($provided) || !hash_equals($expected, $provided)) {
+            Session::set('error', 'Invalid request token. Please try again.');
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
             exit;
         }
 
-        Session::remove('csrf_token');
         return true;
     }
 
     public static function verifyTokenJson($token) {
+        Session::init();
         $expected = Session::get('csrf_token');
         $provided = is_string($token) ? $token : '';
 
-        if (empty($expected) || !hash_equals($expected, $provided)) {
-            Session::remove('csrf_token');
+        if (empty($expected) || empty($provided) || !hash_equals($expected, $provided)) {
             throw new \Exception('CSRF token validation failed.');
         }
 
-        Session::remove('csrf_token');
         return true;
     }
 }
+

@@ -16,6 +16,7 @@ class RoomService {
     }
 
     public function getAllRooms($filters, $page, $perPage) {
+        $this->roomRepo->reconcileOccupancy();
         $offset = ($page - 1) * $perPage;
         return [
             'data' => $this->roomRepo->findAll($filters, $perPage, $offset),
@@ -24,15 +25,94 @@ class RoomService {
     }
 
     public function getRoom($id) {
+        $this->roomRepo->reconcileOccupancy($id);
         return $this->roomRepo->findById($id);
     }
 
-    public function createRoom($data) {
-        if ($data['total_beds'] <= 0) {
-            return ['success' => false, 'error' => 'Total beds must be greater than zero.'];
+    public function getAllAvailableRooms() {
+        $this->roomRepo->reconcileOccupancy();
+        return $this->roomRepo->getAllAvailableRooms();
+    }
+
+    public function getAvailableBeds($roomId) {
+        $room = $this->roomRepo->findById($roomId);
+        if (!$room) {
+            return ['success' => false, 'error' => 'Room not found.'];
         }
 
-        if ($this->roomRepo->findByRoomNumberAndBlock($data['room_number'], $data['block'])) {
+        $this->roomRepo->reconcileOccupancy($roomId);
+        $room = $this->roomRepo->findById($roomId);
+
+        $activeAllocations = $this->roomRepo->getActiveAllocationsForRoom($roomId);
+        $occupiedBedsMap = [];
+        foreach ($activeAllocations as $alloc) {
+            $occupiedBedsMap[(int)$alloc['bed_number']] = [
+                'allocation_id' => (int)$alloc['id'],
+                'student_id' => (int)$alloc['student_id'],
+                'student_name' => $alloc['student_name'] ?? 'Occupied',
+                'student_id_str' => $alloc['student_id_str'] ?? '',
+                'joining_date' => $alloc['joining_date'] ?? ''
+            ];
+        }
+
+        $totalBeds = (int)$room['total_beds'];
+        $beds = [];
+        $occupiedBedNumbers = [];
+        $availableBedNumbers = [];
+
+        for ($i = 1; $i <= $totalBeds; $i++) {
+            $isOccupied = isset($occupiedBedsMap[$i]);
+            if ($isOccupied) {
+                $occupiedBedNumbers[] = $i;
+                $beds[] = [
+                    'bed_number' => $i,
+                    'is_occupied' => true,
+                    'status' => 'Occupied',
+                    'occupant' => $occupiedBedsMap[$i]
+                ];
+            } else {
+                $availableBedNumbers[] = $i;
+                $beds[] = [
+                    'bed_number' => $i,
+                    'is_occupied' => false,
+                    'status' => 'Available',
+                    'occupant' => null
+                ];
+            }
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'room_id' => (int)$room['id'],
+                'room_number' => $room['room_number'],
+                'block' => $room['block'],
+                'floor' => $room['floor'],
+                'room_type' => $room['room_type'],
+                'monthly_fee' => (float)$room['monthly_fee'],
+                'security_deposit' => (float)$room['security_deposit'],
+                'total_beds' => $totalBeds,
+                'occupied_beds' => count($occupiedBedNumbers),
+                'available_beds' => count($availableBedNumbers),
+                'status' => $room['status'],
+                'occupied_bed_numbers' => $occupiedBedNumbers,
+                'available_bed_numbers' => $availableBedNumbers,
+                'beds' => $beds
+            ]
+        ];
+    }
+
+    public function createRoom($data) {
+        $totalBeds = (int)($data['total_beds'] ?? 0);
+        if ($totalBeds <= 0) {
+            return ['success' => false, 'error' => 'Total beds must be a positive integer greater than zero.'];
+        }
+
+        if (empty($data['room_number']) || empty($data['block']) || empty($data['floor']) || empty($data['room_type'])) {
+            return ['success' => false, 'error' => 'Please fill in all required room details.'];
+        }
+
+        if ($this->roomRepo->findByRoomNumberAndBlock(trim($data['room_number']), trim($data['block']))) {
             return ['success' => false, 'error' => 'A room with this number already exists in this block.'];
         }
 
@@ -41,9 +121,9 @@ class RoomService {
             'block' => trim($data['block']),
             'floor' => trim($data['floor']),
             'room_type' => trim($data['room_type']),
-            'total_beds' => (int)$data['total_beds'],
-            'monthly_fee' => (float)$data['monthly_fee'],
-            'security_deposit' => (float)$data['security_deposit'],
+            'total_beds' => $totalBeds,
+            'monthly_fee' => max(0, (float)($data['monthly_fee'] ?? 0)),
+            'security_deposit' => max(0, (float)($data['security_deposit'] ?? 0)),
             'status' => $data['status'] ?? 'Available'
         ];
 
@@ -58,7 +138,8 @@ class RoomService {
                 null,
                 $dbData
             );
-            $this->adminRepo->logAction(Session::get('admin_id'), 'Create Room', "Created room {$dbData['room_number']} in Block {$dbData['block']}", $_SERVER['REMOTE_ADDR']);
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            $this->adminRepo->logAction(Session::get('admin_id'), 'Create Room', "Created room {$dbData['room_number']} in Block {$dbData['block']}", $ip);
             return ['success' => true, 'id' => $id];
         }
         
@@ -69,27 +150,29 @@ class RoomService {
         $room = $this->roomRepo->findById($id);
         if (!$room) return ['success' => false, 'error' => 'Room not found.'];
 
-        if ($data['total_beds'] <= 0) {
-            return ['success' => false, 'error' => 'Total beds must be greater than zero.'];
+        $totalBeds = (int)($data['total_beds'] ?? 0);
+        if ($totalBeds <= 0) {
+            return ['success' => false, 'error' => 'Total beds must be a positive integer greater than zero.'];
         }
         
-        if ((int)$data['total_beds'] < $room['occupied_beds']) {
-            return ['success' => false, 'error' => 'Total beds cannot be less than currently occupied beds.'];
+        $activeOccupants = $this->roomRepo->countActiveAllocations($id);
+        if ($totalBeds < $activeOccupants) {
+            return ['success' => false, 'error' => "Total beds cannot be reduced below current active occupancy ({$activeOccupants} occupied)."];
         }
 
-        if ($this->roomRepo->findByRoomNumberAndBlock($data['room_number'], $data['block'], $id)) {
+        if ($this->roomRepo->findByRoomNumberAndBlock(trim($data['room_number']), trim($data['block']), $id)) {
             return ['success' => false, 'error' => 'A room with this number already exists in this block.'];
         }
         
-        if ($data['status'] === 'Disabled' && $room['occupied_beds'] > 0) {
-            return ['success' => false, 'error' => 'Cannot disable a room while students are allocated to it.'];
+        if (($data['status'] ?? '') === 'Disabled' && $activeOccupants > 0) {
+            return ['success' => false, 'error' => 'Cannot disable a room while students are currently allocated to it.'];
         }
         
-        $status = $data['status'];
+        $status = $data['status'] ?? 'Available';
         if ($status !== 'Disabled') {
-            if ($room['occupied_beds'] == 0) {
+            if ($activeOccupants === 0) {
                 $status = 'Available';
-            } elseif ($room['occupied_beds'] < (int)$data['total_beds']) {
+            } elseif ($activeOccupants < $totalBeds) {
                 $status = 'Partially Occupied';
             } else {
                 $status = 'Occupied';
@@ -101,13 +184,15 @@ class RoomService {
             'block' => trim($data['block']),
             'floor' => trim($data['floor']),
             'room_type' => trim($data['room_type']),
-            'total_beds' => (int)$data['total_beds'],
-            'monthly_fee' => (float)$data['monthly_fee'],
-            'security_deposit' => (float)$data['security_deposit'],
+            'total_beds' => $totalBeds,
+            'monthly_fee' => max(0, (float)($data['monthly_fee'] ?? 0)),
+            'security_deposit' => max(0, (float)($data['security_deposit'] ?? 0)),
             'status' => $status
         ];
 
         if ($this->roomRepo->update($id, $dbData)) {
+            $this->roomRepo->reconcileOccupancy($id);
+
             $changes = [];
             $oldValues = [];
             foreach ($dbData as $key => $value) {
@@ -128,10 +213,15 @@ class RoomService {
                 );
             }
 
-            $this->adminRepo->logAction(Session::get('admin_id'), 'Update Room', "Updated room ID: {$id}", $_SERVER['REMOTE_ADDR']);
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            $this->adminRepo->logAction(Session::get('admin_id'), 'Update Room', "Updated room ID: {$id}", $ip);
             return ['success' => true];
         }
         
         return ['success' => false, 'error' => 'Failed to update room.'];
+    }
+
+    public function reconcileAllRooms() {
+        return $this->roomRepo->reconcileOccupancy();
     }
 }

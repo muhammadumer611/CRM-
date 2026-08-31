@@ -12,8 +12,13 @@ class StudentHistoryService {
         $this->repository = new StudentHistoryRepository();
     }
 
-    public static function record($studentId, $eventType, $description, $oldValue = null, $newValue = null, $pdo = null) {
-        $adminId = Session::get('admin_id');
+    public static function record($studentId, $eventType, $description, $oldValue = null, $newValue = null, $adminId = null, $pdo = null) {
+        if ($adminId instanceof \PDO) {
+            $pdo = $adminId;
+            $adminId = Session::get('admin_id');
+        } elseif ($adminId === null) {
+            $adminId = Session::get('admin_id');
+        }
 
         $repo = new StudentHistoryRepository();
         return $repo->create([

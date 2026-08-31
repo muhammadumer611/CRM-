@@ -80,9 +80,12 @@ class RoomController {
             exit;
         }
 
+        $bedDetails = $this->roomService->getAvailableBeds($id);
+
         View::render('admin/rooms/edit', [
             'title' => 'Edit Room',
             'room' => $room,
+            'bedDetails' => $bedDetails['data'] ?? null,
             'csrf_token' => CSRF::generateToken()
         ], 'admin');
     }

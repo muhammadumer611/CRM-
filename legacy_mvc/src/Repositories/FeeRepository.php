@@ -16,7 +16,7 @@ class FeeRepository {
             SELECT f.*, s.full_name, s.student_id_str 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
-            WHERE 1=1
+            WHERE f.charge_type = 'MONTHLY_FEE'
         ";
         $params = [];
 
@@ -61,7 +61,7 @@ class FeeRepository {
             SELECT COUNT(*) 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
-            WHERE 1=1
+            WHERE f.charge_type = 'MONTHLY_FEE'
         ";
         $params = [];
 
@@ -293,7 +293,7 @@ class FeeRepository {
 
     public function findById($id) {
         $stmt = $this->db->prepare("
-            SELECT f.*, s.full_name, s.student_id_str 
+            SELECT f.*, s.full_name, s.student_id_str, s.phone, s.monthly_fee AS student_monthly_fee
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
             WHERE f.id = ?
@@ -303,13 +303,14 @@ class FeeRepository {
     }
     
     public function findByStudentAndMonthYear($studentId, $month, $year) {
-        $stmt = $this->db->prepare("SELECT * FROM fee_records WHERE student_id = ? AND billing_month = ? AND billing_year = ?");
+        $stmt = $this->db->prepare("SELECT * FROM fee_records WHERE student_id = ? AND billing_month = ? AND billing_year = ? AND charge_type = 'MONTHLY_FEE'");
         $stmt->execute([$studentId, $month, $year]);
         return $stmt->fetch();
     }
 
     public function create($data, $pdo = null) {
         $db = $pdo ?? $this->db;
+<<<<<<< HEAD
         $sql = "INSERT INTO fee_records (
             invoice_number, student_id, billing_month, billing_year, invoice_date, amount,
             additional_charges, discount, paid_amount, due_date, payment_date, status,
@@ -340,6 +341,70 @@ class FeeRepository {
             'charge_type' => $data['charge_type'] ?? 'MONTHLY_FEE'
         ]);
         return $db->lastInsertId();
+=======
+        // Generate invoice_number if not provided
+        if (empty($data['invoice_number'])) {
+            $data['invoice_number'] = 'INV-' . strtoupper(substr(uniqid(), -8));
+        }
+
+        $fields = implode(', ', array_keys($data));
+        $placeholders = implode(', ', array_map(fn($k) => ":$k", array_keys($data)));
+        $sql = "INSERT INTO fee_records ($fields) VALUES ($placeholders)";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($data);
+        return $db->lastInsertId();
+    }
+
+    /**
+     * Record a payment against an invoice. Stores in fee_payments, updates fee_records.
+     * Returns ['success', 'receipt_number', 'new_status'] or ['success' => false, 'error']
+     */
+    public function recordPayment($invoiceId, $amount, $paymentMethod, $transactionRef, $remarks, $adminId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+
+        // Get current invoice (locked)
+        $stmt = $db->prepare("SELECT * FROM fee_records WHERE id = ? FOR UPDATE");
+        $stmt->execute([$invoiceId]);
+        $invoice = $stmt->fetch();
+
+        if (!$invoice) return ['success' => false, 'error' => 'Invoice not found.'];
+        if ($invoice['status'] === 'Paid') return ['success' => false, 'error' => 'Invoice is already fully paid.'];
+
+        $remaining = (float)$invoice['amount'] - (float)$invoice['paid_amount'];
+        if ($amount <= 0) return ['success' => false, 'error' => 'Payment amount must be greater than zero.'];
+        if ($amount > $remaining + 0.01) return ['success' => false, 'error' => "Payment amount (Rs. {$amount}) exceeds remaining balance (Rs. " . number_format($remaining, 2) . ').'];
+
+        $receiptNum = 'RCP-' . strtoupper(substr(uniqid(), -8));
+        $paymentDate = date('Y-m-d');
+
+        // Insert payment record
+        $stmtP = $db->prepare("
+            INSERT INTO fee_payments (invoice_id, receipt_number, amount, payment_date, payment_method, transaction_ref, remarks, received_by_admin, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Completed')
+        ");
+        $stmtP->execute([$invoiceId, $receiptNum, $amount, $paymentDate, $paymentMethod, $transactionRef ?: null, $remarks ?: null, $adminId ?: null]);
+
+        // Update invoice totals
+        $newTotalPaid = (float)$invoice['paid_amount'] + $amount;
+        $newStatus = ($newTotalPaid >= (float)$invoice['amount']) ? 'Paid' : 'Partial';
+
+        $stmtU = $db->prepare("UPDATE fee_records SET paid_amount = ?, status = ?, payment_date = ?, payment_method = ? WHERE id = ?");
+        $stmtU->execute([$newTotalPaid, $newStatus, $paymentDate, $paymentMethod, $invoiceId]);
+
+        return ['success' => true, 'receipt_number' => $receiptNum, 'new_status' => $newStatus, 'new_paid' => $newTotalPaid];
+    }
+
+    public function getPayments($invoiceId) {
+        $stmt = $this->db->prepare("
+            SELECT fp.*, a.username AS received_by_name
+            FROM fee_payments fp
+            LEFT JOIN admins a ON fp.received_by_admin = a.id
+            WHERE fp.invoice_id = ? AND fp.status = 'Completed'
+            ORDER BY fp.payment_date DESC, fp.id DESC
+        ");
+        $stmt->execute([$invoiceId]);
+        return $stmt->fetchAll();
+>>>>>>> 962ef01 (Update HMS)
     }
 
     public function updatePayment($id, $paidAmount, $paymentMethod, $transactionRef, $status, $paymentDate, $pdo = null) {
@@ -465,10 +530,41 @@ class FeeRepository {
 
     public function getOutstandingBalance($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
+<<<<<<< HEAD
         $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) as outstanding_balance FROM fee_records WHERE student_id = ? AND (status IN ('Pending', 'Partial', 'Overdue') OR (amount + additional_charges - discount) > paid_amount)");
+=======
+        $stmt = $db->prepare("SELECT COALESCE(SUM(amount - paid_amount), 0) FROM fee_records WHERE student_id = ? AND status IN ('Pending', 'Partial', 'Overdue') AND charge_type = 'MONTHLY_FEE'");
+>>>>>>> 962ef01 (Update HMS)
         $stmt->execute([$studentId]);
-        $result = $stmt->fetchColumn();
-        return $result ? (float)$result : 0.0;
+        return (float)$stmt->fetchColumn();
+    }
+
+    /**
+     * Mark overdue invoices (past due date, not fully paid) as Overdue
+     */
+    public function markOverdueInvoices() {
+        $stmt = $this->db->prepare("
+            UPDATE fee_records 
+            SET status = 'Overdue' 
+            WHERE status IN ('Pending','Partial') 
+              AND due_date < CURDATE()
+              AND charge_type = 'MONTHLY_FEE'
+        ");
+        $stmt->execute();
+        return $stmt->rowCount();
+    }
+
+    public function getFinancialSummary() {
+        $stmt = $this->db->query("
+            SELECT 
+                COALESCE(SUM(amount), 0) AS total_billed,
+                COALESCE(SUM(paid_amount), 0) AS total_collected,
+                COALESCE(SUM(CASE WHEN status IN ('Pending','Partial','Overdue') THEN amount - paid_amount ELSE 0 END), 0) AS total_outstanding,
+                COALESCE(SUM(CASE WHEN status = 'Overdue' THEN amount - paid_amount ELSE 0 END), 0) AS total_overdue
+            FROM fee_records 
+            WHERE charge_type = 'MONTHLY_FEE'
+        ");
+        return $stmt->fetch();
     }
 
     public function updateOverdueStatuses($studentId = null, $pdo = null) {

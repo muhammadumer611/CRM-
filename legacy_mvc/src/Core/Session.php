@@ -3,8 +3,15 @@ namespace App\Core;
 
 class Session {
     public static function init() {
-        if (session_status() !== PHP_SESSION_NONE) {
+        if (session_status() === PHP_SESSION_ACTIVE) {
             self::touchLifetime();
+            return;
+        }
+
+        if (headers_sent()) {
+            if (session_status() === PHP_SESSION_NONE) {
+                @session_start();
+            }
             return;
         }
 

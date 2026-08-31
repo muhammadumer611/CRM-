@@ -143,7 +143,9 @@ class AlumniController {
             $input['student_id'],
             $input['leaving_date'],
             $input['leaving_reason'],
-            $input['remarks'] ?? ''
+            $input['remarks'] ?? '',
+            isset($input['security_deduction']) ? (float)$input['security_deduction'] : 0.0,
+            $input['security_refund_remarks'] ?? ''
         );
 
         if ($result['success']) {
