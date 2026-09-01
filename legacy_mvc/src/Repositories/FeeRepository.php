@@ -310,38 +310,7 @@ class FeeRepository {
 
     public function create($data, $pdo = null) {
         $db = $pdo ?? $this->db;
-<<<<<<< HEAD
-        $sql = "INSERT INTO fee_records (
-            invoice_number, student_id, billing_month, billing_year, invoice_date, amount,
-            additional_charges, discount, paid_amount, due_date, payment_date, status,
-            payment_method, transaction_ref, remarks, charge_type
-        ) VALUES (
-            :invoice_number, :student_id, :billing_month, :billing_year, :invoice_date, :amount,
-            :additional_charges, :discount, :paid_amount, :due_date, :payment_date, :status,
-            :payment_method, :transaction_ref, :remarks, :charge_type
-        )";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            'invoice_number' => $data['invoice_number'] ?? null,
-            'student_id' => $data['student_id'],
-            'billing_month' => $data['billing_month'],
-            'billing_year' => $data['billing_year'],
-            'invoice_date' => $data['invoice_date'] ?? date('Y-m-d'),
-            'amount' => $data['amount'],
-            'additional_charges' => $data['additional_charges'] ?? 0,
-            'discount' => $data['discount'] ?? 0,
-            'paid_amount' => $data['paid_amount'] ?? 0,
-            'due_date' => $data['due_date'],
-            'payment_date' => $data['payment_date'] ?? null,
-            'status' => $data['status'] ?? 'Pending',
-            'payment_method' => $data['payment_method'] ?? null,
-            'transaction_ref' => $data['transaction_ref'] ?? null,
-            'remarks' => $data['remarks'] ?? null,
-            'charge_type' => $data['charge_type'] ?? 'MONTHLY_FEE'
-        ]);
-        return $db->lastInsertId();
-=======
+
         // Generate invoice_number if not provided
         if (empty($data['invoice_number'])) {
             $data['invoice_number'] = 'INV-' . strtoupper(substr(uniqid(), -8));
@@ -404,7 +373,6 @@ class FeeRepository {
         ");
         $stmt->execute([$invoiceId]);
         return $stmt->fetchAll();
->>>>>>> 962ef01 (Update HMS)
     }
 
     public function updatePayment($id, $paidAmount, $paymentMethod, $transactionRef, $status, $paymentDate, $pdo = null) {
@@ -530,11 +498,7 @@ class FeeRepository {
 
     public function getOutstandingBalance($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-<<<<<<< HEAD
-        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) as outstanding_balance FROM fee_records WHERE student_id = ? AND (status IN ('Pending', 'Partial', 'Overdue') OR (amount + additional_charges - discount) > paid_amount)");
-=======
-        $stmt = $db->prepare("SELECT COALESCE(SUM(amount - paid_amount), 0) FROM fee_records WHERE student_id = ? AND status IN ('Pending', 'Partial', 'Overdue') AND charge_type = 'MONTHLY_FEE'");
->>>>>>> 962ef01 (Update HMS)
+        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) FROM fee_records WHERE student_id = ? AND status IN ('Pending', 'Partial', 'Overdue') AND charge_type = 'MONTHLY_FEE'");
         $stmt->execute([$studentId]);
         return (float)$stmt->fetchColumn();
     }
@@ -754,5 +718,61 @@ class FeeRepository {
         unset($row);
 
         return $rows;
+    }
+
+    public function getSecurityDepositSummary() {
+        $stmtHeld = $this->db->query("SELECT COALESCE(SUM(remaining_amount), 0) AS total_held, COUNT(DISTINCT student_id) AS held_students FROM security_deposits WHERE status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED')");
+        $heldData = $stmtHeld->fetch() ?: ['total_held' => 0, 'held_students' => 0];
+
+        $stmtRefunded = $this->db->query("SELECT COALESCE(SUM(original_amount - remaining_amount), 0) FROM security_deposits WHERE status = 'REFUNDED'");
+        $totalRefunded = (float)$stmtRefunded->fetchColumn();
+
+        $stmtDeducted = $this->db->query("SELECT COALESCE(SUM(original_amount - remaining_amount), 0) FROM security_deposits WHERE status = 'DEDUCTED'");
+        $totalDeducted = (float)$stmtDeducted->fetchColumn();
+
+        return [
+            'total_held' => (float)($heldData['total_held'] ?? 0),
+            'held_students' => (int)($heldData['held_students'] ?? 0),
+            'total_refunded' => $totalRefunded,
+            'total_deducted' => $totalDeducted
+        ];
+    }
+
+    public function getSecurityDeposits($filters = []) {
+        $sql = "
+            SELECT 
+                sd.id,
+                sd.student_id,
+                s.full_name AS student_name,
+                s.student_id_str,
+                s.cnic,
+                s.created_at AS admission_date,
+                sd.original_amount AS security_amount,
+                CASE WHEN sd.status = 'DEDUCTED' THEN (sd.original_amount - sd.remaining_amount) ELSE 0 END AS amount_deducted,
+                CASE WHEN sd.status = 'REFUNDED' THEN (sd.original_amount - sd.remaining_amount) ELSE 0 END AS amount_refunded,
+                sd.remaining_amount AS current_balance,
+                sd.status AS deposit_status
+            FROM security_deposits sd
+            JOIN students s ON sd.student_id = s.id
+            WHERE 1=1
+        ";
+        $params = [];
+
+        if (!empty($filters['student_id'])) {
+            $sql .= " AND (s.student_id_str LIKE ? OR s.full_name LIKE ?)";
+            $params[] = "%{$filters['student_id']}%";
+            $params[] = "%{$filters['student_id']}%";
+        }
+
+        if (!empty($filters['status'])) {
+            $sql .= " AND sd.status = ?";
+            $params[] = strtoupper($filters['status']);
+        }
+
+        $sql .= " ORDER BY sd.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
     }
 }

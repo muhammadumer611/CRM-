@@ -6,7 +6,7 @@
 
     # All non-API browser requests go to the legacy MVC admin UI
     RewriteCond %{REQUEST_URI} !^/legacy_mvc/ [NC]
-    RewriteRule ^(.*)$ legacy_mvc/public/index.php [QSA,L]
+    RewriteRule ^(.*)$ legacy_mvc/public/index.php?url=$1 [QSA,L]
 
     # Block access to internal directories
     RewriteRule ^config/.*$ - [F]

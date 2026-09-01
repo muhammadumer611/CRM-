@@ -118,20 +118,9 @@ class StudentRepository {
 
     public function create($data, $pdo = null) {
         $db = $pdo ?? $this->db;
-<<<<<<< HEAD
-        $sql = "INSERT INTO students (
-            student_id_str, full_name, cnic, phone, email, blood_group, address,
-            guardian_name, guardian_phone, guardian_cnic, relation, status
-        ) VALUES (
-            :student_id_str, :full_name, :cnic, :phone, :email, :blood_group, :address,
-            :guardian_name, :guardian_phone, :guardian_cnic, :relation, :status
-        )";
-        
-=======
         $fields = array_keys($data);
         $placeholders = array_map(fn($f) => ":$f", $fields);
         $sql = "INSERT INTO students (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ")";
->>>>>>> 962ef01 (Update HMS)
         $stmt = $db->prepare($sql);
         $stmt->execute($data);
         return $db->lastInsertId();

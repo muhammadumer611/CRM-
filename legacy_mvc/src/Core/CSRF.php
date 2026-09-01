@@ -17,7 +17,8 @@ class CSRF {
 
         if (empty($expected) || empty($provided) || !hash_equals($expected, $provided)) {
             Session::set('error', 'Invalid request token. Please try again.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
+            $baseUrl = rtrim((require APP_ROOT . '/config/app.php')['base_url'], '/');
+            header('Location: ' . $baseUrl . '/login');
             exit;
         }
 

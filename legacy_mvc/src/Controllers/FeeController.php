@@ -169,13 +169,16 @@ class FeeController {
         $result = $this->feeService->payFee($id, $_POST);
         
         if ($result['success']) {
-<<<<<<< HEAD
-            Session::set('success', 'Payment recorded successfully.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/fees/receipt/' . $result['payment_id']);
-=======
-            Session::set('success', 'Payment recorded successfully. Receipt: ' . $result['receipt_number']);
-            header('Location: ' . $config['base_url'] . '/fees/pay/' . $id);
->>>>>>> 962ef01 (Update HMS)
+            $msg = 'Payment recorded successfully.';
+            if (!empty($result['receipt_number'])) {
+                $msg .= ' Receipt: ' . $result['receipt_number'];
+            }
+            Session::set('success', $msg);
+            if (!empty($result['payment_id'])) {
+                header('Location: ' . $config['base_url'] . '/fees/receipt/' . $result['payment_id']);
+            } else {
+                header('Location: ' . $config['base_url'] . '/fees/pay/' . $id);
+            }
         } else {
             Session::set('error', $result['error']);
             header('Location: ' . $config['base_url'] . '/fees/pay/' . $id);

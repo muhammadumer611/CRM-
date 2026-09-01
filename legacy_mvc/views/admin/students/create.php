@@ -14,8 +14,8 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
         'available_beds' => $available,
         'monthly_fee' => (float)$room['monthly_fee'],
         'security_deposit' => (float)$room['security_deposit'],
-        'active_allocations' => (int)$room['active_allocations'],
-        'effective_occupied_beds' => (int)$room['effective_occupied_beds'],
+        'active_allocations' => (int)($room['active_allocations'] ?? 0),
+        'effective_occupied_beds' => (int)($room['effective_occupied_beds'] ?? $room['occupied_beds'] ?? 0),
         'beds' => $roomRepository->getAvailableBedsForRoom($roomId),
     ];
     $roomCatalog[] = $entries;
@@ -29,198 +29,6 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
         </a>
     </div>
 
-<<<<<<< HEAD
-    <form action="<?php echo $config['base_url']; ?>/students/store" method="POST" id="admissionForm">
-        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-        <input type="hidden" id="room_allocation_enabled" name="room_allocation_enabled" value="0">
-        <input type="hidden" name="allocation_type" id="allocationTypeHidden" value="BED">
-
-        <div class="row">
-            <div class="col-md-8">
-                <h4 style="margin-bottom: 1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Personal Information</h4>
-                <div class="row">
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Full Name *</label>
-                        <input type="text" name="full_name" class="form-control" required>
-                    </div>
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">CNIC (13 digits without dashes) *</label>
-                        <input type="text" name="cnic" class="form-control" pattern="[0-9]{13}" title="13 digit numeric CNIC" required>
-                    </div>
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Phone Number *</label>
-                        <input type="text" name="phone" class="form-control" required>
-                    </div>
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control">
-                    </div>
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Blood Group</label>
-                        <select name="blood_group" class="form-control">
-                            <option value="">Select</option>
-                            <option value="A+">A+</option><option value="A-">A-</option>
-                            <option value="B+">B+</option><option value="B-">B-</option>
-                            <option value="O+">O+</option><option value="O-">O-</option>
-                            <option value="AB+">AB+</option><option value="AB-">AB-</option>
-                        </select>
-                    </div>
-                    <div class="col-12 form-group">
-                        <label class="form-label">Permanent Address *</label>
-                        <textarea name="address" class="form-control" rows="3" required></textarea>
-                    </div>
-                </div>
-                
-                <h4 style="margin-top: 1rem; margin-bottom: 1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Guardian Information</h4>
-                <div class="row">
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Guardian Name *</label>
-                        <input type="text" name="guardian_name" class="form-control" required>
-                    </div>
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Relation *</label>
-                        <input type="text" name="relation" class="form-control" placeholder="e.g. Father, Brother" required>
-                    </div>
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Guardian Phone *</label>
-                        <input type="text" name="guardian_phone" class="form-control" required>
-                    </div>
-                    <div class="col-md-6 form-group">
-                        <label class="form-label">Guardian CNIC *</label>
-                        <input type="text" name="guardian_cnic" class="form-control" required>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card" style="border: 1px solid var(--border); background: #0f172a; color: #e2e8f0;">
-                    <div class="card-header" style="background: #1e293b; color: white; border-bottom: 1px solid #334155;">
-                        <h5 style="margin: 0;">Admission Summary</h5>
-                    </div>
-                    <div class="card-body" style="padding: 1rem;">
-                        <div><strong>Student:</strong> <span id="summaryStudent">-</span></div>
-                        <div><strong>Room:</strong> <span id="summaryRoom">Not selected</span></div>
-                        <div><strong>Bed:</strong> <span id="summaryBed">-</span></div>
-                        <hr>
-                        <div><strong>Monthly Fee:</strong> Rs. <span id="summaryMonthlyFee">0</span></div>
-                        <div><strong>Security Deposit:</strong> Rs. <span id="summarySecurityDeposit">0</span></div>
-                        <div><strong>Discount:</strong> Rs. <span id="summaryDiscount">0</span></div>
-                        <div><strong>First Month Fee:</strong> Rs. <span id="summaryFirstMonth">0</span></div>
-                        <div><strong>Initial Payment:</strong> Rs. <span id="summaryInitialPayment">0</span></div>
-                        <div><strong>Remaining:</strong> Rs. <span id="summaryRemaining">0</span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <h4 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Room Allocation</h4>
-        <div class="row">
-            <div class="col-md-12 form-group">
-                <label class="form-label">
-                    <input type="checkbox" id="enableRoomAllocation" name="room_allocation_enabled" value="1"> Enable Room Allocation
-                </label>
-            </div>
-            <div class="col-md-12 form-group room-field" style="display:none;">
-                <label class="form-label">Allocation Type</label>
-                <div class="row">
-                    <div class="col-md-6">
-                        <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0;">
-                            <input type="radio" name="allocation_type" value="BED" checked> <span>Bed</span>
-                        </label>
-                    </div>
-                    <div class="col-md-6">
-                        <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0;">
-                            <input type="radio" name="allocation_type" value="FULL_ROOM"> <span>Full Room</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 form-group room-field" style="display:none;">
-                <label class="form-label">Block / Room *</label>
-                <select id="roomSelect" name="room_id" class="form-control">
-                    <option value="">Select Room</option>
-                </select>
-            </div>
-            <div class="col-md-6 form-group room-field bed-only" style="display:none;">
-                <label class="form-label">Bed Number *</label>
-                <input type="number" name="bed_number" id="bedNumberInput" class="form-control" min="1" value="1">
-                <small id="bedHelp" class="text-muted">Select a room to view available beds.</small>
-            </div>
-            <div class="col-md-6 form-group room-field" style="display:none;">
-                <label class="form-label">Joining Date *</label>
-                <input type="date" name="joining_date" class="form-control" value="<?php echo date('Y-m-d'); ?>">
-            </div>
-            <div class="col-md-6 form-group room-field" style="display:none;">
-                <label class="form-label">Allocation Remarks</label>
-                <input type="text" name="allocation_remarks" class="form-control" placeholder="Optional remarks">
-            </div>
-
-            <div class="col-md-12 form-group room-field full-room-occupants-section" style="display:none;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <label class="form-label" style="margin:0;">Full Room Occupants</label>
-                    <button type="button" class="btn btn-sm" id="addOccupantBtn" style="background:#1e293b; color:white;">+ Add Occupant</button>
-                </div>
-                <small class="text-muted" style="display:block; margin-bottom:0.75rem;">The primary student is the fee-paying tenant. Add each room member here without generating extra monthly hostel invoices.</small>
-                <div id="occupantList"></div>
-            </div>
-        </div>
-
-        <h4 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Financial Setup</h4>
-        <div class="row">
-            <div class="col-md-6 form-group">
-                <label class="form-label">Monthly Fee</label>
-                <input type="number" step="0.01" min="0" name="monthly_fee" id="monthlyFeeInput" class="form-control" value="0">
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">Security Deposit</label>
-                <input type="number" step="0.01" min="0" name="security_deposit" id="securityDepositInput" class="form-control" value="0">
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">Discount</label>
-                <input type="number" step="0.01" min="0" name="discount" id="discountInput" class="form-control" value="0">
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">Initial Payment</label>
-                <input type="number" step="0.01" min="0" name="initial_payment" id="initialPaymentInput" class="form-control" value="0">
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">Payment Method</label>
-                <select name="payment_method" class="form-control">
-                    <option value="Cash">Cash</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Online">Online</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">Transaction Reference</label>
-                <input type="text" name="transaction_ref" class="form-control" placeholder="Optional">
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">First Billing Month</label>
-                <select name="first_billing_month" class="form-control">
-                    <?php for ($i = 1; $i <= 12; $i++): ?><option value="<?php echo $i; ?>" <?php echo $i == date('n') ? 'selected' : ''; ?>><?php echo date('F', mktime(0, 0, 0, $i, 1)); ?></option><?php endfor; ?>
-                </select>
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">First Billing Year</label>
-                <select name="first_billing_year" class="form-control">
-                    <?php for ($y = date('Y') - 1; $y <= date('Y') + 2; $y++): ?><option value="<?php echo $y; ?>" <?php echo $y == date('Y') ? 'selected' : ''; ?>><?php echo $y; ?></option><?php endfor; ?>
-                </select>
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">Due Date</label>
-                <input type="date" name="due_date" class="form-control" value="<?php echo date('Y-m-d', strtotime('+15 days')); ?>">
-            </div>
-            <div class="col-md-12 form-group">
-                <label class="form-label">Financial Remarks</label>
-                <textarea name="financial_remarks" rows="2" class="form-control"></textarea>
-            </div>
-        </div>
-
-        <div style="margin-top: 2rem;">
-            <button type="submit" class="btn btn-primary" id="submitButton"><i class="fas fa-save"></i> Save Student & Setup</button>
-=======
     <form action="<?php echo $config['base_url']; ?>/students/store" method="POST" id="onboardForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
 
@@ -316,13 +124,13 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
 
         <!-- ===== SECTION 3: ROOM ALLOCATION ===== -->
         <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
-            <h4 style="color:var(--primary);margin-bottom:0.5rem;"><i class="fas fa-bed"></i> Room & Bed Allocation <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">(Optional — can be done later)</span></h4>
+            <h4 style="color:var(--primary);margin-bottom:0.5rem;"><i class="fas fa-bed"></i> Room & Bed Allocation <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">(Required)</span></h4>
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-label">Select Room</label>
-                        <select name="room_id" id="roomSelect" class="form-control" onchange="loadBeds(this.value)">
-                            <option value="">— No room (assign later) —</option>
+                        <label class="form-label">Select Room *</label>
+                        <select name="room_id" id="roomSelect" class="form-control" onchange="loadBeds(this.value)" required>
+                            <option value="">Select available room</option>
                             <?php foreach($rooms as $room): ?>
                                 <option value="<?php echo $room['id']; ?>"
                                     data-total="<?php echo $room['total_beds']; ?>"
@@ -339,8 +147,8 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-label">Joining Date</label>
-                        <input type="date" name="joining_date" id="joiningDate" class="form-control" value="<?php echo htmlspecialchars($_POST['joining_date'] ?? date('Y-m-d')); ?>">
+                        <label class="form-label">Joining Date *</label>
+                        <input type="date" name="joining_date" id="joiningDate" class="form-control" value="<?php echo htmlspecialchars($_POST['joining_date'] ?? date('Y-m-d')); ?>" required>
                     </div>
                 </div>
             </div>
@@ -358,7 +166,7 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
             <!-- Bed Selector -->
             <div id="bedSelectorWrap" style="display:none;">
                 <label class="form-label" style="margin-bottom:0.75rem;">Select Bed <span style="color:var(--danger);">*</span></label>
-                <div id="bedSelectorLoading" style="display:none;color:var(--text-muted);padding:1rem;">Loading beds...</div>
+                <div id="bedSelectorLoading" style="display:none;color:var(--text-muted);padding:1rem;">Loading available beds...</div>
                 <div id="bedGrid" style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;"></div>
                 <input type="hidden" name="bed_number" id="bedNumberInput" value="">
                 <div id="bedSelectedDisplay" style="display:none;padding:0.5rem 0.75rem;background:rgba(56,189,248,0.1);border-radius:6px;color:var(--primary);font-weight:600;font-size:0.9rem;margin-top:0.5rem;">
@@ -394,50 +202,7 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
             <button type="submit" class="btn btn-primary" id="submitBtn">
                 <i class="fas fa-user-plus"></i> Onboard Student
             </button>
->>>>>>> 962ef01 (Update HMS)
         </div>
-    </form>
-</div>
-
-<<<<<<< HEAD
-<script>
-(function() {
-    const roomCatalog = <?php echo json_encode($roomCatalog, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
-    const roomCheckbox = document.getElementById('enableRoomAllocation');
-    const roomFields = document.querySelectorAll('.room-field');
-    const bedOnlyFields = document.querySelectorAll('.bed-only');
-    const fullRoomOccupantsSection = document.querySelector('.full-room-occupants-section');
-    const occupantList = document.getElementById('occupantList');
-    const addOccupantBtn = document.getElementById('addOccupantBtn');
-    const roomSelect = document.getElementById('roomSelect');
-    const bedNumberInput = document.getElementById('bedNumberInput');
-    const bedHelp = document.getElementById('bedHelp');
-    const allocationTypeHidden = document.getElementById('allocationTypeHidden');
-    const monthlyFeeInput = document.getElementById('monthlyFeeInput');
-    const securityDepositInput = document.getElementById('securityDepositInput');
-    const discountInput = document.getElementById('discountInput');
-    const initialPaymentInput = document.getElementById('initialPaymentInput');
-    const summaryStudent = document.getElementById('summaryStudent');
-    const summaryRoom = document.getElementById('summaryRoom');
-    const summaryBed = document.getElementById('summaryBed');
-    const summaryMonthlyFee = document.getElementById('summaryMonthlyFee');
-    const summarySecurityDeposit = document.getElementById('summarySecurityDeposit');
-    const summaryDiscount = document.getElementById('summaryDiscount');
-    const summaryFirstMonth = document.getElementById('summaryFirstMonth');
-    const summaryInitialPayment = document.getElementById('summaryInitialPayment');
-    const summaryRemaining = document.getElementById('summaryRemaining');
-
-    function formatMoney(value) {
-        return Number(value || 0).toLocaleString('en-PK', {minimumFractionDigits: 0, maximumFractionDigits: 0});
-    }
-
-    function refreshSummary() {
-        const studentName = document.querySelector('input[name="full_name"]').value.trim();
-        const roomOption = roomSelect.selectedOptions[0];
-        const monthly = Number(monthlyFeeInput.value || 0);
-        const security = Number(securityDepositInput.value || 0);
-        const discount = Number(discountInput.value || 0);
-        const firstMonth = Math.max(0, monthly - discount);
         const initial = Number(initialPaymentInput.value || 0);
         const remaining = Math.max(0, (firstMonth + security) - initial);
 
@@ -627,29 +392,9 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
         if (type === 'BED') {
             renderBedOptions(Number(option.value));
         } else {
-            bedNumberInput.value = 0;
-            bedHelp.textContent = 'Full room allocation selected.';
-            monthlyFeeInput.value = Number(option.dataset.monthlyFee || 0);
-            securityDepositInput.value = Number(option.dataset.securityDeposit || 0);
-        }
-        refreshSummary();
-    });
+    </form>
+</div>
 
-    [
-        'input',
-        'change'
-    ].forEach(evt => {
-        document.querySelector('input[name="full_name"]').addEventListener(evt, refreshSummary);
-        monthlyFeeInput.addEventListener(evt, refreshSummary);
-        securityDepositInput.addEventListener(evt, refreshSummary);
-        discountInput.addEventListener(evt, refreshSummary);
-        initialPaymentInput.addEventListener(evt, refreshSummary);
-        bedNumberInput.addEventListener(evt, refreshSummary);
-    });
-
-    refreshSummary();
-})();
-=======
 <style>
 .bed-btn {
     width: 70px; height: 70px;
@@ -796,5 +541,4 @@ document.getElementById('onboardForm').addEventListener('submit', function(e) {
         return false;
     }
 });
->>>>>>> 962ef01 (Update HMS)
 </script>

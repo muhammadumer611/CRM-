@@ -190,19 +190,6 @@ class AllocationService {
             $stmtClose = $this->db->prepare("UPDATE room_allocations SET status = 'Closed', leaving_date = ? WHERE id = ?");
             $stmtClose->execute([$date, $allocationId]);
 
-<<<<<<< HEAD
-            // Update Room Occupancy
-            if ((int)$alloc['bed_number'] === 0) {
-                $newOccupied = 0;
-                $newStatus = 'Available';
-            } else {
-                $newOccupied = max(0, $room['occupied_beds'] - 1);
-                $newStatus = ($newOccupied == 0) ? 'Available' : 'Partially Occupied';
-            }
-            
-            if ($room['status'] === 'Disabled') {
-                $newStatus = 'Disabled';
-=======
             // Reconcile Room Occupancy
             $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
             $stmtCount->execute([$alloc['room_id']]);
@@ -217,7 +204,6 @@ class AllocationService {
                 } else {
                     $newStatus = 'Occupied';
                 }
->>>>>>> 962ef01 (Update HMS)
             }
             
             $stmtUpdateRoom = $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?");

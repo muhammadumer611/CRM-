@@ -146,20 +146,6 @@
         .hamburger-btn { display:none; background:none; border:1px solid var(--border); color:var(--text); border-radius:6px; padding:0.4rem 0.6rem; cursor:pointer; font-size:1rem; }
 
         @media (max-width: 768px) {
-<<<<<<< HEAD
-            .col-md-6, .col-md-4 { width: 100%; }
-            .row { margin: 0; }
-            .content { padding: 0.75rem; }
-            .user-menu span { display: none; }
-            .logout-btn { font-size: 0.75rem; }
-        }
-
-        @media (max-width: 480px) {
-            .topbar { align-items: center; }
-            .topbar-title { max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            .notification-wrap { display: none; }
-            .btn { width: 100%; justify-content: center; }
-=======
             .detail-grid { grid-template-columns: 1fr; }
             .modal-dialog { width:100%; }
             .modal-header, .modal-body { padding-left:1rem; padding-right:1rem; }
@@ -170,55 +156,21 @@
             .hamburger-btn { display:inline-flex; align-items:center; gap:0.4rem; }
             .main-content { width:100%; }
             td, th { padding:0.6rem 0.5rem; font-size:0.82rem; }
->>>>>>> 962ef01 (Update HMS)
+            .col-md-6, .col-md-4 { width: 100%; }
+            .row { margin: 0; }
+            .user-menu span { display: none; }
+            .logout-btn { font-size: 0.75rem; }
+        }
+
+        @media (max-width: 480px) {
+            .topbar { align-items: center; }
+            .topbar-title { max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .notification-wrap { display: none; }
+            .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
-<<<<<<< HEAD
-    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-    <div class="app-shell">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                HMS Admin
-            </div>
-            <div class="sidebar-nav">
-                <a href="<?php echo $config['base_url']; ?>/dashboard" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'dashboard') !== false ? 'active' : ''; ?>">
-                    <i class="fas fa-home"></i> Dashboard
-                </a>
-                <a href="<?php echo $config['base_url']; ?>/students" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'student') !== false ? 'active' : ''; ?>">
-                    <i class="fas fa-user-graduate"></i> Students
-                </a>
-                <a href="<?php echo $config['base_url']; ?>/rooms" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'room') !== false ? 'active' : ''; ?>">
-                    <i class="fas fa-bed"></i> Rooms
-                </a>
-                <a href="<?php echo $config['base_url']; ?>/fees" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'fee') !== false ? 'active' : ''; ?>">
-                    <i class="fas fa-money-bill-wave"></i> Fees
-                </a>
-                <a href="<?php echo $config['base_url']; ?>/notifications" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'notification') !== false ? 'active' : ''; ?>">
-                    <i class="fas fa-bell"></i> Notifications
-                </a>
-                <a href="<?php echo $config['base_url']; ?>/audit-logs" class="nav-item <?php echo strpos($_SERVER['REQUEST_URI'], 'audit') !== false ? 'active' : ''; ?>">
-                    <i class="fas fa-history"></i> Audit Logs
-                </a>
-            </div>
-        </aside>
-        
-        <div class="main-content">
-            <div class="topbar">
-                <button class="mobile-menu-toggle" type="button" aria-label="Open menu" id="menuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="topbar-title"><?php echo htmlspecialchars($title ?? 'Dashboard'); ?></div>
-                <div class="user-menu">
-                    <div class="notification-wrap">
-                        <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-bell" aria-label="Notifications">
-                            <i class="fas fa-bell"></i>
-                            <?php $notificationService = new \App\Services\NotificationService(); $unreadCount = $notificationService->getUnreadCount(); ?>
-                            <?php if ($unreadCount > 0): ?>
-                                <span class="notification-badge"><?php echo (int)$unreadCount; ?></span>
-                            <?php endif; ?>
-=======
     <!-- Mobile sidebar overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -235,9 +187,6 @@
             </a>
             <a href="<?php echo $config['base_url']; ?>/rooms" class="nav-item <?php echo preg_match('#/room#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-door-open"></i> Rooms
-            </a>
-            <a href="<?php echo $config['base_url']; ?>/allocations" class="nav-item <?php echo preg_match('#/allocation#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
-                <i class="fas fa-bed"></i> Allocations
             </a>
             <a href="<?php echo $config['base_url']; ?>/fees" class="nav-item <?php echo preg_match('#/fee#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-money-bill-wave"></i> Fees
@@ -295,91 +244,39 @@
                         <?php endif; ?>
                         <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item" style="text-align:center; font-weight:600;">
                             View All Notifications
->>>>>>> 962ef01 (Update HMS)
                         </a>
-                        <div class="notification-dropdown">
-                            <?php $recent = $notificationService->getRecentUnread(5); ?>
-                            <?php if (empty($recent)): ?>
-                                <div class="notification-item">
-                                    <div class="notification-item-title">No new notifications</div>
-                                    <div class="notification-item-meta">You're all caught up.</div>
-                                </div>
-                            <?php else: ?>
-                                <?php foreach ($recent as $item): ?>
-                                    <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item unread">
-                                        <div class="notification-item-title"><?php echo htmlspecialchars($item['title']); ?></div>
-                                        <div class="notification-item-meta"><?php echo htmlspecialchars(substr($item['message'], 0, 70)); ?><?php echo strlen((string)$item['message']) > 70 ? '...' : ''; ?></div>
-                                        <div class="notification-item-meta"><?php echo htmlspecialchars(date('M d, H:i', strtotime($item['created_at']))); ?></div>
-                                    </a>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                            <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item" style="text-align:center; font-weight:600;">
-                                View All Notifications
-                            </a>
-                        </div>
                     </div>
-                    <span><i class="fas fa-user-circle"></i> <?php echo htmlspecialchars(\App\Core\Auth::user()); ?></span>
-                    <a href="<?php echo $config['base_url']; ?>/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
+                <span><i class="fas fa-user-circle"></i> <?php echo htmlspecialchars(\App\Core\Auth::user()); ?></span>
+                <a href="<?php echo $config['base_url']; ?>/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
+        </div>
+        
+        <div class="content">
+            <?php 
+            $success = \App\Core\Session::get('success');
+            $error = \App\Core\Session::get('error');
+            \App\Core\Session::remove('success');
+            \App\Core\Session::remove('error');
+            if ($success): ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+            <?php endif; ?>
+            <?php if ($error): ?>
+                <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
             
-            <div class="content">
-                <?php 
-                $success = \App\Core\Session::get('success');
-                $error = \App\Core\Session::get('error');
-                \App\Core\Session::remove('success');
-                \App\Core\Session::remove('error');
-                if ($success): ?>
-                    <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
-                <?php endif; ?>
-                <?php if ($error): ?>
-                    <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
-                <?php endif; ?>
-                
-                <?php echo $content ?? ''; ?>
-            </div>
+            <?php echo $content ?? ''; ?>
         </div>
     </div>
 
-<<<<<<< HEAD
-    <script>
-        (function () {
-            const menuToggle = document.getElementById('menuToggle');
-            const sidebarBackdrop = document.getElementById('sidebarBackdrop');
-            const body = document.body;
-
-            function setSidebarState(open) {
-                body.classList.toggle('sidebar-open', open);
-            }
-
-            if (menuToggle) {
-                menuToggle.addEventListener('click', function () {
-                    setSidebarState(!body.classList.contains('sidebar-open'));
-                });
-            }
-
-            if (sidebarBackdrop) {
-                sidebarBackdrop.addEventListener('click', function () {
-                    setSidebarState(false);
-                });
-            }
-
-            document.querySelectorAll('.nav-item').forEach(function (link) {
-                link.addEventListener('click', function () {
-                    if (window.innerWidth <= 900) {
-                        setSidebarState(false);
-                    }
-                });
-            });
-        })();
-    </script>
-=======
 <script>
 function toggleSidebar() {
     var s = document.getElementById('sidebar');
     var o = document.getElementById('sidebarOverlay');
-    s.classList.toggle('open');
-    o.classList.toggle('show');
+    if (s && o) {
+        s.classList.toggle('open');
+        o.classList.toggle('show');
+    }
 }
 // Close sidebar when a nav link is clicked on mobile
 document.querySelectorAll('.sidebar .nav-item').forEach(function(el) {
@@ -388,6 +285,5 @@ document.querySelectorAll('.sidebar .nav-item').forEach(function(el) {
     });
 });
 </script>
->>>>>>> 962ef01 (Update HMS)
 </body>
 </html>

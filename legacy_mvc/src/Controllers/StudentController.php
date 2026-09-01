@@ -6,11 +6,8 @@ use App\Core\View;
 use App\Core\Session;
 use App\Core\CSRF;
 use App\Services\StudentService;
-<<<<<<< HEAD
 use App\Services\StudentAccountService;
-=======
 use App\Services\RoomService;
->>>>>>> 962ef01 (Update HMS)
 
 class StudentController {
     private $studentService;
@@ -58,15 +55,11 @@ class StudentController {
         }
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
-
-<<<<<<< HEAD
-=======
         $config = require APP_ROOT . '/config/app.php';
 
->>>>>>> 962ef01 (Update HMS)
-        $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation'];
+        $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation', 'room_id', 'bed_number', 'joining_date'];
         foreach ($required as $field) {
-            if (empty(trim($_POST[$field] ?? ''))) {
+            if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
                 Session::set('error', 'Please fill all required fields: ' . str_replace('_', ' ', $field) . '.');
                 header('Location: ' . $config['base_url'] . '/students/create');
                 exit;
@@ -76,13 +69,9 @@ class StudentController {
         $result = $this->studentService->onboardStudent($_POST);
         
         if ($result['success']) {
-<<<<<<< HEAD
-            Session::set('success', 'Student admitted successfully.');
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
-=======
-            Session::set('success', 'Student ' . htmlspecialchars($result['student_id_str']) . ' onboarded successfully.');
+            $studentStr = !empty($result['student_id_str']) ? ' (' . htmlspecialchars($result['student_id_str']) . ')' : '';
+            Session::set('success', 'Student onboarded successfully' . $studentStr . '.');
             header('Location: ' . $config['base_url'] . '/students');
->>>>>>> 962ef01 (Update HMS)
         } else {
             Session::set('error', $result['error']);
             header('Location: ' . $config['base_url'] . '/students/create');

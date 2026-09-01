@@ -2,8 +2,10 @@
 /** @var \App\Core\Router $router */
 
 $router->add('GET', '/', 'AuthController', 'loginForm');
+$router->add('GET', '/login', 'AuthController', 'loginForm');
 $router->add('POST', '/login', 'AuthController', 'login');
 $router->add('GET', '/logout', 'AuthController', 'logout');
+$router->add('POST', '/logout', 'AuthController', 'logout');
 
 $router->add('GET', '/dashboard', 'DashboardController', 'index');
 
@@ -14,11 +16,8 @@ $router->add('POST', '/students/store', 'StudentController', 'store');
 $router->add('GET', '/students/view/{id}', 'StudentController', 'show');
 $router->add('GET', '/students/edit/{id}', 'StudentController', 'edit');
 $router->add('POST', '/students/update/{id}', 'StudentController', 'update');
-<<<<<<< HEAD
 $router->add('GET', '/students/account/{id}', 'StudentController', 'account');
-=======
 $router->add('POST', '/students/checkout/{id}', 'StudentController', 'checkout');
->>>>>>> 962ef01 (Update HMS)
 
 // Room routes
 $router->add('GET', '/rooms', 'RoomController', 'index');
@@ -26,13 +25,6 @@ $router->add('GET', '/rooms/create', 'RoomController', 'create');
 $router->add('POST', '/rooms/store', 'RoomController', 'store');
 $router->add('GET', '/rooms/edit/{id}', 'RoomController', 'edit');
 $router->add('POST', '/rooms/update/{id}', 'RoomController', 'update');
-
-// Allocation routes
-$router->add('GET', '/allocations', 'AllocationController', 'index');
-$router->add('GET', '/allocations/create', 'AllocationController', 'create');
-$router->add('POST', '/allocations/store', 'AllocationController', 'store');
-$router->add('POST', '/allocations/remove/{id}', 'AllocationController', 'remove');
-$router->add('GET', '/api/allocations/available-beds/{room_id}', 'AllocationController', 'apiAvailableBeds');
 
 // Fee routes
 $router->add('GET', '/fees', 'FeeController', 'index');

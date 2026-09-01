@@ -13,9 +13,14 @@ class AuthController {
         $this->authService = new AuthService();
     }
 
+    private function routeUrl($path) {
+        $baseUrl = rtrim((require APP_ROOT . '/config/app.php')['base_url'], '/');
+        return $baseUrl . '/' . ltrim($path, '/');
+    }
+
     public function loginForm() {
         if (Session::get('admin_id')) {
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/dashboard');
+            header('Location: ' . $this->routeUrl('dashboard'));
             exit;
         }
 
@@ -45,33 +50,33 @@ class AuthController {
 
         if ($attempts >= (int)($config['login_attempt_limit'] ?? 5)) {
             Session::set('error', 'Too many login attempts. Please try again later.');
-            header('Location: ' . $config['base_url'] . '/');
+            header('Location: ' . $this->routeUrl('login'));
             exit;
         }
 
         if (empty($username) || empty($password)) {
             $this->authService->recordFailedLogin($ip, $username);
             Session::set('error', 'Invalid username or password.');
-            header('Location: ' . $config['base_url'] . '/');
+            header('Location: ' . $this->routeUrl('login'));
             exit;
         }
 
         if ($this->authService->login($username, $password, $ip)) {
             $this->authService->clearFailedLoginAttempts($ip, $username);
-            header('Location: ' . $config['base_url'] . '/dashboard');
+            header('Location: ' . $this->routeUrl('dashboard'));
             exit;
         }
 
         $this->authService->recordFailedLogin($ip, $username);
         Session::set('error', 'Invalid username or password.');
-        header('Location: ' . $config['base_url'] . '/');
+        header('Location: ' . $this->routeUrl('login'));
         exit;
     }
 
     public function logout() {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $this->authService->logout($ip);
-        header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
+        header('Location: ' . $this->routeUrl('login'));
         exit;
     }
 }

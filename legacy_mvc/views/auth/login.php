@@ -44,7 +44,7 @@
             </div>
         <?php endif; ?>
 
-        <form action="<?php echo $config['base_url']; ?>/login" method="POST">
+        <form action="<?php echo rtrim($config['base_url'], '/'); ?>/login" method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
             
             <div class="form-group">

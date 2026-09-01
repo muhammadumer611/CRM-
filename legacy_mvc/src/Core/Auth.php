@@ -2,12 +2,17 @@
 namespace App\Core;
 
 class Auth {
+    private static function loginUrl() {
+        $baseUrl = rtrim((require APP_ROOT . '/config/app.php')['base_url'], '/');
+        return $baseUrl . '/login';
+    }
+
     public static function check() {
         Session::init();
 
         if (!Session::get('admin_id')) {
             Session::destroy();
-            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/');
+            header('Location: ' . self::loginUrl());
             exit;
         }
 

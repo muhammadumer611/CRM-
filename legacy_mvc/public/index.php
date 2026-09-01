@@ -92,5 +92,15 @@ require __DIR__ . '/../src/routes.php';
 
 // Dispatch
 $url = $_GET['url'] ?? '';
+if ($url === '' && isset($_SERVER['REQUEST_URI'])) {
+    $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '';
+    $basePath = parse_url($appConfig['base_url'] ?? '', PHP_URL_PATH) ?: '';
+    if ($basePath !== '' && strpos($requestPath, $basePath) === 0) {
+        $url = substr($requestPath, strlen($basePath));
+    } else {
+        $url = $requestPath;
+    }
+}
+$url = trim($url, '/');
 $router->dispatch($url);
 

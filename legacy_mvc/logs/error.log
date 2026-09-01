@@ -1,0 +1,34 @@
+[2026-09-01 12:39:59] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting end of file" in D:\CRM\legacy_mvc\src\routes.php on line 17
+Stack trace:
+#0 {main}
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[2026-09-01 13:25:27] Uncaught Exception Error: "Call to undefined method App\Services\FeeService::getSecurityDepositSummary()" in D:\CRM\legacy_mvc\src\Controllers\FeeController.php on line 144
+Stack trace:
+#0 [internal function]: App\Controllers\FeeController->securityDeposits()
+#1 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#2 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/fees/security-...')
+#3 {main}
+[01-Sep-2026 13:33:57 Europe/Berlin] PHP Warning:  Undefined array key "REQUEST_METHOD" in D:\CRM\legacy_mvc\src\Core\Router.php on line 25
+[2026-09-01 14:13:04] Uncaught Exception Error: "Unknown named parameter $room_id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/api/allocation...')
+#2 {main}
+[2026-09-01 14:13:08] Uncaught Exception Error: "Unknown named parameter $room_id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/api/allocation...')
+#2 {main}
+[01-Sep-2026 14:13:22 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[01-Sep-2026 14:21:35 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44

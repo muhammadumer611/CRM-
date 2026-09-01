@@ -82,16 +82,16 @@
                                 <span class="badge badge-danger">Inactive</span>
                             <?php endif; ?>
                         </td>
-<<<<<<< HEAD
-                        <td>
-                            <a href="<?php echo $config['base_url']; ?>/students/edit/<?php echo $student['id']; ?>" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
-                            <a href="<?php echo $config['base_url']; ?>/students/account/<?php echo $student['id']; ?>" class="btn btn-sm" style="background-color: #475569; color: white;"><i class="fas fa-eye"></i></a>
-=======
                         <td style="white-space:nowrap;">
-                            <a href="<?php echo $config['base_url']; ?>/students/edit/<?php echo $s['id']; ?>" class="btn btn-sm btn-primary">
+                            <a href="<?php echo $config['base_url']; ?>/students/view/<?php echo $s['id']; ?>" class="btn btn-sm" style="background-color: #334155; color: white;" title="View Profile">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="<?php echo $config['base_url']; ?>/students/edit/<?php echo $s['id']; ?>" class="btn btn-sm btn-primary" title="Edit Student">
                                 <i class="fas fa-edit"></i> Edit
                             </a>
->>>>>>> 962ef01 (Update HMS)
+                            <a href="<?php echo $config['base_url']; ?>/students/account/<?php echo $s['id']; ?>" class="btn btn-sm" style="background-color: #0284c7; color: white;" title="Account Statement">
+                                <i class="fas fa-file-invoice-dollar"></i> Account
+                            </a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
