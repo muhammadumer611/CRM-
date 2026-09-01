@@ -33,7 +33,8 @@ class RoomController {
             'total' => $result['total'],
             'page' => $page,
             'perPage' => $perPage,
-            'filters' => $filters
+            'filters' => $filters,
+            'csrf_token' => CSRF::generateToken()
         ], 'admin');
     }
 
@@ -51,10 +52,10 @@ class RoomController {
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
 
-        $required = ['room_number', 'block', 'floor', 'room_type', 'total_beds', 'monthly_fee', 'security_deposit'];
+        $required = ['room_number', 'block', 'floor', 'room_type', 'total_beds'];
         foreach ($required as $field) {
-            if (!isset($_POST[$field]) || $_POST[$field] === '') {
-                Session::set('error', 'Please fill all required fields.');
+            if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
+                Session::set('error', 'Please fill all required room fields.');
                 header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms/create');
                 exit;
             }
@@ -106,6 +107,25 @@ class RoomController {
             Session::set('error', $result['error']);
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms/edit/' . $id);
         }
+        exit;
+    }
+
+    public function delete($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+
+        CSRF::verifyToken($_POST['csrf_token'] ?? '');
+
+        $result = $this->roomService->deleteRoom((int)$id);
+
+        if ($result['success']) {
+            Session::set('success', 'Room deleted successfully.');
+        } else {
+            Session::set('error', $result['error']);
+        }
+
+        header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/rooms');
         exit;
     }
 }

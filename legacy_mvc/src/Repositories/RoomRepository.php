@@ -262,6 +262,11 @@ class RoomRepository {
         return $stmt->execute($data);
     }
 
+    public function delete($id) {
+        $stmt = $this->db->prepare("DELETE FROM rooms WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+
     public function getActiveAllocationsForRoom($roomId) {
         $stmt = $this->db->prepare("
             SELECT ra.id, ra.student_id, ra.room_id, ra.bed_number, ra.joining_date, ra.status,

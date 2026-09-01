@@ -40,10 +40,11 @@ class AllocationController {
         ], 'admin');
     }
 
-    public function apiAvailableBeds($roomId) {
+    public function apiAvailableBeds($id) {
         header('Content-Type: application/json');
         $roomService = new \App\Services\RoomService();
-        $res = $roomService->getAvailableBeds((int)$roomId);
+        $roomId = (int)$id;
+        $res = $roomService->getAvailableBeds($roomId);
         if ($res['success']) {
             echo json_encode([
                 'success' => true,

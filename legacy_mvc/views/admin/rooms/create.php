@@ -28,20 +28,13 @@
                     <option value="Single">Single</option>
                     <option value="Double">Double</option>
                     <option value="Triple">Triple</option>
+                    <option value="Four Bed">Four Bed</option>
                     <option value="Dormitory">Dormitory</option>
                 </select>
             </div>
-            <div class="col-md-4 form-group">
+            <div class="col-md-6 form-group">
                 <label class="form-label">Total Beds *</label>
                 <input type="number" name="total_beds" class="form-control" min="1" required>
-            </div>
-            <div class="col-md-4 form-group">
-                <label class="form-label">Monthly Fee (Rs.) *</label>
-                <input type="number" name="monthly_fee" class="form-control" step="0.01" min="0" required>
-            </div>
-            <div class="col-md-4 form-group">
-                <label class="form-label">Security Deposit (Rs.) *</label>
-                <input type="number" name="security_deposit" class="form-control" step="0.01" min="0" required>
             </div>
             <div class="col-md-6 form-group">
                 <label class="form-label">Status</label>

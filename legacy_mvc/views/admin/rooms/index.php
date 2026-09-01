@@ -34,7 +34,6 @@
                     <th>Type</th>
                     <th>Beds Capacity</th>
                     <th>Occupancy</th>
-                    <th>Fees / Deposit</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -69,10 +68,6 @@
                             </div>
                         </td>
                         <td>
-                            Rs. <?php echo number_format($room['monthly_fee'], 0); ?><br>
-                            <small style="color: var(--text-muted);">Dep: Rs. <?php echo number_format($room['security_deposit'], 0); ?></small>
-                        </td>
-                        <td>
                             <?php if ($room['status'] === 'Available'): ?>
                                 <span class="badge badge-success">Available</span>
                             <?php elseif ($room['status'] === 'Partially Occupied'): ?>
@@ -84,7 +79,13 @@
                             <?php endif; ?>
                         </td>
                         <td>
-                            <a href="<?php echo $config['base_url']; ?>/rooms/edit/<?php echo $room['id']; ?>" class="btn btn-sm btn-primary" title="Edit Room"><i class="fas fa-edit"></i> Edit</a>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                                <a href="<?php echo $config['base_url']; ?>/rooms/edit/<?php echo $room['id']; ?>" class="btn btn-sm btn-primary" title="Edit Room"><i class="fas fa-edit"></i> Edit</a>
+                                <form action="<?php echo $config['base_url']; ?>/rooms/delete/<?php echo $room['id']; ?>" method="POST" onsubmit="return confirm('Are you sure you want to delete this room?');" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete Room"><i class="fas fa-trash"></i> Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>

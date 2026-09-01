@@ -25,6 +25,10 @@ $router->add('GET', '/rooms/create', 'RoomController', 'create');
 $router->add('POST', '/rooms/store', 'RoomController', 'store');
 $router->add('GET', '/rooms/edit/{id}', 'RoomController', 'edit');
 $router->add('POST', '/rooms/update/{id}', 'RoomController', 'update');
+$router->add('POST', '/rooms/delete/{id}', 'RoomController', 'delete');
+
+// Availability API routes
+$router->add('GET', '/api/allocations/available-beds/{id}', 'AllocationController', 'apiAvailableBeds');
 
 // Fee routes
 $router->add('GET', '/fees', 'FeeController', 'index');

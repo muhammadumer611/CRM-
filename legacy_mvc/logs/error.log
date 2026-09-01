@@ -32,3 +32,18 @@ Stack trace:
 #2 {main}
 [01-Sep-2026 14:13:22 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
 [01-Sep-2026 14:21:35 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[2026-09-01 21:50:48] Uncaught Exception PDOException: "SQLSTATE[23000]: Integrity constraint violation: 1052 Column 'payment_date' in field list is ambiguous" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 602
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php(602): PDO->prepare('SELECT MAX(paym...')
+#1 D:\CRM\legacy_mvc\src\Services\StudentAccountService.php(66): App\Repositories\FeeRepository->getLastPaymentDate('2', Object(PDO))
+#2 D:\CRM\legacy_mvc\src\Controllers\StudentController.php(187): App\Services\StudentAccountService->getStudentAccount('2')
+#3 [internal function]: App\Controllers\StudentController->account('2')
+#4 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#5 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/students/accou...')
+#6 {main}
+[2026-09-01 21:56:51] Uncaught Exception Error: "Unknown named parameter $id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/api/allocation...')
+#2 {main}
+[01-Sep-2026 22:10:05 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44

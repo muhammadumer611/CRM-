@@ -122,8 +122,8 @@ class RoomService {
             'floor' => trim($data['floor']),
             'room_type' => trim($data['room_type']),
             'total_beds' => $totalBeds,
-            'monthly_fee' => max(0, (float)($data['monthly_fee'] ?? 0)),
-            'security_deposit' => max(0, (float)($data['security_deposit'] ?? 0)),
+            'monthly_fee' => 0.00,
+            'security_deposit' => 0.00,
             'status' => $data['status'] ?? 'Available'
         ];
 
@@ -185,8 +185,8 @@ class RoomService {
             'floor' => trim($data['floor']),
             'room_type' => trim($data['room_type']),
             'total_beds' => $totalBeds,
-            'monthly_fee' => max(0, (float)($data['monthly_fee'] ?? 0)),
-            'security_deposit' => max(0, (float)($data['security_deposit'] ?? 0)),
+            'monthly_fee' => 0.00,
+            'security_deposit' => 0.00,
             'status' => $status
         ];
 
@@ -219,6 +219,23 @@ class RoomService {
         }
         
         return ['success' => false, 'error' => 'Failed to update room.'];
+    }
+
+    public function deleteRoom($id) {
+        $room = $this->roomRepo->findById($id);
+        if (!$room) {
+            return ['success' => false, 'error' => 'Room not found.'];
+        }
+
+        if ($this->roomRepo->countActiveAllocations($id) > 0) {
+            return ['success' => false, 'error' => 'This room cannot be deleted because it currently has active occupants.'];
+        }
+
+        if ($this->roomRepo->delete($id)) {
+            return ['success' => true];
+        }
+
+        return ['success' => false, 'error' => 'Failed to delete room.'];
     }
 
     public function reconcileAllRooms() {

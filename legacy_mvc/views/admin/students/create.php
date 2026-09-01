@@ -3,61 +3,170 @@
 $roomRepository = new \App\Repositories\RoomRepository();
 $roomCatalog = [];
 foreach ($roomRepository->findAllWithAvailability() as $room) {
-    $roomId = (int)$room['id'];
-    $available = max(0, (int)$room['available_beds']);
-    $entries = [
-        'id' => $roomId,
-        'label' => $room['block'] . ' - ' . $room['room_number'],
-        'room_type' => $room['room_type'],
+    $occupied = (int)($room['occupied_beds'] ?? 0);
+    $available = max(0, (int)$room['total_beds'] - $occupied);
+    $roomCatalog[] = [
+        'id' => (int)$room['id'],
+        'room_number' => $room['room_number'],
+        'block' => $room['block'],
         'floor' => $room['floor'],
+        'room_type' => $room['room_type'],
         'total_beds' => (int)$room['total_beds'],
+        'occupied_beds' => $occupied,
         'available_beds' => $available,
-        'monthly_fee' => (float)$room['monthly_fee'],
-        'security_deposit' => (float)$room['security_deposit'],
-        'active_allocations' => (int)($room['active_allocations'] ?? 0),
-        'effective_occupied_beds' => (int)($room['effective_occupied_beds'] ?? $room['occupied_beds'] ?? 0),
-        'beds' => $roomRepository->getAvailableBedsForRoom($roomId),
+        'available_capacity' => $available,
+        'status' => $room['status'] ?? 'Available'
     ];
-    $roomCatalog[] = $entries;
 }
+$singlePersonRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room['available_beds'] > 0));
+$fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room['available_beds'] > 0));
 ?>
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-user-plus"></i> New Student Onboarding</h3>
+        <h3 class="card-title"><i class="fas fa-user-plus"></i> Add New Student</h3>
         <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:#334155;color:white;">
             <i class="fas fa-arrow-left"></i> Back
         </a>
     </div>
 
-    <form action="<?php echo $config['base_url']; ?>/students/store" method="POST" id="onboardForm">
+    <form action="<?php echo $config['base_url']; ?>/students/store" method="POST" id="studentOnboardForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
 
-        <!-- ===== SECTION 1: PERSONAL INFORMATION ===== -->
         <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
-            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-user"></i> Personal Information</h4>
+            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-house-user"></i> Accommodation Type</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="choice-card">
+                        <input type="radio" name="accommodation_type" value="single" class="accommodation-option">
+                        <span>Single Person</span>
+                    </label>
+                </div>
+                <div class="col-md-6">
+                    <label class="choice-card">
+                        <input type="radio" name="accommodation_type" value="full_room" class="accommodation-option">
+                        <span>Full Room</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="singleRoomSection" style="display:none;">
+            <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+                <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-bed"></i> Room & Bed Allocation</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Select Room *</label>
+                            <select id="singleRoomSelect" name="room_id" class="form-control">
+                                <option value="">Select available room</option>
+                                <?php foreach ($singlePersonRooms as $room): ?>
+                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-block="<?php echo htmlspecialchars($room['block']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
+                                        <?php echo htmlspecialchars($room['block'] . ' - ' . $room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Joining Date *</label>
+                            <input type="date" name="joining_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="singleRoomSummary" style="display:none;background:#1e293b;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
+                    <div class="row">
+                        <div class="col-md-2"><span class="small-label">Room</span><strong id="singleRoomNumber">—</strong></div>
+                        <div class="col-md-2"><span class="small-label">Block</span><strong id="singleRoomBlock">—</strong></div>
+                        <div class="col-md-2"><span class="small-label">Floor</span><strong id="singleRoomFloor">—</strong></div>
+                        <div class="col-md-2"><span class="small-label">Type</span><strong id="singleRoomType">—</strong></div>
+                        <div class="col-md-2"><span class="small-label">Occupied</span><strong id="singleRoomOccupied">—</strong></div>
+                        <div class="col-md-2"><span class="small-label">Available</span><strong id="singleRoomAvailable">—</strong></div>
+                    </div>
+                </div>
+
+                <div id="singleBedSection" style="display:none;">
+                    <label class="form-label">Select Bed *</label>
+                    <select id="singleBedSelect" name="bed_number" class="form-control">
+                        <option value="">Select available bed</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="fullRoomSection" style="display:none;">
+            <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+                <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-users"></i> Room Selection</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Select Room *</label>
+                            <select id="fullRoomSelect" name="room_id" class="form-control">
+                                <option value="">Select room</option>
+                                <?php foreach ($fullRoomRooms as $room): ?>
+                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-block="<?php echo htmlspecialchars($room['block']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
+                                        <?php echo htmlspecialchars($room['block'] . ' - ' . $room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Joining Date *</label>
+                            <input type="date" name="joining_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                    </div>
+                </div>
+                <div id="fullRoomSummary" style="display:none;background:#1e293b;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
+                    <div class="row">
+                        <div class="col-md-3"><span class="small-label">Room</span><strong id="fullRoomNumber">—</strong></div>
+                        <div class="col-md-3"><span class="small-label">Block</span><strong id="fullRoomBlock">—</strong></div>
+                        <div class="col-md-3"><span class="small-label">Floor</span><strong id="fullRoomFloor">—</strong></div>
+                        <div class="col-md-3"><span class="small-label">Type</span><strong id="fullRoomType">—</strong></div>
+                    </div>
+                    <div class="row" style="margin-top:0.75rem;">
+                        <div class="col-md-6"><span class="small-label">Total Beds</span><strong id="fullRoomTotalBeds">—</strong></div>
+                        <div class="col-md-6"><span class="small-label">Available Capacity</span><strong id="fullRoomAvailable">—</strong></div>
+                    </div>
+                </div>
+
+                <div id="fullRoomOccupants" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center" style="margin-bottom:1rem;">
+                        <h5 style="color:var(--primary);margin:0;">Room Occupants</h5>
+                        <button type="button" id="addOccupantBtn" class="btn btn-sm btn-primary">+ Add Another Person</button>
+                    </div>
+                    <div id="occupantList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="studentInfoSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-user"></i> Student Information</h4>
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Full Name *</label>
-                        <input type="text" name="full_name" class="form-control" required placeholder="e.g. Muhammad Ali Khan" value="<?php echo htmlspecialchars($_POST['full_name'] ?? ''); ?>">
+                        <input type="text" name="full_name" class="form-control" placeholder="e.g. Muhammad Ali Khan">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-label">CNIC * (13 digits)</label>
-                        <input type="text" name="cnic" class="form-control" required placeholder="e.g. 12345-1234567-1" maxlength="15" value="<?php echo htmlspecialchars($_POST['cnic'] ?? ''); ?>">
+                        <label class="form-label">CNIC *</label>
+                        <input type="text" name="cnic" class="form-control" maxlength="15" placeholder="e.g. 12345-1234567-1">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Phone Number *</label>
-                        <input type="text" name="phone" class="form-control" required placeholder="e.g. 03001234567" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>">
+                        <input type="text" name="phone" class="form-control" placeholder="e.g. 03001234567">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="Optional" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
+                        <input type="email" name="email" class="form-control" placeholder="Optional">
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -66,7 +175,7 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
                         <select name="blood_group" class="form-control">
                             <option value="">Select...</option>
                             <?php foreach(['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg): ?>
-                                <option value="<?php echo $bg; ?>" <?php echo (($_POST['blood_group'] ?? '') === $bg) ? 'selected' : ''; ?>><?php echo $bg; ?></option>
+                                <option value="<?php echo $bg; ?>"><?php echo $bg; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -74,471 +183,352 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Address *</label>
-                        <input type="text" name="address" class="form-control" required placeholder="Full address" value="<?php echo htmlspecialchars($_POST['address'] ?? ''); ?>">
+                        <input type="text" name="address" class="form-control" placeholder="Full address">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:1.5rem;">
+                <h5 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-users"></i> Guardian Information</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Guardian Name *</label>
+                            <input type="text" name="guardian_name" class="form-control" placeholder="Guardian name">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Relation *</label>
+                            <select name="relation" class="form-control">
+                                <option value="">Select...</option>
+                                <?php foreach(['Father','Mother','Brother','Sister','Uncle','Aunt','Spouse','Other'] as $rel): ?>
+                                    <option value="<?php echo $rel; ?>"><?php echo $rel; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Guardian Phone *</label>
+                            <input type="text" name="guardian_phone" class="form-control" placeholder="e.g. 03001234567">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Guardian CNIC *</label>
+                            <input type="text" name="guardian_cnic" class="form-control" maxlength="15" placeholder="e.g. 12345-1234567-1">
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label class="form-label">Guardian Address</label>
+                            <input type="text" name="guardian_address" class="form-control" placeholder="Optional">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== SECTION 2: GUARDIAN INFORMATION ===== -->
-        <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
-            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-users"></i> Guardian Information</h4>
+        <div id="financialSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-money-bill-wave"></i> Financial Details</h4>
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-label">Guardian Name *</label>
-                        <input type="text" name="guardian_name" class="form-control" required placeholder="Guardian's full name" value="<?php echo htmlspecialchars($_POST['guardian_name'] ?? ''); ?>">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Relation *</label>
-                        <select name="relation" class="form-control" required>
-                            <option value="">Select...</option>
-                            <?php foreach(['Father','Mother','Brother','Sister','Uncle','Aunt','Spouse','Other'] as $rel): ?>
-                                <option value="<?php echo $rel; ?>" <?php echo (($_POST['relation'] ?? '') === $rel) ? 'selected' : ''; ?>><?php echo $rel; ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Guardian Phone *</label>
-                        <input type="text" name="guardian_phone" class="form-control" required placeholder="e.g. 03001234567" value="<?php echo htmlspecialchars($_POST['guardian_phone'] ?? ''); ?>">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Guardian CNIC *</label>
-                        <input type="text" name="guardian_cnic" class="form-control" required placeholder="e.g. 12345-1234567-1" maxlength="15" value="<?php echo htmlspecialchars($_POST['guardian_cnic'] ?? ''); ?>">
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="form-group">
-                        <label class="form-label">Guardian Address</label>
-                        <input type="text" name="guardian_address" class="form-control" placeholder="Optional" value="<?php echo htmlspecialchars($_POST['guardian_address'] ?? ''); ?>">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== SECTION 3: ROOM ALLOCATION ===== -->
-        <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
-            <h4 style="color:var(--primary);margin-bottom:0.5rem;"><i class="fas fa-bed"></i> Room & Bed Allocation <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">(Required)</span></h4>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Select Room *</label>
-                        <select name="room_id" id="roomSelect" class="form-control" onchange="loadBeds(this.value)" required>
-                            <option value="">Select available room</option>
-                            <?php foreach($rooms as $room): ?>
-                                <option value="<?php echo $room['id']; ?>"
-                                    data-total="<?php echo $room['total_beds']; ?>"
-                                    data-occupied="<?php echo $room['occupied_beds']; ?>"
-                                    data-fee="<?php echo $room['monthly_fee']; ?>"
-                                    data-deposit="<?php echo $room['security_deposit']; ?>"
-                                    <?php echo (($_POST['room_id'] ?? '') == $room['id']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($room['block'] . '-' . $room['room_number']); ?>
-                                    (<?php echo $room['room_type']; ?> | <?php echo $room['total_beds'] - $room['occupied_beds']; ?> beds free)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Joining Date *</label>
-                        <input type="date" name="joining_date" id="joiningDate" class="form-control" value="<?php echo htmlspecialchars($_POST['joining_date'] ?? date('Y-m-d')); ?>" required>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Room Summary Box -->
-            <div id="roomSummary" style="display:none;background:#1e293b;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
-                <div style="display:flex;gap:2rem;flex-wrap:wrap;">
-                    <div><span style="color:var(--text-muted);font-size:0.8rem;">TOTAL BEDS</span><br><strong id="rsTotalBeds">—</strong></div>
-                    <div><span style="color:var(--text-muted);font-size:0.8rem;">OCCUPIED</span><br><strong id="rsOccupied" style="color:#f59e0b;">—</strong></div>
-                    <div><span style="color:var(--text-muted);font-size:0.8rem;">AVAILABLE</span><br><strong id="rsAvailable" style="color:#10b981;">—</strong></div>
-                    <div><span style="color:var(--text-muted);font-size:0.8rem;">ROOM FEE</span><br><strong id="rsRoomFee" style="color:var(--primary);">—</strong></div>
-                </div>
-            </div>
-
-            <!-- Bed Selector -->
-            <div id="bedSelectorWrap" style="display:none;">
-                <label class="form-label" style="margin-bottom:0.75rem;">Select Bed <span style="color:var(--danger);">*</span></label>
-                <div id="bedSelectorLoading" style="display:none;color:var(--text-muted);padding:1rem;">Loading available beds...</div>
-                <div id="bedGrid" style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;"></div>
-                <input type="hidden" name="bed_number" id="bedNumberInput" value="">
-                <div id="bedSelectedDisplay" style="display:none;padding:0.5rem 0.75rem;background:rgba(56,189,248,0.1);border-radius:6px;color:var(--primary);font-weight:600;font-size:0.9rem;margin-top:0.5rem;">
-                    <i class="fas fa-check-circle"></i> <span id="bedSelectedText"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== SECTION 4: FINANCIAL DETAILS ===== -->
-        <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
-            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-rupee-sign"></i> Financial Details</h4>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Monthly Fee (Rs.) <span id="feeHint" style="color:var(--text-muted);font-size:0.8rem;"></span></label>
-                        <input type="number" name="monthly_fee" id="monthlyFeeInput" class="form-control" step="0.01" min="0" placeholder="Leave blank to use room's fee" value="<?php echo htmlspecialchars($_POST['monthly_fee'] ?? ''); ?>">
-                        <small style="color:var(--text-muted);">This is the student's fixed monthly fee. Changing the room's fee later will NOT affect this student.</small>
+                        <label class="form-label" id="monthlyFeeLabel">Monthly Fee (Rs.) *</label>
+                        <input type="number" id="monthlyFeeInput" name="monthly_fee" class="form-control" step="0.01" min="0" placeholder="0.00">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Security Deposit (Rs.)</label>
-                        <input type="number" name="security_deposit" id="securityDepositInput" class="form-control" step="0.01" min="0" placeholder="0" value="<?php echo htmlspecialchars($_POST['security_deposit'] ?? ''); ?>">
-                        <small style="color:var(--text-muted);">Held separately. Never included in monthly fee calculations.</small>
+                        <input type="number" name="security_deposit" class="form-control" step="0.01" min="0" placeholder="0.00">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== SUBMIT ===== -->
         <div style="display:flex;gap:1rem;justify-content:flex-end;">
             <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:#334155;color:white;">Cancel</a>
-            <button type="submit" class="btn btn-primary" id="submitBtn">
-                <i class="fas fa-user-plus"></i> Onboard Student
-            </button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Onboard Student</button>
         </div>
-        const initial = Number(initialPaymentInput.value || 0);
-        const remaining = Math.max(0, (firstMonth + security) - initial);
-
-        summaryStudent.textContent = studentName || '-';
-        summaryRoom.textContent = roomOption && roomOption.value ? roomOption.text : 'Not selected';
-        summaryBed.textContent = roomCheckbox.checked ? (bedNumberInput.value || '-') : '-';
-        summaryMonthlyFee.textContent = formatMoney(monthly);
-        summarySecurityDeposit.textContent = formatMoney(security);
-        summaryDiscount.textContent = formatMoney(discount);
-        summaryFirstMonth.textContent = formatMoney(firstMonth);
-        summaryInitialPayment.textContent = formatMoney(initial);
-        summaryRemaining.textContent = formatMoney(remaining);
-    }
-
-    function getEligibleRooms(type) {
-        return roomCatalog.filter(room => {
-            const availableBeds = Number(room.available_beds || 0);
-            if (type === 'FULL_ROOM') {
-                return availableBeds >= room.total_beds;
-            }
-            return availableBeds > 0;
-        });
-    }
-
-    function renderRoomOptions(type) {
-        const options = getEligibleRooms(type);
-        roomSelect.innerHTML = '<option value="">Select Room</option>';
-
-        if (!options.length) {
-            const empty = document.createElement('option');
-            empty.value = '';
-            empty.textContent = type === 'FULL_ROOM' ? 'No completely available rooms.' : 'No rooms with available beds.';
-            empty.disabled = true;
-            empty.selected = true;
-            roomSelect.appendChild(empty);
-            roomSelect.setAttribute('disabled', 'disabled');
-            return;
-        }
-
-        roomSelect.removeAttribute('disabled');
-        options.forEach(room => {
-            const option = document.createElement('option');
-            option.value = room.id;
-            option.textContent = type === 'FULL_ROOM'
-                ? room.label + ' - Completely Available'
-                : room.label + ' - ' + room.available_beds + ' / ' + room.total_beds + ' beds available';
-            option.dataset.monthlyFee = String(room.monthly_fee || 0);
-            option.dataset.securityDeposit = String(room.security_deposit || 0);
-            option.dataset.totalBeds = String(room.total_beds || 0);
-            option.dataset.availableBeds = String(room.available_beds || 0);
-            option.dataset.beds = JSON.stringify(room.beds || []);
-            roomSelect.appendChild(option);
-        });
-    }
-
-    function renderBedOptions(roomId) {
-        const option = roomSelect.selectedOptions[0];
-        const beds = option && option.dataset.beds ? JSON.parse(option.dataset.beds) : [];
-
-        if (!option || !option.value) {
-            bedHelp.textContent = 'Select a room to view available beds.';
-            return;
-        }
-
-        const monthlyFee = Number(option.dataset.monthlyFee || 0);
-        const security = Number(option.dataset.securityDeposit || 0);
-        monthlyFeeInput.value = monthlyFee;
-        securityDepositInput.value = security;
-
-        if (!beds.length) {
-            bedHelp.textContent = 'No available beds in this room.';
-            bedNumberInput.value = 0;
-            return;
-        }
-
-        bedHelp.textContent = 'Available beds: ' + beds.join(', ');
-        bedNumberInput.max = String(Number(option.dataset.totalBeds || 0));
-        bedNumberInput.value = beds[0];
-        if (bedNumberInput.value === '0') {
-            bedNumberInput.value = 1;
-        }
-    }
-
-    function buildOccupantRow(index) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'row';
-        wrapper.style.marginBottom = '0.75rem';
-        wrapper.innerHTML = `
-            <div class="col-md-3 form-group">
-                <label class="form-label">Name</label>
-                <input type="text" name="room_occupants[${index}][full_name]" class="form-control" placeholder="Occupant name">
-            </div>
-            <div class="col-md-3 form-group">
-                <label class="form-label">CNIC</label>
-                <input type="text" name="room_occupants[${index}][cnic]" class="form-control" pattern="[0-9]{13}" placeholder="13 digits">
-            </div>
-            <div class="col-md-2 form-group">
-                <label class="form-label">Phone</label>
-                <input type="text" name="room_occupants[${index}][phone]" class="form-control" placeholder="03xx...">
-            </div>
-            <div class="col-md-3 form-group">
-                <label class="form-label">Relation</label>
-                <input type="text" name="room_occupants[${index}][relation]" class="form-control" placeholder="Brother / Friend">
-            </div>
-            <div class="col-md-1 form-group" style="display:flex; align-items:flex-end;">
-                <button type="button" class="btn btn-sm btn-outline-danger remove-occupant-btn" aria-label="Remove occupant">Remove</button>
-            </div>
-        `;
-
-        wrapper.querySelector('.remove-occupant-btn').addEventListener('click', function() {
-            wrapper.remove();
-        });
-
-        return wrapper;
-    }
-
-    function ensureDefaultOccupantRows() {
-        if (!occupantList) return;
-        const currentRows = occupantList.querySelectorAll('.row').length;
-        if (currentRows >= 2) return;
-
-        for (let i = currentRows; i < 2; i++) {
-            occupantList.appendChild(buildOccupantRow(i));
-        }
-    }
-
-    function syncAllocationType() {
-        const type = document.querySelector('input[name="allocation_type"]:checked')?.value || 'BED';
-        allocationTypeHidden.value = type;
-        const isBed = type === 'BED';
-        bedOnlyFields.forEach(field => {
-            field.style.display = isBed ? 'block' : 'none';
-        });
-        if (fullRoomOccupantsSection) {
-            fullRoomOccupantsSection.style.display = isBed ? 'none' : 'block';
-        }
-        if (!isBed) {
-            bedNumberInput.value = 0;
-            bedHelp.textContent = 'Full room allocation does not require a bed number.';
-            roomSelect.value = '';
-            ensureDefaultOccupantRows();
-        }
-        renderRoomOptions(type);
-        refreshSummary();
-    }
-
-    if (addOccupantBtn) {
-        addOccupantBtn.addEventListener('click', function() {
-            const nextIndex = occupantList.querySelectorAll('.row').length;
-            occupantList.appendChild(buildOccupantRow(nextIndex));
-        });
-    }
-
-    roomCheckbox.addEventListener('change', function() {
-        const enabled = this.checked;
-        roomFields.forEach(field => field.style.display = enabled ? 'block' : 'none');
-        document.getElementById('room_allocation_enabled').value = enabled ? '1' : '0';
-        if (!enabled) {
-            roomSelect.value = '';
-            bedNumberInput.value = 1;
-            bedHelp.textContent = 'Select a room to view available beds.';
-        }
-        if (enabled) {
-            syncAllocationType();
-        }
-        refreshSummary();
-    });
-
-    document.querySelectorAll('input[name="allocation_type"]').forEach(input => {
-        input.addEventListener('change', syncAllocationType);
-    });
-
-    if (occupantList) {
-        ensureDefaultOccupantRows();
-    }
-
-    roomSelect.addEventListener('change', function() {
-        const option = this.selectedOptions[0];
-        if (!option || !option.value) {
-            if (document.querySelector('input[name="allocation_type"]:checked')?.value === 'BED') {
-                bedHelp.textContent = 'Select a room to view available beds.';
-            }
-            return;
-        }
-
-        const type = document.querySelector('input[name="allocation_type"]:checked')?.value || 'BED';
-        if (type === 'BED') {
-            renderBedOptions(Number(option.value));
-        } else {
     </form>
 </div>
 
 <style>
-.bed-btn {
-    width: 70px; height: 70px;
-    border-radius: 8px;
-    border: 2px solid var(--border);
-    background: #1e293b;
-    color: var(--text);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    transition: all 0.2s;
+.choice-card {
+    display:flex; align-items:center; justify-content:center; min-height: 70px; border:1px solid var(--border); background:#0f172a; border-radius:10px; padding:1rem; cursor:pointer; transition:0.2s ease; font-weight:600;
 }
-.bed-btn:hover:not(:disabled) {
-    border-color: var(--primary);
-    background: rgba(56,189,248,0.1);
-    color: var(--primary);
-}
-.bed-btn.selected {
-    border-color: var(--primary);
-    background: rgba(56,189,248,0.15);
-    color: var(--primary);
-}
-.bed-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: rgba(239,68,68,0.08);
-    border-color: rgba(239,68,68,0.3);
-    color: #fca5a5;
-}
-.bed-btn .bed-label { font-size: 0.7rem; color: var(--text-muted); }
-.bed-btn.selected .bed-label { color: var(--primary); }
-.bed-btn:disabled .bed-label { color: #fca5a5; }
+.choice-card input { margin-right:10px; }
+.choice-card:hover { border-color: var(--primary); background: rgba(56,189,248,0.08); }
+.choice-card.selected { border-color: var(--primary); background: rgba(56,189,248,0.12); }
+.small-label { display:block; color:var(--text-muted); font-size:0.75rem; margin-bottom:0.25rem; }
+.occupant-card { border:1px solid var(--border); border-radius:8px; padding:1rem; background:#1e293b; margin-bottom:1rem; }
+.occupant-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+.remove-occupant-btn { background: rgba(239,68,68,0.1); color: var(--danger); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:0.35rem 0.7rem; cursor:pointer; }
 </style>
 
 <script>
-function loadBeds(roomId) {
-    const bedWrap     = document.getElementById('bedSelectorWrap');
-    const bedGrid     = document.getElementById('bedGrid');
-    const bedInput    = document.getElementById('bedNumberInput');
-    const bedDisplay  = document.getElementById('bedSelectedDisplay');
-    const bedText     = document.getElementById('bedSelectedText');
-    const loading     = document.getElementById('bedSelectorLoading');
-    const roomSummary = document.getElementById('roomSummary');
-    const feeInput    = document.getElementById('monthlyFeeInput');
-    const sdInput     = document.getElementById('securityDepositInput');
-    const feeHint     = document.getElementById('feeHint');
+const singleRoomSelect = document.getElementById('singleRoomSelect');
+const fullRoomSelect = document.getElementById('fullRoomSelect');
+const singleRoomSummary = document.getElementById('singleRoomSummary');
+const singleBedSection = document.getElementById('singleBedSection');
+const fullRoomSummary = document.getElementById('fullRoomSummary');
+const fullRoomOccupants = document.getElementById('fullRoomOccupants');
+const addOccupantBtn = document.getElementById('addOccupantBtn');
+const occupantList = document.getElementById('occupantList');
+const financialSection = document.getElementById('financialSection');
+const monthlyFeeLabel = document.getElementById('monthlyFeeLabel');
 
-    // Reset
-    bedInput.value = '';
-    bedDisplay.style.display = 'none';
-    bedText.textContent = '';
-    bedGrid.innerHTML  = '';
+function setAccomodationMode(mode) {
+    const singleVisible = mode === 'single';
+    const fullVisible = mode === 'full_room';
+    document.getElementById('singleRoomSection').style.display = singleVisible ? 'block' : 'none';
+    document.getElementById('fullRoomSection').style.display = fullVisible ? 'block' : 'none';
+    document.getElementById('studentInfoSection').style.display = 'block';
+    document.getElementById('financialSection').style.display = 'block';
+    financialSection.style.display = 'block';
+    if (singleVisible) {
+        monthlyFeeLabel.textContent = 'Monthly Fee (Rs.) *';
+        document.getElementById('monthlyFeeInput').name = 'monthly_fee';
+        document.querySelectorAll('.accommodation-option').forEach(r => {
+            const card = r.closest('.choice-card');
+            if (card) card.classList.toggle('selected', r.checked);
+        });
+    } else if (fullVisible) {
+        monthlyFeeLabel.textContent = 'Monthly Room Fee (Rs.) *';
+        document.getElementById('monthlyFeeInput').name = 'monthly_room_fee';
+        document.querySelectorAll('.accommodation-option').forEach(r => {
+            const card = r.closest('.choice-card');
+            if (card) card.classList.toggle('selected', r.checked);
+        });
+    }
+}
 
-    if (!roomId) {
-        bedWrap.style.display = 'none';
-        roomSummary.style.display = 'none';
-        feeHint.textContent = '';
+document.querySelectorAll('.accommodation-option').forEach((radio) => {
+    radio.addEventListener('change', function() {
+        setAccomodationMode(this.value);
+    });
+});
+
+function populateSingleRoomSummary(roomSelect) {
+    const selected = roomSelect.options[roomSelect.selectedIndex];
+    if (!selected || !selected.value) {
+        singleRoomSummary.style.display = 'none';
+        singleBedSection.style.display = 'none';
         return;
     }
 
-    // Populate room summary from data attributes
-    const sel    = document.getElementById('roomSelect');
-    const opt    = sel.options[sel.selectedIndex];
-    const total  = parseInt(opt.dataset.total || 0);
-    const occ    = parseInt(opt.dataset.occupied || 0);
-    const avail  = total - occ;
-    const roomFee = parseFloat(opt.dataset.fee || 0);
-    const roomSD  = parseFloat(opt.dataset.deposit || 0);
+    document.getElementById('singleRoomNumber').textContent = selected.dataset.roomNumber || '—';
+    document.getElementById('singleRoomBlock').textContent = selected.dataset.block || '—';
+    document.getElementById('singleRoomFloor').textContent = selected.dataset.floor || '—';
+    document.getElementById('singleRoomType').textContent = selected.dataset.type || '—';
+    document.getElementById('singleRoomOccupied').textContent = (selected.dataset.occupied || '0');
+    document.getElementById('singleRoomAvailable').textContent = (selected.dataset.available || '0');
+    singleRoomSummary.style.display = 'block';
+    loadAvailableBeds(selected.value);
+}
 
-    document.getElementById('rsTotalBeds').textContent = total;
-    document.getElementById('rsOccupied').textContent = occ;
-    document.getElementById('rsAvailable').textContent = avail;
-    document.getElementById('rsRoomFee').textContent = 'Rs. ' + roomFee.toLocaleString();
-    roomSummary.style.display = 'block';
+function loadAvailableBeds(roomId) {
+    const singleBedSelect = document.getElementById('singleBedSelect');
+    if (!roomId) {
+        singleBedSection.style.display = 'none';
+        return;
+    }
 
-    feeHint.textContent = `(Room default: Rs. ${roomFee.toLocaleString()})`;
+    singleBedSection.style.display = 'block';
+    singleBedSelect.innerHTML = '<option value="">Loading available beds...</option>';
 
-    // Auto-fill fee & deposit if empty
-    if (!feeInput.value) feeInput.placeholder = `Default: Rs. ${roomFee.toLocaleString()}`;
-    if (!sdInput.value && roomSD > 0) sdInput.placeholder = `Suggested: Rs. ${roomSD.toLocaleString()}`;
-
-    // Load beds via AJAX
-    bedWrap.style.display = 'block';
-    bedGrid.style.display = 'none';
-    loading.style.display = 'block';
-
-    fetch(`<?php echo $config['base_url']; ?>/api/allocations/available-beds/${roomId}`)
-        .then(r => r.json())
-        .then(res => {
-            loading.style.display = 'none';
-            bedGrid.style.display = 'flex';
-
-            if (!res.success) {
-                bedGrid.innerHTML = '<p style="color:var(--danger);">Failed to load beds: ' + (res.message || 'Unknown error') + '</p>';
+    fetch('<?php echo $config['base_url']; ?>/api/allocations/available-beds/' + roomId)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Unable to load available beds');
+            }
+            return response.json();
+        })
+        .then((res) => {
+            if (!res.success || !res.data || !Array.isArray(res.data.available_bed_numbers)) {
+                singleBedSelect.innerHTML = '<option value="">No available beds</option>';
                 return;
             }
 
-            const beds = res.data.beds || [];
-            beds.forEach(bed => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'bed-btn';
-                btn.innerHTML = `<i class="fas fa-bed"></i><span>${bed.bed_number}</span><span class="bed-label">${bed.occupied ? 'Occupied' : 'Free'}</span>`;
-                if (bed.occupied) {
-                    btn.disabled = true;
-                    btn.title = 'Occupied by: ' + (bed.student_name || 'Another student');
-                } else {
-                    btn.onclick = function() {
-                        document.querySelectorAll('.bed-btn').forEach(b => b.classList.remove('selected'));
-                        btn.classList.add('selected');
-                        bedInput.value = bed.bed_number;
-                        bedDisplay.style.display = 'block';
-                        bedText.textContent = 'Bed ' + bed.bed_number + ' selected';
-                    };
-                }
-                bedGrid.appendChild(btn);
+            const beds = res.data.available_bed_numbers;
+            singleBedSelect.innerHTML = '<option value="">Select available bed</option>';
+            beds.forEach((bedNumber) => {
+                const option = document.createElement('option');
+                option.value = bedNumber;
+                option.textContent = `Bed ${bedNumber} — Available`;
+                singleBedSelect.appendChild(option);
             });
+
+            if (beds.length === 0) {
+                singleBedSelect.innerHTML = '<option value="">No available beds</option>';
+            }
         })
-        .catch(e => {
-            loading.style.display = 'none';
-            bedGrid.style.display = 'flex';
-            bedGrid.innerHTML = '<p style="color:var(--danger);">Failed to load beds. Please refresh.</p>';
+        .catch(() => {
+            singleBedSelect.innerHTML = '<option value="">No available beds</option>';
         });
 }
 
-// If room was pre-selected (after form submission error), reload beds
-window.addEventListener('DOMContentLoaded', function() {
-    const roomId = document.getElementById('roomSelect').value;
-    if (roomId) loadBeds(roomId);
+function renderFullRoomSummary(roomSelect) {
+    const selected = roomSelect.options[roomSelect.selectedIndex];
+    if (!selected || !selected.value) {
+        fullRoomSummary.style.display = 'none';
+        fullRoomOccupants.style.display = 'none';
+        return;
+    }
+
+    document.getElementById('fullRoomNumber').textContent = selected.dataset.roomNumber || '—';
+    document.getElementById('fullRoomBlock').textContent = selected.dataset.block || '—';
+    document.getElementById('fullRoomFloor').textContent = selected.dataset.floor || '—';
+    document.getElementById('fullRoomType').textContent = selected.dataset.type || '—';
+    document.getElementById('fullRoomTotalBeds').textContent = selected.dataset.total || '0';
+    document.getElementById('fullRoomAvailable').textContent = selected.dataset.available || '0';
+    fullRoomSummary.style.display = 'block';
+    fullRoomOccupants.style.display = 'block';
+    addOccupantRow();
+}
+
+function getRoomCapacity(roomSelect) {
+    const selected = roomSelect.options[roomSelect.selectedIndex];
+    if (!selected || !selected.value) return 0;
+    return parseInt(selected.dataset.available || '0', 10);
+}
+
+function addOccupantRow() {
+    const roomSelect = document.getElementById('fullRoomSelect');
+    const capacity = getRoomCapacity(roomSelect);
+    const currentCount = occupantList.querySelectorAll('.occupant-card').length;
+
+    if (capacity <= 0 || currentCount >= capacity) {
+        addOccupantBtn.disabled = true;
+        addOccupantBtn.textContent = 'Room capacity reached.';
+        return;
+    }
+
+    addOccupantBtn.disabled = false;
+    addOccupantBtn.textContent = '+ Add Another Person';
+
+    if (currentCount >= capacity) {
+        return;
+    }
+
+    const index = currentCount + 1;
+    const occupantCard = document.createElement('div');
+    occupantCard.className = 'occupant-card';
+    occupantCard.innerHTML = `
+        <div class="occupant-header">
+            <strong>Person ${index}</strong>
+            <button type="button" class="remove-occupant-btn" data-index="${index - 1}">Remove</button>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="occupants[${index - 1}][full_name]" class="form-control" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="form-label">CNIC *</label>
+                    <input type="text" name="occupants[${index - 1}][cnic]" class="form-control" maxlength="15" required>
+                </div>
+            </div>
+        </div>
+    `;
+
+    occupantList.appendChild(occupantCard);
+    occupantCard.querySelector('.remove-occupant-btn').addEventListener('click', function() {
+        occupantCard.remove();
+        updateOccupantLabels();
+    });
+    updateOccupantLabels();
+}
+
+function updateOccupantLabels() {
+    const roomSelect = document.getElementById('fullRoomSelect');
+    const capacity = getRoomCapacity(roomSelect);
+    const cards = occupantList.querySelectorAll('.occupant-card');
+    cards.forEach((card, idx) => {
+        const label = card.querySelector('.occupant-header strong');
+        if (label) label.textContent = `Person ${idx + 1}`;
+    });
+
+    if (cards.length >= capacity) {
+        addOccupantBtn.disabled = true;
+        addOccupantBtn.textContent = 'Room capacity reached.';
+    } else {
+        addOccupantBtn.disabled = false;
+        addOccupantBtn.textContent = '+ Add Another Person';
+    }
+}
+
+addOccupantBtn.addEventListener('click', function() {
+    const roomSelect = document.getElementById('fullRoomSelect');
+    const capacity = getRoomCapacity(roomSelect);
+    const currentCount = occupantList.querySelectorAll('.occupant-card').length;
+    if (currentCount >= capacity) {
+        addOccupantBtn.disabled = true;
+        addOccupantBtn.textContent = 'Room capacity reached.';
+        return;
+    }
+    addOccupantRow();
 });
 
-// Form validation
-document.getElementById('onboardForm').addEventListener('submit', function(e) {
-    const roomId   = document.getElementById('roomSelect').value;
-    const bedInput = document.getElementById('bedNumberInput').value;
-    if (roomId && !bedInput) {
-        e.preventDefault();
-        alert('Please select a bed from the bed selector before submitting.');
-        return false;
+singleRoomSelect.addEventListener('change', function() {
+    populateSingleRoomSummary(this);
+});
+fullRoomSelect.addEventListener('change', function() {
+    renderFullRoomSummary(this);
+});
+
+document.getElementById('studentOnboardForm').addEventListener('submit', function(event) {
+    const mode = document.querySelector('input[name="accommodation_type"]:checked');
+    if (!mode) {
+        event.preventDefault();
+        alert('Please select accommodation type.');
+        return;
     }
+
+    if (mode.value === 'single') {
+        if (!singleRoomSelect.value) {
+            event.preventDefault();
+            alert('Please select a room.');
+            return;
+        }
+        if (!document.getElementById('singleBedSelect').value) {
+            event.preventDefault();
+            alert('Please select an available bed.');
+            return;
+        }
+    }
+
+    if (mode.value === 'full_room') {
+        const selectedRoom = fullRoomSelect.value;
+        if (!selectedRoom) {
+            event.preventDefault();
+            alert('Please select a room.');
+            return;
+        }
+        const cards = occupantList.querySelectorAll('.occupant-card');
+        if (!cards.length) {
+            event.preventDefault();
+            alert('Please add at least one occupant.');
+            return;
+        }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const baseUrl = '<?php echo $config['base_url']; ?>';
+    document.body.dataset.baseUrl = baseUrl;
+    document.querySelectorAll('.choice-card').forEach((card) => {
+        const radio = card.querySelector('input');
+        if (radio && radio.checked) {
+            card.classList.add('selected');
+        }
+    });
+    fullRoomSelect.value = '';
+    singleRoomSelect.value = '';
 });
 </script>

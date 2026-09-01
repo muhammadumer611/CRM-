@@ -53,21 +53,58 @@ class StudentController {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405); exit;
         }
-        
+
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
         $config = require APP_ROOT . '/config/app.php';
 
-        $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation', 'room_id', 'bed_number', 'joining_date'];
-        foreach ($required as $field) {
-            if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
-                Session::set('error', 'Please fill all required fields: ' . str_replace('_', ' ', $field) . '.');
+        $accommodationType = strtolower(trim((string)($_POST['accommodation_type'] ?? '')));
+        if ($accommodationType === '') {
+            Session::set('error', 'Please select accommodation type.');
+            header('Location: ' . $config['base_url'] . '/students/create');
+            exit;
+        }
+
+        if ($accommodationType === 'single') {
+            $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation', 'room_id', 'bed_number', 'joining_date', 'monthly_fee'];
+            foreach ($required as $field) {
+                if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
+                    Session::set('error', 'Please fill all required fields: ' . str_replace('_', ' ', $field) . '.');
+                    header('Location: ' . $config['base_url'] . '/students/create');
+                    exit;
+                }
+            }
+        } elseif ($accommodationType === 'full_room' || $accommodationType === 'full') {
+            if (!isset($_POST['room_id']) || trim((string)$_POST['room_id']) === '') {
+                Session::set('error', 'Please select a room.');
                 header('Location: ' . $config['base_url'] . '/students/create');
                 exit;
             }
+            $occupants = $_POST['occupants'] ?? [];
+            if (empty($occupants) || !is_array($occupants)) {
+                Session::set('error', 'Please add at least one occupant.');
+                header('Location: ' . $config['base_url'] . '/students/create');
+                exit;
+            }
+            foreach ($occupants as $index => $occupant) {
+                if (empty($occupant['full_name'] ?? '') || empty($occupant['cnic'] ?? '')) {
+                    Session::set('error', 'Please enter a valid name and CNIC for each person.');
+                    header('Location: ' . $config['base_url'] . '/students/create');
+                    exit;
+                }
+            }
+            if (!isset($_POST['monthly_room_fee']) || trim((string)$_POST['monthly_room_fee']) === '') {
+                Session::set('error', 'Please enter a monthly room fee.');
+                header('Location: ' . $config['base_url'] . '/students/create');
+                exit;
+            }
+        } else {
+            Session::set('error', 'Please select accommodation type.');
+            header('Location: ' . $config['base_url'] . '/students/create');
+            exit;
         }
 
         $result = $this->studentService->onboardStudent($_POST);
-        
+
         if ($result['success']) {
             $studentStr = !empty($result['student_id_str']) ? ' (' . htmlspecialchars($result['student_id_str']) . ')' : '';
             Session::set('success', 'Student onboarded successfully' . $studentStr . '.');
