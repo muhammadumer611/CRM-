@@ -1,4 +1,5 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
+<?php $resolvedBackUrl = !empty($backUrl) ? $backUrl : $config['base_url'] . '/students'; ?>
 <div style="max-width:900px;margin:0 auto;">
 
     <!-- Header -->
@@ -20,10 +21,11 @@
                     <i class="fas fa-sign-out-alt"></i> Checkout / Mark Alumni
                 </button>
             <?php endif; ?>
-            <a href="<?php echo $config['base_url']; ?>/students/edit/<?php echo $student['id']; ?>" class="btn btn-primary">
-                <i class="fas fa-edit"></i> Edit
+            <a href="<?php echo $config['base_url']; ?>/students/edit/<?php echo (int)$student['id']; ?>?from=<?php echo urlencode($resolvedBackUrl); ?>"
+               class="btn btn-primary">
+                <i class="fas fa-edit"></i> Edit Student
             </a>
-            <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:#334155;color:white;">
+            <a href="<?php echo $resolvedBackUrl; ?>" class="btn" style="background:#334155;color:white;">
                 <i class="fas fa-arrow-left"></i> Back
             </a>
         </div>

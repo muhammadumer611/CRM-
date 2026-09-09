@@ -12,7 +12,10 @@ class StudentRepository {
     }
 
     public function findAll($filters = [], $limit = 50, $offset = 0) {
-        $query = "SELECT s.*, ra.room_id, ra.bed_number, r.room_number, r.block
+        $query = "SELECT s.*, ra.room_id, ra.bed_number, ra.joining_date AS allocation_date, r.room_number, r.block,
+                         (SELECT fr.status FROM fee_records fr
+                          WHERE fr.student_id = s.id AND fr.charge_type = 'MONTHLY_FEE'
+                          ORDER BY fr.billing_year DESC, fr.billing_month DESC LIMIT 1) AS fee_status
                   FROM students s
                   LEFT JOIN room_allocations ra ON s.id = ra.student_id AND ra.status = 'Active'
                   LEFT JOIN rooms r ON ra.room_id = r.id

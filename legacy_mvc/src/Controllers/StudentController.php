@@ -119,6 +119,7 @@ class StudentController {
     public function edit($id) {
         $student = $this->studentService->getStudent($id);
         if (!$student) {
+            http_response_code(404);
             Session::set('error', 'Student not found.');
             $config = require APP_ROOT . '/config/app.php';
             header('Location: ' . $config['base_url'] . '/students');
@@ -128,12 +129,16 @@ class StudentController {
         $feeHistory      = $this->studentService->getStudentFeeHistory($id);
         $securityDeposit = $this->studentService->getStudentSecurityDeposit($id);
 
+        // Propagate back URL so Cancel/Save can return to origin (active list or student list)
+        $backUrl = !empty($_GET['from']) ? htmlspecialchars($_GET['from'], ENT_QUOTES, 'UTF-8') : null;
+
         View::render('admin/students/edit', [
             'title'           => 'Edit Student — ' . htmlspecialchars($student['full_name']),
             'student'         => $student,
             'feeHistory'      => $feeHistory,
             'securityDeposit' => $securityDeposit,
-            'csrf_token'      => CSRF::generateToken()
+            'csrf_token'      => CSRF::generateToken(),
+            'backUrl'         => $backUrl
         ], 'admin');
     }
 
@@ -149,17 +154,43 @@ class StudentController {
         
         if ($result['success']) {
             Session::set('success', 'Student updated successfully.');
-            header('Location: ' . $config['base_url'] . '/students');
+            // Redirect to student profile view so the admin sees the saved data immediately
+            $from = !empty($_POST['_back_url']) ? $_POST['_back_url'] : '';
+            header('Location: ' . $config['base_url'] . '/students/view/' . (int)$id . (!empty($from) ? '?from=' . urlencode($from) : ''));
         } else {
             Session::set('error', $result['error']);
-            header('Location: ' . $config['base_url'] . '/students/edit/' . $id);
+            $from = !empty($_POST['_back_url']) ? '?from=' . urlencode($_POST['_back_url']) : '';
+            header('Location: ' . $config['base_url'] . '/students/edit/' . (int)$id . $from);
         }
         exit;
+    }
+
+
+    public function activeList() {
+        $page    = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 20;
+
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'status' => 'Active'   // locked — this page is Active-only
+        ];
+
+        $result = $this->studentService->getAllStudents($filters, $page, $perPage);
+
+        View::render('admin/students/active', [
+            'title'    => 'Active Students',
+            'students' => $result['data'],
+            'total'    => $result['total'],
+            'page'     => $page,
+            'perPage'  => $perPage,
+            'filters'  => $filters
+        ], 'admin');
     }
 
     public function show($id) {
         $student = $this->studentService->getStudent($id);
         if (!$student) {
+            http_response_code(404);
             Session::set('error', 'Student not found.');
             $config = require APP_ROOT . '/config/app.php';
             header('Location: ' . $config['base_url'] . '/students');
@@ -169,12 +200,16 @@ class StudentController {
         $feeHistory      = $this->studentService->getStudentFeeHistory($id);
         $securityDeposit = $this->studentService->getStudentSecurityDeposit($id);
 
+        // Allow callers to pass a custom back URL (e.g. from active list)
+        $backUrl = !empty($_GET['from']) ? htmlspecialchars($_GET['from'], ENT_QUOTES, 'UTF-8') : null;
+
         View::render('admin/students/show', [
             'title'           => 'Student Profile — ' . htmlspecialchars($student['full_name']),
             'student'         => $student,
             'feeHistory'      => $feeHistory,
             'securityDeposit' => $securityDeposit,
-            'csrf_token'      => CSRF::generateToken()
+            'csrf_token'      => CSRF::generateToken(),
+            'backUrl'         => $backUrl
         ], 'admin');
     }
 

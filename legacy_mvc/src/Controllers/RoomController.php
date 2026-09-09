@@ -38,6 +38,25 @@ class RoomController {
         ], 'admin');
     }
 
+    public function availableBeds() {
+        $filters = [
+            'search'    => $_GET['search'] ?? '',
+            'room_type' => $_GET['room_type'] ?? '',
+            'floor'     => $_GET['floor'] ?? ''
+        ];
+
+        $overview = $this->roomService->getAvailableBedsOverview($filters);
+
+        View::render('admin/rooms/available-beds', [
+            'title'               => 'Available Beds',
+            'rooms'               => $overview['rooms'],
+            'totalAvailableBeds' => $overview['total_available_beds'],
+            'roomTypes'          => $overview['room_types'],
+            'floors'             => $overview['floors'],
+            'filters'            => $filters
+        ], 'admin');
+    }
+
     public function create() {
         View::render('admin/rooms/create', [
             'title' => 'Add Room',

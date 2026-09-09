@@ -68,6 +68,14 @@ class FeeService {
         return $rows;
     }
 
+    public function getPendingFeeStudentsOverview(array $filters = []) {
+        return $this->feeRepo->getPendingFeeStudentsOverview($filters);
+    }
+
+    public function getStudentPendingFeeDetails($studentId) {
+        return $this->feeRepo->getStudentPendingFeeDetails((int)$studentId);
+    }
+
     public function getFee($id) {
         return $this->feeRepo->findById($id);
     }

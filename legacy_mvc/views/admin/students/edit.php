@@ -1,4 +1,5 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
+<?php $resolvedBackUrl = !empty($backUrl) ? $backUrl : $config['base_url'] . '/students'; ?>
 <div style="max-width:900px;margin:0 auto;">
 
     <!-- Header -->
@@ -14,7 +15,7 @@
                 <span class="badge badge-danger" style="margin-left:0.5rem;">Inactive</span>
             <?php endif; ?>
         </div>
-        <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:#334155;color:white;">
+        <a href="<?php echo $resolvedBackUrl; ?>" class="btn" style="background:#334155;color:white;">
             <i class="fas fa-arrow-left"></i> Back
         </a>
     </div>
@@ -38,8 +39,9 @@
     <!-- Edit Form -->
     <div class="card" style="margin-bottom:1.5rem;">
         <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-edit"></i> Edit Profile</h4>
-        <form action="<?php echo $config['base_url']; ?>/students/update/<?php echo $student['id']; ?>" method="POST">
+        <form action="<?php echo $config['base_url']; ?>/students/update/<?php echo (int)$student['id']; ?>" method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+            <input type="hidden" name="_back_url" value="<?php echo htmlspecialchars($resolvedBackUrl); ?>">
 
             <!-- Personal Info -->
             <div class="row">
@@ -158,7 +160,7 @@
             </div>
 
             <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1rem;">
-                <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:#334155;color:white;">Cancel</a>
+                <a href="<?php echo $resolvedBackUrl; ?>" class="btn" style="background:#334155;color:white;">Cancel</a>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
             </div>
         </form>

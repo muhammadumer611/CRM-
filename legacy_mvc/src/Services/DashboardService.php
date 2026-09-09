@@ -67,13 +67,33 @@ class DashboardService {
         $stmt = $this->db->query("SELECT COALESCE(SUM(paid_amount), 0) FROM fee_records WHERE charge_type = 'MONTHLY_FEE' AND YEAR(invoice_date) = YEAR(CURDATE()) AND MONTH(invoice_date) = MONTH(CURDATE())");
         $stats['this_month_collected'] = (float)$stmt->fetchColumn();
 
-        $stmt = $this->db->query("SELECT COUNT(*) FROM fee_records WHERE charge_type = 'MONTHLY_FEE' AND status IN ('Pending','Partial','Overdue')");
+        $stmt = $this->db->query("
+            SELECT COUNT(DISTINCT fr.student_id)
+            FROM fee_records fr
+            JOIN students s ON s.id = fr.student_id
+            WHERE s.status = 'Active'
+              AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+        ");
         $stats['pending_fees'] = (int)$stmt->fetchColumn();
+        $stats['pending_fee_students'] = $stats['pending_fees'];
 
-        $stmt = $this->db->query("SELECT COUNT(*) FROM fee_records WHERE charge_type = 'MONTHLY_FEE' AND status = 'Overdue'");
+        $stmt = $this->db->query("
+            SELECT COUNT(DISTINCT fr.student_id)
+            FROM fee_records fr
+            JOIN students s ON s.id = fr.student_id
+            WHERE s.status = 'Active'
+              AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+              AND fr.due_date < CURDATE()
+        ");
         $stats['overdue_fees'] = (int)$stmt->fetchColumn();
 
-        $stmt = $this->db->query("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) FROM fee_records WHERE charge_type = 'MONTHLY_FEE' AND status IN ('Pending','Partial','Overdue')");
+        $stmt = $this->db->query("
+            SELECT COALESCE(SUM((fr.amount + fr.additional_charges - fr.discount) - fr.paid_amount), 0)
+            FROM fee_records fr
+            JOIN students s ON s.id = fr.student_id
+            WHERE s.status = 'Active'
+              AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+        ");
         $stats['total_outstanding'] = (float)$stmt->fetchColumn();
 
         $collectionStmt = $this->db->query("SELECT COALESCE(SUM(amount), 0) FROM fee_payments WHERE status <> 'Reversed' AND amount > 0");

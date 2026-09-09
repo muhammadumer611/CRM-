@@ -11,6 +11,7 @@ $router->add('GET', '/dashboard', 'DashboardController', 'index');
 
 // Student routes
 $router->add('GET', '/students', 'StudentController', 'index');
+$router->add('GET', '/students/active', 'StudentController', 'activeList');
 $router->add('GET', '/students/create', 'StudentController', 'create');
 $router->add('POST', '/students/store', 'StudentController', 'store');
 $router->add('GET', '/students/view/{id}', 'StudentController', 'show');
@@ -21,6 +22,7 @@ $router->add('POST', '/students/checkout/{id}', 'StudentController', 'checkout')
 
 // Room routes
 $router->add('GET', '/rooms', 'RoomController', 'index');
+$router->add('GET', '/rooms/available-beds', 'RoomController', 'availableBeds');
 $router->add('GET', '/rooms/create', 'RoomController', 'create');
 $router->add('POST', '/rooms/store', 'RoomController', 'store');
 $router->add('GET', '/rooms/edit/{id}', 'RoomController', 'edit');
@@ -34,6 +36,7 @@ $router->add('GET', '/api/allocations/available-beds/{id}', 'AllocationControlle
 $router->add('GET', '/fees', 'FeeController', 'index');
 $router->add('GET', '/fees/collection', 'FeeController', 'collection');
 $router->add('GET', '/fees/pending', 'FeeController', 'pending');
+$router->add('GET', '/fees/pending/{id}', 'FeeController', 'pendingDetail');
 $router->add('GET', '/fees/security-deposits', 'FeeController', 'securityDeposits');
 $router->add('GET', '/fees/create', 'FeeController', 'create');
 $router->add('POST', '/fees/store', 'FeeController', 'store');

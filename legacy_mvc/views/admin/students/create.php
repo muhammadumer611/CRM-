@@ -530,5 +530,31 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     fullRoomSelect.value = '';
     singleRoomSelect.value = '';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const prefillRoomId = urlParams.get('room_id');
+    const prefillBedNum = urlParams.get('bed_number');
+
+    if (prefillRoomId) {
+        const singleRadio = document.querySelector('input[name="accommodation_type"][value="single"]');
+        if (singleRadio) {
+            singleRadio.checked = true;
+            setAccomodationMode('single');
+            singleRoomSelect.value = prefillRoomId;
+            if (singleRoomSelect.value === prefillRoomId) {
+                populateSingleRoomSummary(singleRoomSelect);
+                if (prefillBedNum) {
+                    const checkBeds = setInterval(() => {
+                        const bedSelect = document.getElementById('singleBedSelect');
+                        if (bedSelect && bedSelect.querySelector(`option[value="${prefillBedNum}"]`)) {
+                            bedSelect.value = prefillBedNum;
+                            clearInterval(checkBeds);
+                        }
+                    }, 50);
+                    setTimeout(() => clearInterval(checkBeds), 3000);
+                }
+            }
+        }
+    }
 });
 </script>

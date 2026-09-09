@@ -2,21 +2,45 @@
 
 <!-- ===== ROW 1: KEY STATS ===== -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem;">
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;">Active Students</div>
+    <a href="<?php echo $config['base_url']; ?>/students/active"
+       style="display:block;text-decoration:none;color:inherit;border-radius:8px;transition:transform 0.15s,box-shadow 0.15s;"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(59,130,246,0.35)';"
+       onmouseout="this.style.transform='';this.style.boxShadow='';"
+       title="Click to view all active students">
+    <div class="card" style="margin:0;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;cursor:pointer;height:100%;">
+        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
+            Active Students <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+        </div>
         <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo $stats['active_students']; ?></div>
         <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;"><?php echo $stats['total_students']; ?> total (<?php echo $stats['alumni_count']; ?> alumni)</div>
     </div>
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;">Available Beds</div>
+    </a>
+    <a href="<?php echo $config['base_url']; ?>/rooms/available-beds"
+       style="display:block;text-decoration:none;color:inherit;border-radius:8px;transition:transform 0.15s,box-shadow 0.15s;"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(16,185,129,0.35)';"
+       onmouseout="this.style.transform='';this.style.boxShadow='';"
+       title="Click to view all available beds">
+    <div class="card" style="margin:0;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;cursor:pointer;height:100%;">
+        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
+            Available Beds <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+        </div>
         <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo $stats['available_beds']; ?></div>
         <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;"><?php echo $stats['occupied_beds']; ?> occupied of <?php echo $stats['total_beds']; ?> total</div>
     </div>
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;">Pending Invoices</div>
+    </a>
+    <a href="<?php echo $config['base_url']; ?>/fees/pending"
+       style="display:block;text-decoration:none;color:inherit;border-radius:8px;transition:transform 0.15s,box-shadow 0.15s;"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(245,158,11,0.35)';"
+       onmouseout="this.style.transform='';this.style.boxShadow='';"
+       title="Click to view all pending fees">
+    <div class="card" style="margin:0;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;cursor:pointer;height:100%;">
+        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
+            Pending Fee <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+        </div>
         <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo $stats['pending_fees']; ?></div>
         <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;"><?php echo $stats['overdue_fees']; ?> overdue</div>
     </div>
+    </a>
     <div class="card" style="margin:0;background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border:none;">
         <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;">Outstanding Fees</div>
         <div style="font-size:1.5rem;font-weight:700;margin-top:0.25rem;">Rs. <?php echo number_format($stats['total_outstanding'], 0); ?></div>

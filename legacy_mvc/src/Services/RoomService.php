@@ -241,4 +241,9 @@ class RoomService {
     public function reconcileAllRooms() {
         return $this->roomRepo->reconcileOccupancy();
     }
+
+    public function getAvailableBedsOverview($filters = []) {
+        $this->roomRepo->reconcileOccupancy();
+        return $this->roomRepo->getAvailableBedsOverview($filters);
+    }
 }

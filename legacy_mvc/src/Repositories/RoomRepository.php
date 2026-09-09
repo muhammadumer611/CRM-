@@ -346,5 +346,123 @@ class RoomRepository {
         }
         return true;
     }
+
+    public function getAvailableBedsOverview($filters = []) {
+        $query = "SELECT * FROM rooms WHERE status != 'Disabled'";
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $rawTerm = trim((string)$filters['search']);
+            $searchTerm = '%' . $rawTerm . '%';
+            $query .= " AND (room_number LIKE ? OR block LIKE ?)";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+
+        if (!empty($filters['room_type'])) {
+            $query .= " AND room_type = ?";
+            $params[] = $filters['room_type'];
+        }
+
+        if (!empty($filters['floor'])) {
+            $query .= " AND floor = ?";
+            $params[] = $filters['floor'];
+        }
+
+        $query .= " ORDER BY block ASC, room_number ASC";
+
+        $stmt = $this->db->prepare($query);
+        $stmt->execute($params);
+        $rooms = $stmt->fetchAll();
+
+        $resultRooms = [];
+        $totalAvailableBeds = 0;
+
+        foreach ($rooms as $room) {
+            $roomId = (int)$room['id'];
+            $totalBeds = (int)$room['total_beds'];
+
+            $stmtAlloc = $this->db->prepare("
+                SELECT ra.id, ra.bed_number, ra.student_id, ra.joining_date,
+                       s.full_name as student_name, s.student_id_str
+                FROM room_allocations ra
+                JOIN students s ON ra.student_id = s.id
+                WHERE ra.room_id = ? AND ra.status = 'Active'
+                ORDER BY ra.bed_number ASC
+            ");
+            $stmtAlloc->execute([$roomId]);
+            $activeAllocations = $stmtAlloc->fetchAll();
+
+            $occupiedBedsMap = [];
+            $hasFullRoomAlloc = false;
+
+            foreach ($activeAllocations as $alloc) {
+                $bedNum = (int)$alloc['bed_number'];
+                if ($bedNum === 0) {
+                    $hasFullRoomAlloc = true;
+                } else {
+                    $occupiedBedsMap[$bedNum] = $alloc;
+                }
+            }
+
+            $availableBedNumbers = [];
+            $occupiedBedNumbers = [];
+
+            if ($hasFullRoomAlloc) {
+                for ($i = 1; $i <= $totalBeds; $i++) {
+                    $occupiedBedNumbers[] = $i;
+                }
+            } else {
+                for ($i = 1; $i <= $totalBeds; $i++) {
+                    if (isset($occupiedBedsMap[$i])) {
+                        $occupiedBedNumbers[] = $i;
+                    } else {
+                        $availableBedNumbers[] = $i;
+                    }
+                }
+            }
+
+            $availableCount = count($availableBedNumbers);
+            $occupiedCount = count($occupiedBedNumbers);
+
+            $roomStatus = $room['status'];
+            if ($roomStatus !== 'Disabled') {
+                if ($occupiedCount === 0) {
+                    $roomStatus = 'Available';
+                } elseif ($occupiedCount >= $totalBeds) {
+                    $roomStatus = 'Occupied';
+                } else {
+                    $roomStatus = 'Partially Occupied';
+                }
+            }
+
+            if ($availableCount > 0) {
+                $resultRooms[] = [
+                    'id' => $roomId,
+                    'room_number' => $room['room_number'],
+                    'block' => $room['block'],
+                    'floor' => $room['floor'],
+                    'room_type' => $room['room_type'],
+                    'total_beds' => $totalBeds,
+                    'occupied_beds' => $occupiedCount,
+                    'available_beds' => $availableCount,
+                    'status' => $roomStatus,
+                    'available_bed_numbers' => $availableBedNumbers,
+                    'occupied_bed_numbers' => $occupiedBedNumbers
+                ];
+                $totalAvailableBeds += $availableCount;
+            }
+        }
+
+        $distinctTypes = $this->db->query("SELECT DISTINCT room_type FROM rooms WHERE status != 'Disabled' AND room_type IS NOT NULL AND room_type != '' ORDER BY room_type ASC")->fetchAll(PDO::FETCH_COLUMN);
+        $distinctFloors = $this->db->query("SELECT DISTINCT floor FROM rooms WHERE status != 'Disabled' AND floor IS NOT NULL AND floor != '' ORDER BY floor ASC")->fetchAll(PDO::FETCH_COLUMN);
+
+        return [
+            'rooms' => $resultRooms,
+            'total_available_beds' => $totalAvailableBeds,
+            'room_types' => $distinctTypes,
+            'floors' => $distinctFloors
+        ];
+    }
 }
 

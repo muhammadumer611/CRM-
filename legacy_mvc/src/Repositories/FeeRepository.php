@@ -138,6 +138,343 @@ class FeeRepository {
         return $stmt->fetchAll();
     }
 
+    public function getPendingFeeStudentsOverview(array $filters = []) {
+        $sql = "
+            SELECT
+                fr.id AS invoice_id,
+                fr.invoice_number,
+                fr.student_id,
+                fr.billing_month,
+                fr.billing_year,
+                fr.amount,
+                fr.additional_charges,
+                fr.discount,
+                fr.paid_amount,
+                (fr.amount + fr.additional_charges - fr.discount) AS invoice_total,
+                (fr.amount + fr.additional_charges - fr.discount - fr.paid_amount) AS pending_amount,
+                fr.due_date,
+                fr.status AS invoice_status,
+                s.full_name AS student_name,
+                s.student_id_str,
+                s.cnic,
+                s.phone,
+                s.address,
+                s.monthly_fee AS student_monthly_fee,
+                s.status AS student_status,
+                ra.room_id,
+                ra.bed_number,
+                r.room_number,
+                r.block,
+                r.floor,
+                r.room_type
+            FROM fee_records fr
+            JOIN students s ON s.id = fr.student_id
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN rooms r ON r.id = ra.room_id
+            WHERE s.status = 'Active'
+              AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+        ";
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $rawTerm = trim((string)$filters['search']);
+            $searchTerm = '%' . $rawTerm . '%';
+            $sql .= " AND (s.full_name LIKE ? OR s.student_id_str LIKE ? OR s.cnic LIKE ? OR s.phone LIKE ?)";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+
+        if (!empty($filters['room'])) {
+            $rawRoom = trim((string)$filters['room']);
+            $searchRoom = '%' . $rawRoom . '%';
+            $sql .= " AND (r.room_number LIKE ? OR r.block LIKE ?)";
+            $params[] = $searchRoom;
+            $params[] = $searchRoom;
+        }
+
+        if (!empty($filters['month'])) {
+            $sql .= " AND fr.billing_month = ?";
+            $params[] = (int)$filters['month'];
+        }
+
+        if (!empty($filters['year'])) {
+            $sql .= " AND fr.billing_year = ?";
+            $params[] = (int)$filters['year'];
+        }
+
+        if (!empty($filters['status'])) {
+            $statusFilter = strtolower(trim((string)$filters['status']));
+            if ($statusFilter === 'overdue') {
+                $sql .= " AND fr.due_date < CURDATE()";
+            } elseif ($statusFilter === 'partial' || $statusFilter === 'partially_paid') {
+                $sql .= " AND fr.paid_amount > 0";
+            } elseif ($statusFilter === 'pending') {
+                $sql .= " AND fr.paid_amount = 0 AND (fr.due_date IS NULL OR fr.due_date >= CURDATE())";
+            }
+        }
+
+        $sql .= " ORDER BY s.id ASC, fr.billing_year ASC, fr.billing_month ASC, fr.id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rawRows = $stmt->fetchAll();
+
+        $studentsMap = [];
+        $totalPendingAmount = 0.0;
+        $totalInvoicesCount = 0;
+        $overdueStudentsSet = [];
+
+        foreach ($rawRows as $row) {
+            $studentId = (int)$row['student_id'];
+            $invoicePending = (float)$row['pending_amount'];
+            $invoiceTotal = (float)$row['invoice_total'];
+            $invoicePaid = (float)$row['paid_amount'];
+            $dueDate = $row['due_date'];
+            $isOverdue = $dueDate && (date('Y-m-d') > $dueDate);
+
+            $monthName = date('M', mktime(0, 0, 0, (int)$row['billing_month'], 1, (int)$row['billing_year']));
+            $periodStr = $monthName . ' ' . $row['billing_year'];
+
+            $invoiceStatus = 'Pending';
+            if ($isOverdue) {
+                $invoiceStatus = 'Overdue';
+            } elseif ($invoicePaid > 0) {
+                $invoiceStatus = 'Partial';
+            }
+
+            $invoiceItem = [
+                'id' => (int)$row['invoice_id'],
+                'invoice_number' => $row['invoice_number'],
+                'billing_month' => (int)$row['billing_month'],
+                'billing_year' => (int)$row['billing_year'],
+                'billing_period' => $periodStr,
+                'amount' => (float)$row['amount'],
+                'additional_charges' => (float)$row['additional_charges'],
+                'discount' => (float)$row['discount'],
+                'invoice_total' => $invoiceTotal,
+                'paid_amount' => $invoicePaid,
+                'pending_amount' => $invoicePending,
+                'due_date' => $dueDate,
+                'is_overdue' => $isOverdue,
+                'status' => $invoiceStatus
+            ];
+
+            if (!isset($studentsMap[$studentId])) {
+                $studentsMap[$studentId] = [
+                    'student_id' => $studentId,
+                    'student_name' => $row['student_name'],
+                    'student_id_str' => $row['student_id_str'],
+                    'cnic' => $row['cnic'],
+                    'phone' => $row['phone'],
+                    'address' => $row['address'],
+                    'room_id' => $row['room_id'] ? (int)$row['room_id'] : null,
+                    'room_number' => $row['room_number'],
+                    'block' => $row['block'],
+                    'floor' => $row['floor'],
+                    'room_type' => $row['room_type'],
+                    'bed_number' => $row['bed_number'] ? (int)$row['bed_number'] : null,
+                    'monthly_fee' => $row['student_monthly_fee'] !== null ? (float)$row['student_monthly_fee'] : null,
+                    'total_due' => 0.0,
+                    'total_paid' => 0.0,
+                    'total_pending' => 0.0,
+                    'earliest_due_date' => $dueDate,
+                    'has_overdue' => false,
+                    'has_partial' => false,
+                    'invoices' => [],
+                    'pending_months' => []
+                ];
+            }
+
+            $studentsMap[$studentId]['total_due'] += $invoiceTotal;
+            $studentsMap[$studentId]['total_paid'] += $invoicePaid;
+            $studentsMap[$studentId]['total_pending'] += $invoicePending;
+            $studentsMap[$studentId]['invoices'][] = $invoiceItem;
+            $studentsMap[$studentId]['pending_months'][] = $periodStr;
+
+            if ($isOverdue) {
+                $studentsMap[$studentId]['has_overdue'] = true;
+                $overdueStudentsSet[$studentId] = true;
+            }
+            if ($invoicePaid > 0) {
+                $studentsMap[$studentId]['has_partial'] = true;
+            }
+
+            if ($dueDate && (!$studentsMap[$studentId]['earliest_due_date'] || $dueDate < $studentsMap[$studentId]['earliest_due_date'])) {
+                $studentsMap[$studentId]['earliest_due_date'] = $dueDate;
+            }
+
+            $totalPendingAmount += $invoicePending;
+            $totalInvoicesCount++;
+        }
+
+        $studentsList = [];
+        foreach ($studentsMap as $stu) {
+            $overallStatus = 'Pending';
+            if ($stu['has_overdue']) {
+                $overallStatus = 'Overdue';
+            } elseif ($stu['has_partial']) {
+                $overallStatus = 'Partial';
+            }
+            $stu['overall_status'] = $overallStatus;
+            $stu['pending_months_summary'] = implode(', ', $stu['pending_months']);
+            $studentsList[] = $stu;
+        }
+
+        return [
+            'students' => $studentsList,
+            'summary' => [
+                'total_pending_amount' => $totalPendingAmount,
+                'pending_student_count' => count($studentsList),
+                'overdue_student_count' => count($overdueStudentsSet),
+                'total_invoices_count' => $totalInvoicesCount
+            ]
+        ];
+    }
+
+    public function getStudentPendingFeeDetails($studentId) {
+        $stmtStudent = $this->db->prepare("
+            SELECT s.*, 
+                   ra.id AS allocation_id, ra.room_id, ra.bed_number, ra.joining_date AS allocation_date,
+                   r.room_number, r.block, r.floor, r.room_type, r.monthly_fee AS room_monthly_fee
+            FROM students s
+            LEFT JOIN room_allocations ra ON s.id = ra.student_id AND ra.status = 'Active'
+            LEFT JOIN rooms r ON ra.room_id = r.id
+            WHERE s.id = ?
+        ");
+        $stmtStudent->execute([$studentId]);
+        $student = $stmtStudent->fetch();
+
+        if (!$student) {
+            return null;
+        }
+
+        $stmtInvoices = $this->db->prepare("
+            SELECT fr.*,
+                   (fr.amount + fr.additional_charges - fr.discount) AS invoice_total,
+                   (fr.amount + fr.additional_charges - fr.discount - fr.paid_amount) AS pending_amount
+            FROM fee_records fr
+            WHERE fr.student_id = ?
+              AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+            ORDER BY fr.billing_year ASC, fr.billing_month ASC, fr.id ASC
+        ");
+        $stmtInvoices->execute([$studentId]);
+        $rawInvoices = $stmtInvoices->fetchAll();
+
+        $pendingInvoices = [];
+        $totalPendingBalance = 0.0;
+        $totalAmountDue = 0.0;
+        $totalAmountPaid = 0.0;
+        $hasOverdue = false;
+        $hasPartial = false;
+        $earliestDueDate = null;
+        $oldestMonthStr = null;
+
+        foreach ($rawInvoices as $inv) {
+            $invoiceId = (int)$inv['id'];
+            $invoiceTotal = (float)$inv['invoice_total'];
+            $paidAmount = (float)$inv['paid_amount'];
+            $pendingAmount = (float)$inv['pending_amount'];
+            $dueDate = $inv['due_date'];
+            $isOverdue = $dueDate && (date('Y-m-d') > $dueDate);
+
+            $monthFullName = date('F', mktime(0, 0, 0, (int)$inv['billing_month'], 1, (int)$inv['billing_year']));
+            $periodStr = $monthFullName . ' ' . $inv['billing_year'];
+
+            if (!$oldestMonthStr) {
+                $oldestMonthStr = $periodStr;
+            }
+
+            $invStatus = 'Pending';
+            if ($isOverdue) {
+                $invStatus = 'Overdue';
+                $hasOverdue = true;
+            } elseif ($paidAmount > 0) {
+                $invStatus = 'Partial';
+                $hasPartial = true;
+            }
+
+            if ($dueDate && (!$earliestDueDate || $dueDate < $earliestDueDate)) {
+                $earliestDueDate = $dueDate;
+            }
+
+            $totalPendingBalance += $pendingAmount;
+            $totalAmountDue += $invoiceTotal;
+            $totalAmountPaid += $paidAmount;
+
+            // Fetch payments for this invoice
+            $stmtInvPayments = $this->db->prepare("
+                SELECT fp.*, a.username AS received_by_admin_username
+                FROM fee_payments fp
+                LEFT JOIN admins a ON a.id = fp.received_by_admin
+                WHERE fp.invoice_id = ? AND fp.status <> 'Reversed'
+                ORDER BY fp.payment_date DESC, fp.id DESC
+            ");
+            $stmtInvPayments->execute([$invoiceId]);
+            $invPayments = $stmtInvPayments->fetchAll();
+
+            $pendingInvoices[] = [
+                'id' => $invoiceId,
+                'invoice_number' => $inv['invoice_number'],
+                'billing_month' => (int)$inv['billing_month'],
+                'billing_year' => (int)$inv['billing_year'],
+                'billing_period' => $periodStr,
+                'amount' => (float)$inv['amount'],
+                'additional_charges' => (float)$inv['additional_charges'],
+                'discount' => (float)$inv['discount'],
+                'invoice_total' => $invoiceTotal,
+                'paid_amount' => $paidAmount,
+                'pending_amount' => $pendingAmount,
+                'due_date' => $dueDate,
+                'is_overdue' => $isOverdue,
+                'status' => $invStatus,
+                'remarks' => $inv['remarks'] ?? '',
+                'payments' => $invPayments
+            ];
+        }
+
+        // Fetch all payment history for this student
+        $stmtAllPayments = $this->db->prepare("
+            SELECT fp.*, fr.invoice_number, fr.billing_month, fr.billing_year,
+                   a.username AS received_by_admin_username
+            FROM fee_payments fp
+            JOIN fee_records fr ON fr.id = fp.invoice_id
+            LEFT JOIN admins a ON a.id = fp.received_by_admin
+            WHERE fr.student_id = ? AND fp.status <> 'Reversed'
+            ORDER BY fp.payment_date DESC, fp.id DESC
+        ");
+        $stmtAllPayments->execute([$studentId]);
+        $allPayments = $stmtAllPayments->fetchAll();
+
+        $overallStatus = 'Settled';
+        if ($totalPendingBalance > 0) {
+            if ($hasOverdue) {
+                $overallStatus = 'Overdue';
+            } elseif ($hasPartial) {
+                $overallStatus = 'Partial';
+            } else {
+                $overallStatus = 'Pending';
+            }
+        }
+
+        return [
+            'student' => $student,
+            'pending_invoices' => $pendingInvoices,
+            'payment_history' => $allPayments,
+            'summary' => [
+                'monthly_fee' => $student['monthly_fee'] !== null ? (float)$student['monthly_fee'] : 0.0,
+                'total_pending_balance' => $totalPendingBalance,
+                'total_amount_due' => $totalAmountDue,
+                'total_amount_paid' => $totalAmountPaid,
+                'pending_months_count' => count($pendingInvoices),
+                'oldest_pending_month' => $oldestMonthStr ?? '—',
+                'earliest_due_date' => $earliestDueDate,
+                'overall_status' => $overallStatus
+            ]
+        ];
+    }
+
     private function buildPendingFeeWhere(array $filters = []) {
         $sql = " WHERE (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount ";
         $params = [];

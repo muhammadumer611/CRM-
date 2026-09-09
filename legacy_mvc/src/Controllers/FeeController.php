@@ -117,21 +117,37 @@ class FeeController {
     public function pending() {
         $filters = [
             'search' => $_GET['search'] ?? '',
-            'student_id' => $_GET['student_id'] ?? '',
-            'month' => $_GET['month'] ?? '',
-            'year' => $_GET['year'] ?? '',
-            'period' => $_GET['period'] ?? 'current_month',
+            'room'   => $_GET['room'] ?? '',
+            'month'  => $_GET['month'] ?? '',
+            'year'   => $_GET['year'] ?? '',
             'status' => $_GET['status'] ?? '',
         ];
 
-        $rows = $this->feeService->getPendingFees($filters);
-        $summary = $this->feeService->getPendingFeesSummary($filters);
+        $overview = $this->feeService->getPendingFeeStudentsOverview($filters);
 
         View::render('admin/fees/pending', [
-            'title' => 'Pending Fees',
-            'filters' => $filters,
-            'rows' => $rows,
-            'summary' => $summary,
+            'title'    => 'Pending Fee',
+            'filters'  => $filters,
+            'students' => $overview['students'],
+            'summary'  => $overview['summary'],
+        ], 'admin');
+    }
+
+    public function pendingDetail($studentId) {
+        $details = $this->feeService->getStudentPendingFeeDetails((int)$studentId);
+        if (!$details) {
+            Session::set('error', 'Student not found or has no pending fee records.');
+            $config = require APP_ROOT . '/config/app.php';
+            header('Location: ' . $config['base_url'] . '/fees/pending');
+            exit;
+        }
+
+        View::render('admin/fees/pending-detail', [
+            'title'    => 'Pending Fee Details — ' . htmlspecialchars($details['student']['full_name']),
+            'student'  => $details['student'],
+            'invoices' => $details['pending_invoices'],
+            'payments' => $details['payment_history'],
+            'summary'  => $details['summary'],
         ], 'admin');
     }
 
