@@ -98,12 +98,7 @@
                 <div style="font-size:0.78rem;color:var(--text-muted);text-transform:uppercase;">Room & Bed</div>
                 <div style="font-weight:600;color:var(--primary);">
                     <?php if (!empty($student['room_number'])): ?>
-                        <?php
-                            $rLabel = '';
-                            if (!empty($student['block'])) $rLabel .= htmlspecialchars($student['block']) . '-';
-                            $rLabel .= htmlspecialchars($student['room_number']);
-                            echo $rLabel;
-                        ?>
+                        Room <?php echo htmlspecialchars($student['room_number']); ?>
                         <?php if (!empty($student['bed_number'])): ?>
                             (Bed <?php echo (int)$student['bed_number']; ?>)
                         <?php endif; ?>

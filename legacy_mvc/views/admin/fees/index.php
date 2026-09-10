@@ -2,9 +2,6 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-money-bill-wave"></i> Fee Management</h3>
-        <a href="<?php echo $config['base_url']; ?>/fees/create" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Create Invoice
-        </a>
     </div>
 
     <!-- Financial Summary -->

@@ -11,15 +11,11 @@
         <div class="row">
             <div class="col-md-6 form-group">
                 <label class="form-label">Room Number *</label>
-                <input type="text" name="room_number" class="form-control" required autofocus>
-            </div>
-            <div class="col-md-6 form-group">
-                <label class="form-label">Block *</label>
-                <input type="text" name="block" class="form-control" placeholder="e.g. Block A" required>
+                <input type="text" name="room_number" class="form-control" placeholder="e.g. 101, 102" required autofocus>
             </div>
             <div class="col-md-6 form-group">
                 <label class="form-label">Floor *</label>
-                <input type="text" name="floor" class="form-control" placeholder="e.g. Ground, 1st" required>
+                <input type="text" name="floor" class="form-control" placeholder="e.g. Ground, 1st, 2nd" required>
             </div>
             <div class="col-md-6 form-group">
                 <label class="form-label">Room Type *</label>
@@ -34,7 +30,7 @@
             </div>
             <div class="col-md-6 form-group">
                 <label class="form-label">Total Beds *</label>
-                <input type="number" name="total_beds" class="form-control" min="1" required>
+                <input type="number" name="total_beds" class="form-control" min="1" max="10" required>
             </div>
             <div class="col-md-6 form-group">
                 <label class="form-label">Status</label>

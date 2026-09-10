@@ -8,7 +8,6 @@
 <?php $overdueFees = $reportData['overdue_fees'] ?? []; ?>
 <?php $topOutstanding = $reportData['top_outstanding_students'] ?? []; ?>
 <?php $paymentMethods = $reportData['payment_methods'] ?? []; ?>
-<?php $recentActivity = $reportData['recent_activity'] ?? []; ?>
 
 <style>
     .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
@@ -394,25 +393,5 @@
             </div>
         </div>
 
-        <div class="report-section">
-            <h4 style="margin-bottom:1rem;">Recent Activity</h4>
-            <ul style="list-style:none; padding:0;">
-                <?php if (empty($recentActivity)): ?>
-                    <li style="color: var(--text-muted);">No recent activity available.</li>
-                <?php else: ?>
-                    <?php foreach ($recentActivity as $log): ?>
-                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
-                            <div style="font-weight:600; color: var(--primary);"><?php echo htmlspecialchars($log['action'] ?? 'Activity'); ?></div>
-                            <div style="color: var(--text-muted); font-size: 0.85rem; margin-top:0.25rem;">
-                                <?php echo htmlspecialchars($log['description'] ?? ''); ?>
-                            </div>
-                            <div style="font-size: 0.75rem; opacity: 0.8; margin-top:0.25rem;">
-                                <?php echo htmlspecialchars($log['username'] ?? 'System'); ?> • <?php echo date('M d, Y H:i', strtotime($log['created_at'])); ?>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </ul>
-        </div>
     </div>
 </div>

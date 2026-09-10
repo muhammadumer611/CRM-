@@ -120,12 +120,25 @@
                                 <?php
                                     $entity = strtolower((string)$notification['entity_type']);
                                     $link = '#';
-                                    if ($entity === 'fee') { $link = $config['base_url'] . '/fees'; }
-                                    elseif ($entity === 'student') { $link = $config['base_url'] . '/students'; }
-                                    elseif ($entity === 'room') { $link = $config['base_url'] . '/rooms'; }
-                                    elseif ($entity === 'allocation') { $link = $config['base_url'] . '/allocations'; }
+                                    $label = 'View related';
+                                    if ($entity === 'fee_pending') { 
+                                        $link = $config['base_url'] . '/fees/pending/' . (int)$notification['entity_id'];
+                                        $label = 'View Fee Detail';
+                                    } elseif ($entity === 'fee') { 
+                                        $link = $config['base_url'] . '/fees'; 
+                                        $label = 'View Fees';
+                                    } elseif ($entity === 'student') { 
+                                        $link = $config['base_url'] . '/students/view/' . (int)$notification['entity_id']; 
+                                        $label = 'View Student';
+                                    } elseif ($entity === 'room') { 
+                                        $link = $config['base_url'] . '/rooms'; 
+                                        $label = 'View Room';
+                                    } elseif ($entity === 'allocation') { 
+                                        $link = $config['base_url'] . '/allocations'; 
+                                        $label = 'View Allocation';
+                                    }
                                 ?>
-                                <a href="<?php echo htmlspecialchars($link); ?>" class="btn btn-sm" style="background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2);">View related</a>
+                                <a href="<?php echo htmlspecialchars($link); ?>" class="btn btn-sm" style="background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2);"><?php echo htmlspecialchars($label); ?></a>
                             <?php endif; ?>
                         </div>
                     </div>

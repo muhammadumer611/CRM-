@@ -39,5 +39,6 @@ return [
         'httponly' => true,
         'samesite' => 'Lax'
     ],
-    'notification_reminder_days' => 3
+    'notification_reminder_days' => 3,
+    'max_room_beds' => 10
 ];

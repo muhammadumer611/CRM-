@@ -203,9 +203,6 @@
             <a href="<?php echo $config['base_url']; ?>/notifications" class="nav-item <?php echo preg_match('#/notification#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-bell"></i> Notifications
             </a>
-            <a href="<?php echo $config['base_url']; ?>/audit-logs" class="nav-item <?php echo preg_match('#/audit#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
-                <i class="fas fa-shield-alt"></i> Audit Logs
-            </a>
         </div>
     </div>
     

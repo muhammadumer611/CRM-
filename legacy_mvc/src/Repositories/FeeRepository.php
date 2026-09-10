@@ -164,7 +164,6 @@ class FeeRepository {
                 ra.room_id,
                 ra.bed_number,
                 r.room_number,
-                r.block,
                 r.floor,
                 r.room_type
             FROM fee_records fr
@@ -189,8 +188,7 @@ class FeeRepository {
         if (!empty($filters['room'])) {
             $rawRoom = trim((string)$filters['room']);
             $searchRoom = '%' . $rawRoom . '%';
-            $sql .= " AND (r.room_number LIKE ? OR r.block LIKE ?)";
-            $params[] = $searchRoom;
+            $sql .= " AND r.room_number LIKE ?";
             $params[] = $searchRoom;
         }
 
@@ -328,6 +326,168 @@ class FeeRepository {
                 'total_pending_amount' => $totalPendingAmount,
                 'pending_student_count' => count($studentsList),
                 'overdue_student_count' => count($overdueStudentsSet),
+                'total_invoices_count' => $totalInvoicesCount
+            ]
+        ];
+    }
+
+    public function getPaidFeeStudentsOverview(array $filters = []) {
+        $sql = "
+            SELECT
+                fr.id AS invoice_id,
+                fr.invoice_number,
+                fr.student_id,
+                fr.billing_month,
+                fr.billing_year,
+                fr.amount,
+                fr.additional_charges,
+                fr.discount,
+                fr.paid_amount,
+                (fr.amount + fr.additional_charges - fr.discount) AS invoice_total,
+                fr.due_date,
+                fr.payment_date,
+                fr.payment_method,
+                fr.status AS invoice_status,
+                s.full_name AS student_name,
+                s.student_id_str,
+                s.cnic,
+                s.phone,
+                s.email,
+                s.address,
+                s.monthly_fee AS student_monthly_fee,
+                s.status AS student_status,
+                ra.room_id,
+                ra.bed_number,
+                r.room_number,
+                r.block,
+                r.floor,
+                r.room_type,
+                (SELECT MAX(fp.payment_date) FROM fee_payments fp WHERE fp.invoice_id = fr.id AND fp.status <> 'Reversed') AS latest_payment_date
+            FROM students s
+            JOIN fee_records fr ON fr.student_id = s.id
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN rooms r ON r.id = ra.room_id
+            WHERE s.status = 'Active'
+              AND (fr.amount + fr.additional_charges - fr.discount) <= fr.paid_amount
+              AND fr.paid_amount > 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM fee_records fr2
+                  WHERE fr2.student_id = s.id
+                    AND (fr2.amount + fr2.additional_charges - fr2.discount) > fr2.paid_amount
+              )
+        ";
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $rawTerm = trim((string)$filters['search']);
+            $searchTerm = '%' . $rawTerm . '%';
+            $sql .= " AND (s.full_name LIKE ? OR s.student_id_str LIKE ? OR s.cnic LIKE ? OR s.phone LIKE ?)";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+
+        if (!empty($filters['room'])) {
+            $rawRoom = trim((string)$filters['room']);
+            $searchRoom = '%' . $rawRoom . '%';
+            $sql .= " AND (r.room_number LIKE ? OR r.block LIKE ?)";
+            $params[] = $searchRoom;
+            $params[] = $searchRoom;
+        }
+
+        if (!empty($filters['month'])) {
+            $sql .= " AND fr.billing_month = ?";
+            $params[] = (int)$filters['month'];
+        }
+
+        if (!empty($filters['year'])) {
+            $sql .= " AND fr.billing_year = ?";
+            $params[] = (int)$filters['year'];
+        }
+
+        $sql .= " ORDER BY s.id ASC, fr.billing_year DESC, fr.billing_month DESC, fr.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rawRows = $stmt->fetchAll();
+
+        $studentsMap = [];
+        $totalPaidAmount = 0.0;
+        $totalInvoicesCount = 0;
+
+        foreach ($rawRows as $row) {
+            $studentId = (int)$row['student_id'];
+            $invoiceTotal = (float)$row['invoice_total'];
+            $invoicePaid = (float)$row['paid_amount'];
+            $paymentDate = $row['latest_payment_date'] ?: $row['payment_date'];
+
+            $monthName = date('M', mktime(0, 0, 0, (int)$row['billing_month'], 1, (int)$row['billing_year']));
+            $periodStr = $monthName . ' ' . $row['billing_year'];
+
+            $invoiceItem = [
+                'id' => (int)$row['invoice_id'],
+                'invoice_number' => $row['invoice_number'],
+                'billing_month' => (int)$row['billing_month'],
+                'billing_year' => (int)$row['billing_year'],
+                'billing_period' => $periodStr,
+                'amount' => (float)$row['amount'],
+                'additional_charges' => (float)$row['additional_charges'],
+                'discount' => (float)$row['discount'],
+                'invoice_total' => $invoiceTotal,
+                'paid_amount' => $invoicePaid,
+                'remaining_balance' => 0.0,
+                'payment_date' => $paymentDate,
+                'payment_method' => $row['payment_method'],
+                'status' => 'Paid'
+            ];
+
+            if (!isset($studentsMap[$studentId])) {
+                $studentsMap[$studentId] = [
+                    'student_id' => $studentId,
+                    'student_name' => $row['student_name'],
+                    'student_id_str' => $row['student_id_str'],
+                    'cnic' => $row['cnic'],
+                    'phone' => $row['phone'],
+                    'email' => $row['email'],
+                    'address' => $row['address'],
+                    'room_id' => $row['room_id'] ? (int)$row['room_id'] : null,
+                    'room_number' => $row['room_number'],
+                    'block' => $row['block'],
+                    'floor' => $row['floor'],
+                    'room_type' => $row['room_type'],
+                    'bed_number' => $row['bed_number'] ? (int)$row['bed_number'] : null,
+                    'monthly_fee' => $row['student_monthly_fee'] !== null ? (float)$row['student_monthly_fee'] : null,
+                    'total_due' => 0.0,
+                    'total_paid' => 0.0,
+                    'remaining_balance' => 0.0,
+                    'latest_payment_date' => $paymentDate,
+                    'payment_status' => 'Paid',
+                    'invoices' => [],
+                    'paid_months' => []
+                ];
+            }
+
+            $studentsMap[$studentId]['total_due'] += $invoiceTotal;
+            $studentsMap[$studentId]['total_paid'] += $invoicePaid;
+            $studentsMap[$studentId]['invoices'][] = $invoiceItem;
+            $studentsMap[$studentId]['paid_months'][] = $periodStr;
+
+            if ($paymentDate && (!$studentsMap[$studentId]['latest_payment_date'] || $paymentDate > $studentsMap[$studentId]['latest_payment_date'])) {
+                $studentsMap[$studentId]['latest_payment_date'] = $paymentDate;
+            }
+
+            $totalPaidAmount += $invoicePaid;
+            $totalInvoicesCount++;
+        }
+
+        $studentsList = array_values($studentsMap);
+
+        return [
+            'students' => $studentsList,
+            'summary' => [
+                'total_paid_amount' => $totalPaidAmount,
+                'paid_student_count' => count($studentsList),
                 'total_invoices_count' => $totalInvoicesCount
             ]
         ];
@@ -665,7 +825,7 @@ class FeeRepository {
      * Record a payment against an invoice. Stores in fee_payments, updates fee_records.
      * Returns ['success', 'receipt_number', 'new_status'] or ['success' => false, 'error']
      */
-    public function recordPayment($invoiceId, $amount, $paymentMethod, $transactionRef, $remarks, $adminId, $pdo = null) {
+    public function recordPayment($invoiceId, $amount, $paymentMethod, $transactionRef, $remarks, $adminId, $paymentDate = null, $pdo = null) {
         $db = $pdo ?? $this->db;
 
         // Get current invoice (locked)
@@ -681,7 +841,7 @@ class FeeRepository {
         if ($amount > $remaining + 0.01) return ['success' => false, 'error' => "Payment amount (Rs. {$amount}) exceeds remaining balance (Rs. " . number_format($remaining, 2) . ').'];
 
         $receiptNum = 'RCP-' . strtoupper(substr(uniqid(), -8));
-        $paymentDate = date('Y-m-d');
+        $paymentDate = $paymentDate ?: date('Y-m-d');
 
         // Insert payment record
         $stmtP = $db->prepare("
@@ -929,14 +1089,14 @@ class FeeRepository {
 
     public function findStudentPayments($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $stmt = $db->prepare("SELECT fp.*, fr.invoice_number, fr.billing_month, fr.billing_year FROM fee_payments fp JOIN fee_records fr ON fr.id = fp.invoice_id WHERE fr.student_id = ? ORDER BY fp.payment_date DESC, fp.id DESC");
+        $stmt = $db->prepare("SELECT fp.*, fr.invoice_number, fr.billing_month, fr.billing_year, fr.status AS fee_status FROM fee_payments fp JOIN fee_records fr ON fr.id = fp.invoice_id WHERE fr.student_id = ? ORDER BY fp.payment_date DESC, fp.id DESC");
         $stmt->execute([$studentId]);
         return $stmt->fetchAll();
     }
 
     public function getLastPaymentDate($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $stmt = $db->prepare("SELECT MAX(payment_date) FROM fee_payments fp JOIN fee_records fr ON fr.id = fp.invoice_id WHERE fr.student_id = ?");
+        $stmt = $db->prepare("SELECT MAX(fp.payment_date) FROM fee_payments fp JOIN fee_records fr ON fr.id = fp.invoice_id WHERE fr.student_id = ?");
         $stmt->execute([$studentId]);
         $date = $stmt->fetchColumn();
         return $date ?: null;

@@ -16,7 +16,7 @@ class RoomRepository {
         $params = [];
 
         if (!empty($filters['search'])) {
-            $query .= " AND (room_number LIKE ? OR block LIKE ? OR room_type LIKE ?)";
+            $query .= " AND (room_number LIKE ? OR floor LIKE ? OR room_type LIKE ?)";
             $searchTerm = '%' . $filters['search'] . '%';
             $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
         }
@@ -26,7 +26,7 @@ class RoomRepository {
             $params[] = $filters['status'];
         }
 
-        $query .= " ORDER BY block ASC, room_number ASC LIMIT ? OFFSET ?";
+        $query .= " ORDER BY room_number ASC LIMIT ? OFFSET ?";
         
         $stmt = $this->db->prepare($query);
         
@@ -46,7 +46,7 @@ class RoomRepository {
         $params = [];
 
         if (!empty($filters['search'])) {
-            $query .= " AND (room_number LIKE ? OR block LIKE ? OR room_type LIKE ?)";
+            $query .= " AND (room_number LIKE ? OR floor LIKE ? OR room_type LIKE ?)";
             $searchTerm = '%' . $filters['search'] . '%';
             $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
         }
@@ -83,7 +83,7 @@ class RoomRepository {
             LEFT JOIN room_allocations ra ON ra.room_id = r.id AND ra.status = 'Active'
             WHERE r.status != 'Disabled'
             GROUP BY r.id
-            ORDER BY r.block ASC, r.room_number ASC
+            ORDER BY r.room_number ASC
         ";
 
         $stmt = $this->db->query($query);
@@ -223,6 +223,17 @@ class RoomRepository {
         return $stmt->fetch();
     }
     
+    public function findByRoomNumber($roomNumber, $excludeId = null) {
+        if ($excludeId) {
+            $stmt = $this->db->prepare("SELECT * FROM rooms WHERE room_number = ? AND id != ?");
+            $stmt->execute([$roomNumber, $excludeId]);
+        } else {
+            $stmt = $this->db->prepare("SELECT * FROM rooms WHERE room_number = ?");
+            $stmt->execute([$roomNumber]);
+        }
+        return $stmt->fetch();
+    }
+    
     public function findByRoomNumberAndBlock($roomNumber, $block, $excludeId = null) {
         if ($excludeId) {
             $stmt = $this->db->prepare("SELECT * FROM rooms WHERE room_number = ? AND block = ? AND id != ?");
@@ -305,7 +316,7 @@ class RoomRepository {
         $stmt = $this->db->query("
             SELECT * FROM rooms 
             WHERE status != 'Disabled' AND status != 'Occupied' AND total_beds > occupied_beds
-            ORDER BY block ASC, room_number ASC
+            ORDER BY room_number ASC
         ");
         return $stmt->fetchAll();
     }

@@ -6,7 +6,6 @@ use App\Repositories\AdminRepository;
 use App\Repositories\FeeRepository;
 use App\Core\Session;
 use App\Core\Database;
-use App\Services\AuditLogger;
 use App\Services\StudentHistoryService;
 use Exception;
 use PDO;
@@ -189,7 +188,6 @@ class StudentService {
             StudentHistoryService::record($studentId, 'STUDENT_CREATED', 'Single-person onboarding completed.', null, array_merge($dbData, ['allocation_id' => $allocationId, 'invoice_id' => $invoiceId]), Session::get('admin_id'), $this->db);
             $this->db->commit();
 
-            AuditLogger::logAdminAction('STUDENT_ONBOARDED', 'student', $studentId, 'Single-person onboarding: ' . $studentIdStr, null, ['student_id_str' => $studentIdStr, 'room_id' => $roomId, 'bed_number' => $bedNumber]);
             return ['success' => true, 'id' => $studentId, 'student_id_str' => $studentIdStr];
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -320,7 +318,6 @@ class StudentService {
             $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?")->execute([$newOccupied, $newStatus, $roomId]);
 
             $this->db->commit();
-            AuditLogger::logAdminAction('FULL_ROOM_ONBOARDED', 'student', $roomId, 'Full-room onboarding created ' . count($createdStudentIds) . ' occupants.', null, ['room_id' => $roomId, 'count' => count($createdStudentIds)]);
             return ['success' => true, 'count' => count($createdStudentIds), 'student_id_str' => $createdStudentIds[0]['student_id_str'] ?? null];
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -401,7 +398,6 @@ class StudentService {
                     }
                 }
 
-                AuditLogger::logAdminAction($eventType, 'student', $id, $desc, $oldValues, $changes);
                 StudentHistoryService::record($id, $eventType, $desc, $oldValues, $changes);
             }
 

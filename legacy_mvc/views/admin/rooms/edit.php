@@ -14,10 +14,6 @@
                 <input type="text" name="room_number" class="form-control" value="<?php echo htmlspecialchars($room['room_number']); ?>" required>
             </div>
             <div class="col-md-6 form-group">
-                <label class="form-label">Block *</label>
-                <input type="text" name="block" class="form-control" value="<?php echo htmlspecialchars($room['block']); ?>" required>
-            </div>
-            <div class="col-md-6 form-group">
                 <label class="form-label">Floor *</label>
                 <input type="text" name="floor" class="form-control" value="<?php echo htmlspecialchars($room['floor']); ?>" required>
             </div>
@@ -32,7 +28,7 @@
             </div>
             <div class="col-md-4 form-group">
                 <label class="form-label">Total Beds * (Occupied: <?php echo $room['occupied_beds']; ?>)</label>
-                <input type="number" name="total_beds" class="form-control" min="<?php echo $room['occupied_beds'] > 0 ? $room['occupied_beds'] : 1; ?>" value="<?php echo $room['total_beds']; ?>" required>
+                <input type="number" name="total_beds" class="form-control" min="<?php echo $room['occupied_beds'] > 0 ? $room['occupied_beds'] : 1; ?>" max="10" value="<?php echo $room['total_beds']; ?>" required>
             </div>
             <div class="col-md-4 form-group">
                 <label class="form-label">Monthly Fee (Rs.) *</label>

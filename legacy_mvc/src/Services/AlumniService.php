@@ -7,7 +7,6 @@ use App\Repositories\FeeRepository;
 use App\Core\Database;
 use App\Core\Session;
 use App\Services\StudentHistoryService;
-use App\Services\AuditLogger;
 use Exception;
 use PDO;
 
@@ -187,15 +186,6 @@ class AlumniService {
             );
 
             $this->db->commit();
-
-            AuditLogger::logAdminAction(
-                'STUDENT_CHECKOUT',
-                'alumni',
-                $alumniId,
-                "Student {$student['student_id_str']} checked out and converted to alumni. Room released: " . ($prevRoomStr ?? 'None'),
-                $oldValue,
-                $newValue
-            );
 
             return ['success' => true, 'alumni_id' => $alumniId, 'deposit_settlement' => $depositSettlement];
             

@@ -40,42 +40,6 @@ class FeeController {
         ], 'admin');
     }
 
-    public function create() {
-        $students = $this->feeService->getActiveStudentsForFee();
-
-        View::render('admin/fees/create', [
-            'title'      => 'Create Fee Invoice',
-            'students'   => $students,
-            'csrf_token' => CSRF::generateToken()
-        ], 'admin');
-    }
-
-    public function store() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            http_response_code(405); exit;
-        }
-        
-        CSRF::verifyToken($_POST['csrf_token'] ?? '');
-        $config = require APP_ROOT . '/config/app.php';
-
-        if (empty($_POST['student_id']) || empty($_POST['billing_month']) || empty($_POST['billing_year'])) {
-            Session::set('error', 'Student, billing month, and year are required.');
-            header('Location: ' . $config['base_url'] . '/fees/create');
-            exit;
-        }
-
-        $result = $this->feeService->createFee($_POST);
-        
-        if ($result['success']) {
-            Session::set('success', 'Fee invoice created successfully.');
-            header('Location: ' . $config['base_url'] . '/fees');
-        } else {
-            Session::set('error', $result['error']);
-            header('Location: ' . $config['base_url'] . '/fees/create');
-        }
-        exit;
-    }
-
     public function pay($id) {
         $fee = $this->feeService->getFee($id);
         if (!$fee) {
@@ -111,6 +75,24 @@ class FeeController {
             'filters' => $filters,
             'payments' => $payments,
             'summary' => $summary,
+        ], 'admin');
+    }
+
+    public function paid() {
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'room'   => $_GET['room'] ?? '',
+            'month'  => $_GET['month'] ?? '',
+            'year'   => $_GET['year'] ?? '',
+        ];
+
+        $overview = $this->feeService->getPaidFeeStudentsOverview($filters);
+
+        View::render('admin/fees/paid', [
+            'title'    => 'Paid Fee',
+            'filters'  => $filters,
+            'students' => $overview['students'],
+            'summary'  => $overview['summary'],
         ], 'admin');
     }
 

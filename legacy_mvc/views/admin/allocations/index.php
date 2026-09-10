@@ -25,7 +25,7 @@
                     <tr>
                         <td><span class="badge" style="background-color: #334155;"><?php echo htmlspecialchars($alloc['student_id_str']); ?></span></td>
                         <td><strong><?php echo htmlspecialchars($alloc['full_name']); ?></strong></td>
-                        <td><?php echo htmlspecialchars($alloc['block'] . ' - ' . $alloc['room_number']); ?></td>
+                        <td>Room <?php echo htmlspecialchars($alloc['room_number']); ?></td>
                         <td>Bed <?php echo htmlspecialchars($alloc['bed_number']); ?></td>
                         <td><?php echo htmlspecialchars($alloc['joining_date']); ?></td>
                         <td>

@@ -36,7 +36,6 @@ class ReportsService {
             'overdue_fees' => $this->repository->getOverdueFees($filters),
             'top_outstanding_students' => $this->repository->getTopOutstandingStudents($filters),
             'payment_methods' => $this->repository->getPaymentMethodAnalytics($filters),
-            'recent_activity' => $this->repository->getRecentActivity(5),
         ];
     }
 }

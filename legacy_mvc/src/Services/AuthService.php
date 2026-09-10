@@ -3,7 +3,6 @@ namespace App\Services;
 
 use App\Repositories\AdminRepository;
 use App\Core\Session;
-use App\Services\AuditLogger;
 
 class AuthService {
     private $adminRepo;
@@ -22,34 +21,11 @@ class AuthService {
             Session::set('admin_user', $admin['username']);
             Session::set('last_activity', time());
 
-            AuditLogger::log(
-                (int)$admin['id'],
-                'LOGIN_SUCCESS',
-                'admin',
-                (int)$admin['id'],
-                'Admin logged in successfully.',
-                null,
-                ['username' => $admin['username']],
-                $ip,
-                $_SERVER['HTTP_USER_AGENT'] ?? null
-            );
-
             $this->adminRepo->logAction((int)$admin['id'], 'Login', 'Admin logged in successfully', $ip);
             return true;
         }
 
         if ($admin) {
-            AuditLogger::log(
-                (int)$admin['id'],
-                'LOGIN_FAILED',
-                'admin',
-                (int)$admin['id'],
-                'Failed login attempt for username: ' . $admin['username'],
-                null,
-                ['username' => $admin['username']],
-                $ip,
-                $_SERVER['HTTP_USER_AGENT'] ?? null
-            );
             $this->adminRepo->logAction((int)$admin['id'], 'Failed Login', 'Failed login attempt', $ip);
         }
         return false;
@@ -58,17 +34,6 @@ class AuthService {
     public function logout($ip) {
         $adminId = Session::get('admin_id');
         if ($adminId) {
-            AuditLogger::log(
-                (int)$adminId,
-                'LOGOUT',
-                'admin',
-                (int)$adminId,
-                'Admin logged out.',
-                null,
-                ['username' => Session::get('admin_user')],
-                $ip,
-                $_SERVER['HTTP_USER_AGENT'] ?? null
-            );
             $this->adminRepo->logAction((int)$adminId, 'Logout', 'Admin logged out', $ip);
         }
         Session::destroy();

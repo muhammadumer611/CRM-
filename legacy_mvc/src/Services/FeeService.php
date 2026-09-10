@@ -6,7 +6,6 @@ use App\Repositories\StudentRepository;
 use App\Repositories\AdminRepository;
 use App\Core\Session;
 use App\Core\Database;
-use App\Services\AuditLogger;
 use Exception;
 use PDO;
 
@@ -72,6 +71,10 @@ class FeeService {
         return $this->feeRepo->getPendingFeeStudentsOverview($filters);
     }
 
+    public function getPaidFeeStudentsOverview(array $filters = []) {
+        return $this->feeRepo->getPaidFeeStudentsOverview($filters);
+    }
+
     public function getStudentPendingFeeDetails($studentId) {
         return $this->feeRepo->getStudentPendingFeeDetails((int)$studentId);
     }
@@ -82,70 +85,6 @@ class FeeService {
 
     public function getFeePayments($invoiceId) {
         return $this->feeRepo->getPayments($invoiceId);
-    }
-
-    public function createFee($data) {
-        $student = $this->studentRepo->findById($data['student_id']);
-        if (!$student) return ['success' => false, 'error' => 'Student not found.'];
-        if ($student['status'] !== 'Active') return ['success' => false, 'error' => 'Cannot create fee for an inactive student.'];
-
-        $billingMonth = (int)$data['billing_month'];
-        $billingYear  = (int)$data['billing_year'];
-
-        if ($this->feeRepo->findByStudentAndMonthYear($data['student_id'], $billingMonth, $billingYear)) {
-            return ['success' => false, 'error' => 'A monthly fee invoice already exists for this student for ' . date('F Y', mktime(0,0,0,$billingMonth,1,$billingYear)) . '.'];
-        }
-
-        // Use student's fixed monthly_fee if amount not specified differently
-        $amount = (float)($data['amount'] ?? $student['monthly_fee'] ?? 0);
-        if ($amount <= 0) {
-            return ['success' => false, 'error' => 'Fee amount must be greater than zero. Set a monthly fee on the student profile first.'];
-        }
-
-        $additionalCharges = (float)($data['additional_charges'] ?? 0);
-        $discount = (float)($data['discount'] ?? 0);
-        $paidAmount = (float)($data['paid_amount'] ?? 0);
-        $totalAmount = max(0, $amount + $additionalCharges - $discount);
-        $dueDate = !empty($data['due_date']) ? $data['due_date'] : date('Y-m-d', mktime(0,0,0,$billingMonth+1,10,$billingYear));
-
-        $dbData = [
-            'student_id'    => $data['student_id'],
-            'billing_month' => $billingMonth,
-            'billing_year'  => $billingYear,
-            'amount'        => $amount,
-            'additional_charges' => $additionalCharges,
-            'discount'      => $discount,
-            'paid_amount'   => $paidAmount,
-            'due_date'      => $dueDate,
-            'status'        => $paidAmount >= $totalAmount ? 'Paid' : ($paidAmount > 0 ? 'Partial' : 'Pending'),
-            'charge_type'   => 'MONTHLY_FEE',
-            'remarks'       => trim($data['remarks'] ?? '')
-        ];
-
-        $id = $this->feeRepo->create($dbData);
-        
-        if ($id) {
-            if ($paidAmount > 0) {
-                $this->feeRepo->createPayment($id, [
-                    'amount' => $paidAmount,
-                    'payment_date' => $data['payment_date'] ?? date('Y-m-d'),
-                    'payment_method' => $data['payment_method'] ?? 'Cash',
-                    'transaction_ref' => $data['transaction_ref'] ?? null,
-                    'remarks' => 'Initial payment on invoice creation',
-                    'received_by_admin' => Session::get('admin_id')
-                ]);
-            }
-
-            AuditLogger::logAdminAction('INVOICE_CREATED', 'fee', $id,
-                "Invoice created for {$student['student_id_str']} — {$billingMonth}/{$billingYear} — Rs. " . number_format($amount, 2),
-                null, $dbData
-            );
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-            $this->adminRepo->logAction(Session::get('admin_id'), 'Create Fee Invoice', "Invoice for {$student['student_id_str']}", $ip);
-            return ['success' => true, 'id' => $id];
-        }
-        
-        return ['success' => false, 'error' => 'Failed to create fee record.'];
     }
 
     /**
@@ -160,9 +99,14 @@ class FeeService {
         $paymentMethod = trim($data['payment_method'] ?? '');
         $transactionRef = trim($data['transaction_ref'] ?? '');
         $remarks       = trim($data['remarks'] ?? '');
+        $paymentDate = trim((string)($data['payment_date'] ?? date('Y-m-d')));
+        $parsedDate = \DateTime::createFromFormat('!Y-m-d', $paymentDate);
 
         if ($paidAmount <= 0) {
             return ['success' => false, 'error' => 'Payment amount must be greater than zero.'];
+        }
+        if (!$parsedDate || $parsedDate->format('Y-m-d') !== $paymentDate || $paymentDate > date('Y-m-d')) {
+            return ['success' => false, 'error' => 'Payment date must be a valid date and cannot be in the future.'];
         }
 
         $totalAmount = (float)$invoice['amount'] + (float)($invoice['additional_charges'] ?? 0) - (float)($invoice['discount'] ?? 0);
@@ -185,18 +129,13 @@ class FeeService {
                 $transactionRef,
                 $remarks,
                 Session::get('admin_id'),
+                $paymentDate,
                 $this->db
             );
 
             if (!$result['success']) throw new Exception($result['error']);
 
             $this->db->commit();
-
-            AuditLogger::logAdminAction('PAYMENT_RECORDED', 'fee', $id,
-                "Payment Rs. " . number_format($paidAmount, 2) . " recorded for {$invoice['student_id_str']} (Invoice #{$invoice['invoice_number']}) via {$paymentMethod}. Status: {$result['new_status']}.",
-                ['paid_before' => $invoice['paid_amount']],
-                ['amount' => $paidAmount, 'method' => $paymentMethod, 'receipt' => $result['receipt_number']]
-            );
 
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
             $this->adminRepo->logAction(Session::get('admin_id'), 'Fee Payment', "Rs. {$paidAmount} for invoice #{$id}. Receipt: {$result['receipt_number']}", $ip);
@@ -473,6 +412,13 @@ class FeeService {
 
             $this->feeRepo->updateOverdueStatuses($studentId, $db);
             $db->commit();
+
+            try {
+                \App\Services\NotificationService::newInstance()->generateMonthlyPendingFeeAlerts();
+            } catch (\Exception $ne) {
+                // Non-blocking notification sync
+            }
+
             return ['success' => true, 'payment_id' => $paymentId, 'receipt_number' => $paymentReceipt, 'allocations' => $allocationResult['allocations'], 'applied_total' => $allocationResult['applied_total']];
         } catch (\Exception $e) {
             $db->rollBack();
@@ -630,16 +576,6 @@ class FeeService {
 
     public function getFinancialSummary() {
         return $this->feeRepo->getFinancialSummary();
-    }
-
-    public function getActiveStudentsForFee() {
-        $stmt = $this->db->query("
-            SELECT s.id, s.full_name, s.student_id_str, s.monthly_fee
-            FROM students s
-            WHERE s.status = 'Active'
-            ORDER BY s.full_name ASC
-        ");
-        return $stmt->fetchAll();
     }
 
     public function getSecurityDepositSummary() {

@@ -171,11 +171,11 @@ class NotificationService {
         return $stmt->execute();
     }
 
-    public function generateOperationalAlerts() {
-        $today = date('Y-m-d');
+    public function generateOperationalAlerts($targetDate = null) {
+        $today = $targetDate ? date('Y-m-d', strtotime($targetDate)) : date('Y-m-d');
         $daysAhead = $this->getReminderWindowDays();
 
-        $this->generatePendingFeeAlerts();
+        $this->generateMonthlyPendingFeeAlerts($targetDate);
         $this->generateOverdueFeeAlerts();
         $this->generateFeeDueSoonAlerts($today, $daysAhead);
         $this->generateRoomCapacityAlerts();
@@ -191,7 +191,7 @@ class NotificationService {
             'students_without_allocation' => 0,
         ];
 
-        $summary['overdue_fees'] = (int)$this->db->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND type = 'fee' AND priority IN ('high', 'critical') AND title = 'Overdue Fee'")->fetchColumn();
+        $summary['overdue_fees'] = (int)$this->db->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND type = 'fee' AND priority IN ('high', 'critical') AND title IN ('Overdue Fee', 'Monthly Fee Pending')")->fetchColumn();
         $summary['due_soon'] = (int)$this->db->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND type = 'fee' AND title = 'Fee Due Soon'")->fetchColumn();
         $summary['rooms_nearly_full'] = (int)$this->db->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND type = 'room' AND priority IN ('medium', 'high')")->fetchColumn();
         $summary['students_without_allocation'] = (int)$this->db->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND type = 'student' AND title = 'Student Without Allocation'")->fetchColumn();
@@ -209,25 +209,146 @@ class NotificationService {
         return $stmt->execute();
     }
 
-    private function generatePendingFeeAlerts() {
-        $stmt = $this->db->query("SELECT f.*, s.full_name, s.student_id_str
-            FROM fee_records f
-            JOIN students s ON s.id = f.student_id
-            WHERE f.status IN ('Pending', 'Partial')");
-        $fees = $stmt->fetchAll();
+    public function generateMonthlyPendingFeeAlerts($targetDate = null) {
+        $dateObj = $targetDate ? new \DateTime($targetDate) : new \DateTime();
+        $currentDay = (int)$dateObj->format('j');
+        $billingMonth = (int)$dateObj->format('n');
+        $billingYear = (int)$dateObj->format('Y');
 
-        foreach ($fees as $fee) {
-            $notificationKey = 'fee_pending_student_' . (int)$fee['student_id'] . '_' . (int)$fee['billing_year'] . '_' . (int)$fee['billing_month'];
-            $this->createNotification(
-                'Fee Pending',
-                $fee['full_name'] . "'s monthly fee for " . date('F Y', mktime(0, 0, 0, (int)$fee['billing_month'], 1, (int)$fee['billing_year'])) . ' is still pending.',
-                'fee',
-                'medium',
-                'fee',
-                (int)$fee['id'],
-                $notificationKey
-            );
+        // Business Rule: Alerts run on or after the 10th of every month for the current billing month
+        if ($currentDay < 10) {
+            return [
+                'executed' => false,
+                'reason' => 'Monthly pending fee alerts run on the 10th of each month (current day: ' . $currentDay . ')',
+                'created_count' => 0,
+                'resolved_count' => 0
+            ];
         }
+
+        $createdCount = 0;
+        $resolvedCount = 0;
+
+        // Query active students only with room/bed info and current month fee records
+        $sql = "
+            SELECT 
+                s.id AS student_id,
+                s.student_id_str,
+                s.full_name,
+                s.status AS student_status,
+                s.monthly_fee AS student_monthly_fee,
+                r.room_number,
+                ra.bed_number,
+                fr.id AS fee_record_id,
+                fr.billing_month,
+                fr.billing_year,
+                fr.amount,
+                fr.additional_charges,
+                fr.discount,
+                fr.paid_amount,
+                fr.status AS fee_status,
+                fr.due_date,
+                (COALESCE(fr.amount, 0) + COALESCE(fr.additional_charges, 0) - COALESCE(fr.discount, 0)) AS total_fee,
+                (COALESCE(fr.amount, 0) + COALESCE(fr.additional_charges, 0) - COALESCE(fr.discount, 0) - COALESCE(fr.paid_amount, 0)) AS outstanding_amount
+            FROM students s
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN rooms r ON r.id = ra.room_id
+            LEFT JOIN fee_records fr ON fr.student_id = s.id 
+                AND fr.billing_month = :billing_month 
+                AND fr.billing_year = :billing_year
+                AND fr.charge_type = 'MONTHLY_FEE'
+            WHERE s.status = 'Active'
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'billing_month' => $billingMonth,
+            'billing_year' => $billingYear
+        ]);
+        $rows = $stmt->fetchAll();
+
+        $monthYearName = date('F Y', mktime(0, 0, 0, $billingMonth, 1, $billingYear));
+
+        foreach ($rows as $row) {
+            $studentId = (int)$row['student_id'];
+            $notificationKey = 'monthly_fee_pending_student_' . $studentId . '_' . $billingYear . '_' . $billingMonth;
+            
+            $totalFee = (float)($row['total_fee'] ?? 0);
+            $paidAmount = (float)($row['paid_amount'] ?? 0);
+            $outstanding = (float)($row['outstanding_amount'] ?? 0);
+
+            // If no fee record exists for this month, fallback to configured student monthly fee
+            if ($row['fee_record_id'] === null) {
+                $totalFee = (float)($row['student_monthly_fee'] ?? 0);
+                $paidAmount = 0.0;
+                $outstanding = $totalFee;
+            }
+
+            // Room / Bed formatting
+            $roomBed = 'Not Allocated';
+            if (!empty($row['room_number'])) {
+                $roomBed = 'Room ' . $row['room_number'];
+                if (!empty($row['bed_number'])) {
+                    $roomBed .= ' (Bed ' . $row['bed_number'] . ')';
+                }
+            }
+
+            if ($outstanding > 0) {
+                $title = 'Monthly Fee Pending';
+                $message = "Monthly fee for {$row['full_name']} ({$row['student_id_str']}) is pending for {$monthYearName}. [{$roomBed}] Total Fee: Rs. " . number_format($totalFee, 0) . ", Paid: Rs. " . number_format($paidAmount, 0) . ", Outstanding: Rs. " . number_format($outstanding, 0) . ".";
+
+                $existing = $this->findByKey($notificationKey);
+                if ($existing) {
+                    // Update notification content to reflect latest amounts idempotently
+                    $updateStmt = $this->db->prepare("
+                        UPDATE notifications 
+                        SET message = :message, 
+                            title = :title,
+                            priority = :priority,
+                            entity_type = 'fee_pending',
+                            entity_id = :student_id
+                        WHERE notification_key = :notification_key
+                    ");
+                    $updateStmt->execute([
+                        'message' => $message,
+                        'title' => $title,
+                        'priority' => (!empty($row['due_date']) && $row['due_date'] < date('Y-m-d')) ? 'high' : 'medium',
+                        'student_id' => $studentId,
+                        'notification_key' => $notificationKey
+                    ]);
+                } else {
+                    $this->createNotification(
+                        $title,
+                        $message,
+                        'fee',
+                        (!empty($row['due_date']) && $row['due_date'] < date('Y-m-d')) ? 'high' : 'medium',
+                        'fee_pending',
+                        $studentId,
+                        $notificationKey
+                    );
+                    $createdCount++;
+                }
+            } else {
+                // Fully paid: if an unread notification exists for this month, resolve it
+                $existing = $this->findByKey($notificationKey);
+                if ($existing && (int)$existing['is_read'] === 0) {
+                    $resolveStmt = $this->db->prepare("
+                        UPDATE notifications 
+                        SET is_read = 1, read_at = NOW() 
+                        WHERE notification_key = :notification_key AND is_read = 0
+                    ");
+                    $resolveStmt->execute(['notification_key' => $notificationKey]);
+                    $resolvedCount++;
+                }
+            }
+        }
+
+        return [
+            'executed' => true,
+            'billing_month' => $billingMonth,
+            'billing_year' => $billingYear,
+            'created_count' => $createdCount,
+            'resolved_count' => $resolvedCount
+        ];
     }
 
     private function generateOverdueFeeAlerts() {

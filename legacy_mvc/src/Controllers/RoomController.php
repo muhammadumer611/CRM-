@@ -71,7 +71,7 @@ class RoomController {
         
         CSRF::verifyToken($_POST['csrf_token'] ?? '');
 
-        $required = ['room_number', 'block', 'floor', 'room_type', 'total_beds'];
+        $required = ['room_number', 'floor', 'room_type', 'total_beds'];
         foreach ($required as $field) {
             if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
                 Session::set('error', 'Please fill all required room fields.');

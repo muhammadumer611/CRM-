@@ -23,19 +23,13 @@ class DashboardService {
             'total_beds' => 0,
             'occupied_beds' => 0,
             'available_beds' => 0,
+            'paid_fees' => 0,
+            'paid_fee_students' => 0,
             'pending_fees' => 0,
             'pending_fee_students' => 0,
             'overdue_fees' => 0,
-            'total_collection' => 0,
             'total_outstanding' => 0,
-            'this_month_expected' => 0,
-            'this_month_collected' => 0,
-            'security_held' => 0,
-            'security_returned' => 0,
-            'security_total_held' => 0,
-            'security_total_refunded' => 0,
-            'security_total_deducted' => 0,
-            'security_held_students' => 0
+            'this_month_collected' => 0
         ];
 
         // Students
@@ -61,11 +55,24 @@ class DashboardService {
         $stats['available_beds'] = max(0, $stats['total_beds'] - $stats['occupied_beds']);
 
         // Fees — Monthly invoices
-        $stmt = $this->db->query("SELECT COALESCE(SUM(amount), 0) FROM fee_records WHERE charge_type = 'MONTHLY_FEE' AND YEAR(invoice_date) = YEAR(CURDATE()) AND MONTH(invoice_date) = MONTH(CURDATE())");
-        $stats['this_month_expected'] = (float)$stmt->fetchColumn();
-
         $stmt = $this->db->query("SELECT COALESCE(SUM(paid_amount), 0) FROM fee_records WHERE charge_type = 'MONTHLY_FEE' AND YEAR(invoice_date) = YEAR(CURDATE()) AND MONTH(invoice_date) = MONTH(CURDATE())");
         $stats['this_month_collected'] = (float)$stmt->fetchColumn();
+
+        $stmt = $this->db->query("
+            SELECT COUNT(DISTINCT s.id)
+            FROM students s
+            JOIN fee_records fr ON fr.student_id = s.id
+            WHERE s.status = 'Active'
+              AND (fr.amount + fr.additional_charges - fr.discount) <= fr.paid_amount
+              AND fr.paid_amount > 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM fee_records fr2
+                  WHERE fr2.student_id = s.id
+                    AND (fr2.amount + fr2.additional_charges - fr2.discount) > fr2.paid_amount
+              )
+        ");
+        $stats['paid_fees'] = (int)$stmt->fetchColumn();
+        $stats['paid_fee_students'] = $stats['paid_fees'];
 
         $stmt = $this->db->query("
             SELECT COUNT(DISTINCT fr.student_id)
@@ -96,31 +103,58 @@ class DashboardService {
         ");
         $stats['total_outstanding'] = (float)$stmt->fetchColumn();
 
-        $collectionStmt = $this->db->query("SELECT COALESCE(SUM(amount), 0) FROM fee_payments WHERE status <> 'Reversed' AND amount > 0");
-        $stats['total_collection'] = (float)($collectionStmt->fetchColumn() ?: 0);
-
-        // Security Deposits (completely separate)
-        $stmt = $this->db->query("SELECT COALESCE(SUM(remaining_amount), 0) FROM security_deposits WHERE status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED')");
-        $stats['security_held'] = (float)$stmt->fetchColumn();
-        $stats['security_total_held'] = $stats['security_held'];
-
-        $stmt = $this->db->query("SELECT COUNT(DISTINCT student_id) FROM security_deposits WHERE status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED')");
-        $stats['security_held_students'] = (int)$stmt->fetchColumn();
-
-        $stmt = $this->db->query("SELECT COALESCE(SUM(original_amount - remaining_amount), 0) FROM security_deposits WHERE status IN ('REFUNDED','PARTIALLY_REFUNDED','DEDUCTED')");
-        $stats['security_returned'] = (float)$stmt->fetchColumn();
-        $stats['security_total_refunded'] = $stats['security_returned'];
-
         return $stats;
     }
-    
-    public function getRecentActivity() {
-        $stmt = $this->db->query("
-            SELECT l.*, a.username 
-            FROM system_logs l 
-            LEFT JOIN admins a ON l.admin_id = a.id 
-            ORDER BY l.created_at DESC LIMIT 10
-        ");
+
+    public function searchStudents(string $term, int $limit = 12): array {
+        if ($term === '') {
+            return [];
+        }
+
+        $like = '%' . $term . '%';
+        $cleanDigits = preg_replace('/[^0-9]/', '', $term);
+        $digitLike = '%' . $cleanDigits . '%';
+        $sql = "
+            SELECT s.id, s.full_name, s.student_id_str, s.cnic, s.phone, s.address, s.status,
+                   ra.bed_number, r.room_number,
+                   latest.status AS fee_status,
+                   latest.pending_amount
+            FROM students s
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN rooms r ON r.id = ra.room_id
+            LEFT JOIN (
+                SELECT fr.student_id, fr.status,
+                       GREATEST(0, fr.amount + fr.additional_charges - fr.discount - fr.paid_amount) AS pending_amount
+                FROM fee_records fr
+                INNER JOIN (
+                    SELECT student_id, MAX(id) AS latest_id
+                    FROM fee_records
+                    WHERE charge_type = 'MONTHLY_FEE'
+                    GROUP BY student_id
+                ) current_fee ON current_fee.latest_id = fr.id
+            ) latest ON latest.student_id = s.id
+            WHERE s.full_name LIKE ?
+               OR s.cnic LIKE ?
+               OR s.cnic LIKE ?
+               OR s.phone LIKE ?
+               OR s.student_id_str LIKE ?
+               OR s.address LIKE ?
+               OR r.room_number LIKE ?
+               OR CAST(ra.bed_number AS CHAR) LIKE ?
+            ORDER BY CASE WHEN s.status = 'Active' THEN 0 ELSE 1 END, s.full_name ASC
+            LIMIT ?
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(1, $like);
+        $stmt->bindValue(2, $like);
+        $stmt->bindValue(3, $digitLike);
+        $stmt->bindValue(4, $like);
+        $stmt->bindValue(5, $like);
+        $stmt->bindValue(6, $like);
+        $stmt->bindValue(7, $like);
+        $stmt->bindValue(8, $like);
+        $stmt->bindValue(9, $limit, \PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll();
     }
 }

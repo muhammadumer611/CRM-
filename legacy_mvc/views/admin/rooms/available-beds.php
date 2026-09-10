@@ -1,4 +1,4 @@
-﻿<?php $config = require APP_ROOT . '/config/app.php'; ?>
+<?php $config = require APP_ROOT . '/config/app.php'; ?>
 <div class="card">
     <!-- Page Header -->
     <div class="card-header" style="flex-wrap:wrap;gap:1rem;">
@@ -34,7 +34,7 @@
             <div class="form-group" style="margin-bottom:0;flex:1;min-width:180px;">
                 <label class="form-label">Search Room</label>
                 <input type="text" name="search" class="form-control"
-                       placeholder="Room number, block..."
+                       placeholder="Room number, floor, type..."
                        value="<?php echo htmlspecialchars($filters['search'] ?? ''); ?>">
             </div>
             <?php if (!empty($roomTypes)): ?>
@@ -116,12 +116,7 @@
                         <div>
                             <div style="font-size:1.15rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:0.5rem;">
                                 <i class="fas fa-door-open" style="color:var(--primary);font-size:1rem;"></i>
-                                <?php
-                                    $label = '';
-                                    if (!empty($room['block'])) $label .= htmlspecialchars($room['block']) . '-';
-                                    $label .= htmlspecialchars($room['room_number']);
-                                    echo $label;
-                                ?>
+                                Room <?php echo htmlspecialchars($room['room_number']); ?>
                             </div>
                             <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">
                                 <?php if (!empty($room['floor'])): ?>

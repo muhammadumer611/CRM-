@@ -18,6 +18,7 @@ $router->add('GET', '/students/view/{id}', 'StudentController', 'show');
 $router->add('GET', '/students/edit/{id}', 'StudentController', 'edit');
 $router->add('POST', '/students/update/{id}', 'StudentController', 'update');
 $router->add('GET', '/students/account/{id}', 'StudentController', 'account');
+$router->add('POST', '/students/account/payment/{id}', 'StudentController', 'accountPayment');
 $router->add('POST', '/students/checkout/{id}', 'StudentController', 'checkout');
 
 // Room routes
@@ -35,11 +36,10 @@ $router->add('GET', '/api/allocations/available-beds/{id}', 'AllocationControlle
 // Fee routes
 $router->add('GET', '/fees', 'FeeController', 'index');
 $router->add('GET', '/fees/collection', 'FeeController', 'collection');
+$router->add('GET', '/fees/paid', 'FeeController', 'paid');
 $router->add('GET', '/fees/pending', 'FeeController', 'pending');
 $router->add('GET', '/fees/pending/{id}', 'FeeController', 'pendingDetail');
 $router->add('GET', '/fees/security-deposits', 'FeeController', 'securityDeposits');
-$router->add('GET', '/fees/create', 'FeeController', 'create');
-$router->add('POST', '/fees/store', 'FeeController', 'store');
 $router->add('GET', '/fees/pay/{id}', 'FeeController', 'pay');
 $router->add('POST', '/fees/storePayment/{id}', 'FeeController', 'storePayment');
 $router->add('GET', '/fees/receipt/{id}', 'FeeController', 'receipt');
@@ -52,10 +52,6 @@ $router->add('GET', '/reports/export/csv', 'ReportsController', 'exportCsv');
 $router->add('GET', '/notifications', 'NotificationController', 'index');
 $router->add('POST', '/notifications/mark-read/{id}', 'NotificationController', 'markRead');
 $router->add('POST', '/notifications/mark-all-read', 'NotificationController', 'markAllRead');
-
-// Audit log routes
-$router->add('GET', '/audit-logs', 'AuditLogsController', 'index');
-$router->add('GET', '/audit-logs/{id}', 'AuditLogsController', 'show');
 
 // Database status routes
 $router->add('GET', '/db-status', 'DatabaseStatusController', 'index');

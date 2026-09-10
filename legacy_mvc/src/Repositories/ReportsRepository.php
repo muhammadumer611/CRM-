@@ -302,15 +302,6 @@ class ReportsRepository {
         return $stmt->fetchAll();
     }
 
-    public function getRecentActivity($limit = 5) {
-        $stmt = $this->db->prepare(
-            "SELECT l.*, a.username FROM system_logs l LEFT JOIN admins a ON a.id = l.admin_id ORDER BY l.created_at DESC LIMIT :limit"
-        );
-        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
-
     private function buildInvoiceWhere(array $filters, $allowYearFallback = false) {
         $sql = '';
         $params = [];

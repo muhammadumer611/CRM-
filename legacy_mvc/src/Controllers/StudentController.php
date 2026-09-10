@@ -7,6 +7,7 @@ use App\Core\Session;
 use App\Core\CSRF;
 use App\Services\StudentService;
 use App\Services\StudentAccountService;
+use App\Services\FeeService;
 use App\Services\RoomService;
 
 class StudentController {
@@ -23,7 +24,10 @@ class StudentController {
         
         $filters = [
             'search' => $_GET['search'] ?? '',
-            'status' => $_GET['status'] ?? ''
+            'status' => $_GET['status'] ?? '',
+            'district' => $_GET['district'] ?? '',
+            'room' => $_GET['room'] ?? '',
+            'bed' => $_GET['bed'] ?? ''
         ];
 
         $result = $this->studentService->getAllStudents($filters, $page, $perPage);
@@ -172,7 +176,10 @@ class StudentController {
 
         $filters = [
             'search' => $_GET['search'] ?? '',
-            'status' => 'Active'   // locked — this page is Active-only
+            'status' => 'Active',   // locked — this page is Active-only
+            'district' => $_GET['district'] ?? '',
+            'room' => $_GET['room'] ?? '',
+            'bed' => $_GET['bed'] ?? ''
         ];
 
         $result = $this->studentService->getAllStudents($filters, $page, $perPage);
@@ -264,5 +271,30 @@ class StudentController {
             'account' => $account,
             'csrf_token' => CSRF::generateToken()
         ], 'admin');
+    }
+
+    public function accountPayment($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+
+        CSRF::verifyToken($_POST['csrf_token'] ?? '');
+        $config = require APP_ROOT . '/config/app.php';
+        $accountService = new StudentAccountService();
+        $account = $accountService->getStudentAccount((int)$id);
+        $currentFee = $account['current_fee'] ?? null;
+
+        if (!$currentFee) {
+            Session::set('error', 'This student does not have a valid monthly fee configured.');
+            header('Location: ' . $config['base_url'] . '/students/account/' . (int)$id);
+            exit;
+        }
+
+        $result = (new FeeService())->payFee((int)$currentFee['id'], $_POST);
+        Session::set($result['success'] ? 'success' : 'error', $result['success']
+            ? 'Payment recorded successfully. Receipt: ' . ($result['receipt_number'] ?? 'created')
+            : $result['error']);
+        header('Location: ' . $config['base_url'] . '/students/account/' . (int)$id);
+        exit;
     }
 }

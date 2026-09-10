@@ -9,7 +9,7 @@
         <form action="<?php echo $config['base_url']; ?>/rooms" method="GET" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
             <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
                 <label class="form-label">Search</label>
-                <input type="text" name="search" class="form-control" placeholder="Room No, Block, Type..." value="<?php echo htmlspecialchars($filters['search']); ?>">
+                <input type="text" name="search" class="form-control" placeholder="Room No, Type, Floor..." value="<?php echo htmlspecialchars($filters['search']); ?>">
             </div>
             <div class="form-group" style="margin-bottom: 0; flex: 0 0 200px;">
                 <label class="form-label">Status</label>
@@ -30,7 +30,7 @@
             <thead>
                 <tr>
                     <th>Room No</th>
-                    <th>Block / Floor</th>
+                    <th>Floor</th>
                     <th>Type</th>
                     <th>Beds Capacity</th>
                     <th>Occupancy</th>
@@ -40,7 +40,7 @@
             </thead>
             <tbody>
                 <?php if (empty($rooms)): ?>
-                    <tr><td colspan="8" style="text-align: center; padding: 2rem;">No rooms found.</td></tr>
+                    <tr><td colspan="7" style="text-align: center; padding: 2rem;">No rooms found.</td></tr>
                 <?php else: ?>
                     <?php foreach ($rooms as $room): ?>
                     <?php 
@@ -51,7 +51,7 @@
                     ?>
                     <tr>
                         <td><strong><?php echo htmlspecialchars($room['room_number']); ?></strong></td>
-                        <td><?php echo htmlspecialchars($room['block']); ?> <small style="color: var(--text-muted);">/ Floor <?php echo htmlspecialchars($room['floor']); ?></small></td>
+                        <td><?php echo htmlspecialchars($room['floor']); ?></td>
                         <td><span class="badge" style="background-color: #334155;"><?php echo htmlspecialchars($room['room_type']); ?></span></td>
                         <td>
                             <strong><?php echo $totalBeds; ?> Beds</strong><br>

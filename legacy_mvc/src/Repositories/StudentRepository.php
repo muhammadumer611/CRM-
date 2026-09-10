@@ -29,17 +29,29 @@ class StudentRepository {
             
             if (strlen($cleanDigits) >= 3) {
                 $cleanTerm = '%' . $cleanDigits . '%';
-                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ?)";
-                $params = array_merge($params, [$searchTerm, $searchTerm, $cleanTerm, $searchTerm, $searchTerm]);
+                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
+                $params = array_merge($params, [$searchTerm, $searchTerm, $cleanTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             } else {
-                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ?)";
-                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
+                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             }
         }
         
         if (!empty($filters['status'])) {
             $query .= " AND s.status = ?";
             $params[] = $filters['status'];
+        }
+        if (!empty($filters['district'])) {
+            $query .= " AND s.address LIKE ?";
+            $params[] = '%' . trim((string)$filters['district']) . '%';
+        }
+        if (!empty($filters['room'])) {
+            $query .= " AND r.room_number LIKE ?";
+            $params[] = '%' . trim((string)$filters['room']) . '%';
+        }
+        if ($filters['bed'] !== '' && $filters['bed'] !== null) {
+            $query .= " AND ra.bed_number = ?";
+            $params[] = (int)$filters['bed'];
         }
 
         $query .= " ORDER BY s.id DESC LIMIT ? OFFSET ?";
@@ -58,7 +70,7 @@ class StudentRepository {
     }
     
     public function count($filters = []) {
-        $query = "SELECT COUNT(*) FROM students s WHERE 1=1";
+        $query = "SELECT COUNT(*) FROM students s LEFT JOIN room_allocations ra ON s.id = ra.student_id AND ra.status = 'Active' LEFT JOIN rooms r ON ra.room_id = r.id WHERE 1=1";
         $params = [];
 
         if (!empty($filters['search'])) {
@@ -68,17 +80,29 @@ class StudentRepository {
             
             if (strlen($cleanDigits) >= 3) {
                 $cleanTerm = '%' . $cleanDigits . '%';
-                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ?)";
-                $params = array_merge($params, [$searchTerm, $searchTerm, $cleanTerm, $searchTerm, $searchTerm]);
+                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
+                $params = array_merge($params, [$searchTerm, $searchTerm, $cleanTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             } else {
-                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ?)";
-                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
+                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             }
         }
         
         if (!empty($filters['status'])) {
             $query .= " AND s.status = ?";
             $params[] = $filters['status'];
+        }
+        if (!empty($filters['district'])) {
+            $query .= " AND s.address LIKE ?";
+            $params[] = '%' . trim((string)$filters['district']) . '%';
+        }
+        if (!empty($filters['room'])) {
+            $query .= " AND r.room_number LIKE ?";
+            $params[] = '%' . trim((string)$filters['room']) . '%';
+        }
+        if ($filters['bed'] !== '' && $filters['bed'] !== null) {
+            $query .= " AND ra.bed_number = ?";
+            $params[] = (int)$filters['bed'];
         }
         
         $stmt = $this->db->prepare($query);

@@ -4,7 +4,6 @@ namespace App\Services;
 use App\Repositories\RoomRepository;
 use App\Repositories\AdminRepository;
 use App\Core\Session;
-use App\Services\AuditLogger;
 
 class RoomService {
     private $roomRepo;
@@ -104,21 +103,25 @@ class RoomService {
 
     public function createRoom($data) {
         $totalBeds = (int)($data['total_beds'] ?? 0);
+        $maxBeds = (int)((require APP_ROOT . '/config/app.php')['max_room_beds'] ?? 10);
         if ($totalBeds <= 0) {
             return ['success' => false, 'error' => 'Total beds must be a positive integer greater than zero.'];
         }
+        if ($totalBeds > $maxBeds) {
+            return ['success' => false, 'error' => "Total beds cannot exceed {$maxBeds}."];
+        }
 
-        if (empty($data['room_number']) || empty($data['block']) || empty($data['floor']) || empty($data['room_type'])) {
+        if (empty($data['room_number']) || empty($data['floor']) || empty($data['room_type'])) {
             return ['success' => false, 'error' => 'Please fill in all required room details.'];
         }
 
-        if ($this->roomRepo->findByRoomNumberAndBlock(trim($data['room_number']), trim($data['block']))) {
-            return ['success' => false, 'error' => 'A room with this number already exists in this block.'];
+        if ($this->roomRepo->findByRoomNumber(trim($data['room_number']))) {
+            return ['success' => false, 'error' => 'A room with this number already exists.'];
         }
 
         $dbData = [
             'room_number' => trim($data['room_number']),
-            'block' => trim($data['block']),
+            'block' => 'General',
             'floor' => trim($data['floor']),
             'room_type' => trim($data['room_type']),
             'total_beds' => $totalBeds,
@@ -130,16 +133,8 @@ class RoomService {
         $id = $this->roomRepo->create($dbData);
         
         if ($id) {
-            AuditLogger::logAdminAction(
-                'ROOM_CREATED',
-                'room',
-                $id,
-                'Room created: ' . $dbData['room_number'] . ' in block ' . $dbData['block'],
-                null,
-                $dbData
-            );
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-            $this->adminRepo->logAction(Session::get('admin_id'), 'Create Room', "Created room {$dbData['room_number']} in Block {$dbData['block']}", $ip);
+            $this->adminRepo->logAction(Session::get('admin_id'), 'Create Room', "Created room {$dbData['room_number']}", $ip);
             return ['success' => true, 'id' => $id];
         }
         
@@ -151,8 +146,12 @@ class RoomService {
         if (!$room) return ['success' => false, 'error' => 'Room not found.'];
 
         $totalBeds = (int)($data['total_beds'] ?? 0);
+        $maxBeds = (int)((require APP_ROOT . '/config/app.php')['max_room_beds'] ?? 10);
         if ($totalBeds <= 0) {
             return ['success' => false, 'error' => 'Total beds must be a positive integer greater than zero.'];
+        }
+        if ($totalBeds > $maxBeds) {
+            return ['success' => false, 'error' => "Total beds cannot exceed {$maxBeds}."];
         }
         
         $activeOccupants = $this->roomRepo->countActiveAllocations($id);
@@ -160,8 +159,8 @@ class RoomService {
             return ['success' => false, 'error' => "Total beds cannot be reduced below current active occupancy ({$activeOccupants} occupied)."];
         }
 
-        if ($this->roomRepo->findByRoomNumberAndBlock(trim($data['room_number']), trim($data['block']), $id)) {
-            return ['success' => false, 'error' => 'A room with this number already exists in this block.'];
+        if ($this->roomRepo->findByRoomNumber(trim($data['room_number']), $id)) {
+            return ['success' => false, 'error' => 'A room with this number already exists.'];
         }
         
         if (($data['status'] ?? '') === 'Disabled' && $activeOccupants > 0) {
@@ -181,7 +180,7 @@ class RoomService {
 
         $dbData = [
             'room_number' => trim($data['room_number']),
-            'block' => trim($data['block']),
+            'block' => 'General',
             'floor' => trim($data['floor']),
             'room_type' => trim($data['room_type']),
             'total_beds' => $totalBeds,
@@ -203,14 +202,6 @@ class RoomService {
             }
 
             if (!empty($changes)) {
-                AuditLogger::logAdminAction(
-                    'ROOM_UPDATED',
-                    'room',
-                    $id,
-                    'Room configuration updated: ' . $dbData['room_number'],
-                    $oldValues,
-                    $changes
-                );
             }
 
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';

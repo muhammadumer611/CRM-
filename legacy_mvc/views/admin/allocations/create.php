@@ -112,7 +112,7 @@
                     <?php foreach ($rooms as $room): ?>
                         <?php $availBeds = max(0, $room['total_beds'] - $room['occupied_beds']); ?>
                         <option value="<?php echo $room['id']; ?>" data-avail="<?php echo $availBeds; ?>" data-total="<?php echo $room['total_beds']; ?>">
-                            <?php echo htmlspecialchars('Room ' . $room['room_number'] . ' (' . $room['block'] . ' - Floor ' . $room['floor'] . ') — ' . $availBeds . '/' . $room['total_beds'] . ' Beds Available'); ?>
+                            <?php echo htmlspecialchars('Room ' . $room['room_number'] . ' (Floor ' . $room['floor'] . ') — ' . $availBeds . '/' . $room['total_beds'] . ' Beds Available'); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

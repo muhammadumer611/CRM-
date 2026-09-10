@@ -60,8 +60,8 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                             <select id="singleRoomSelect" name="room_id" class="form-control">
                                 <option value="">Select available room</option>
                                 <?php foreach ($singlePersonRooms as $room): ?>
-                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-block="<?php echo htmlspecialchars($room['block']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
-                                        <?php echo htmlspecialchars($room['block'] . ' - ' . $room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
+                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
+                                        Room <?php echo htmlspecialchars($room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -77,12 +77,10 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
 
                 <div id="singleRoomSummary" style="display:none;background:#1e293b;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
                     <div class="row">
-                        <div class="col-md-2"><span class="small-label">Room</span><strong id="singleRoomNumber">—</strong></div>
-                        <div class="col-md-2"><span class="small-label">Block</span><strong id="singleRoomBlock">—</strong></div>
-                        <div class="col-md-2"><span class="small-label">Floor</span><strong id="singleRoomFloor">—</strong></div>
-                        <div class="col-md-2"><span class="small-label">Type</span><strong id="singleRoomType">—</strong></div>
-                        <div class="col-md-2"><span class="small-label">Occupied</span><strong id="singleRoomOccupied">—</strong></div>
-                        <div class="col-md-2"><span class="small-label">Available</span><strong id="singleRoomAvailable">—</strong></div>
+                        <div class="col-md-3"><span class="small-label">Room</span><strong id="singleRoomNumber">—</strong></div>
+                        <div class="col-md-3"><span class="small-label">Floor</span><strong id="singleRoomFloor">—</strong></div>
+                        <div class="col-md-3"><span class="small-label">Type</span><strong id="singleRoomType">—</strong></div>
+                        <div class="col-md-3"><span class="small-label">Available Beds</span><strong id="singleRoomAvailable">—</strong></div>
                     </div>
                 </div>
 
@@ -105,8 +103,8 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                             <select id="fullRoomSelect" name="room_id" class="form-control">
                                 <option value="">Select room</option>
                                 <?php foreach ($fullRoomRooms as $room): ?>
-                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-block="<?php echo htmlspecialchars($room['block']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
-                                        <?php echo htmlspecialchars($room['block'] . ' - ' . $room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
+                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
+                                        Room <?php echo htmlspecialchars($room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -121,10 +119,9 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                 </div>
                 <div id="fullRoomSummary" style="display:none;background:#1e293b;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
                     <div class="row">
-                        <div class="col-md-3"><span class="small-label">Room</span><strong id="fullRoomNumber">—</strong></div>
-                        <div class="col-md-3"><span class="small-label">Block</span><strong id="fullRoomBlock">—</strong></div>
-                        <div class="col-md-3"><span class="small-label">Floor</span><strong id="fullRoomFloor">—</strong></div>
-                        <div class="col-md-3"><span class="small-label">Type</span><strong id="fullRoomType">—</strong></div>
+                        <div class="col-md-4"><span class="small-label">Room</span><strong id="fullRoomNumber">—</strong></div>
+                        <div class="col-md-4"><span class="small-label">Floor</span><strong id="fullRoomFloor">—</strong></div>
+                        <div class="col-md-4"><span class="small-label">Type</span><strong id="fullRoomType">—</strong></div>
                     </div>
                     <div class="row" style="margin-top:0.75rem;">
                         <div class="col-md-6"><span class="small-label">Total Beds</span><strong id="fullRoomTotalBeds">—</strong></div>
@@ -285,6 +282,12 @@ function setAccomodationMode(mode) {
     const fullVisible = mode === 'full_room';
     document.getElementById('singleRoomSection').style.display = singleVisible ? 'block' : 'none';
     document.getElementById('fullRoomSection').style.display = fullVisible ? 'block' : 'none';
+    document.querySelectorAll('#singleRoomSection select, #singleRoomSection input').forEach((field) => {
+        field.disabled = !singleVisible;
+    });
+    document.querySelectorAll('#fullRoomSection select, #fullRoomSection input').forEach((field) => {
+        field.disabled = !fullVisible;
+    });
     document.getElementById('studentInfoSection').style.display = 'block';
     document.getElementById('financialSection').style.display = 'block';
     financialSection.style.display = 'block';
@@ -320,10 +323,8 @@ function populateSingleRoomSummary(roomSelect) {
     }
 
     document.getElementById('singleRoomNumber').textContent = selected.dataset.roomNumber || '—';
-    document.getElementById('singleRoomBlock').textContent = selected.dataset.block || '—';
     document.getElementById('singleRoomFloor').textContent = selected.dataset.floor || '—';
     document.getElementById('singleRoomType').textContent = selected.dataset.type || '—';
-    document.getElementById('singleRoomOccupied').textContent = (selected.dataset.occupied || '0');
     document.getElementById('singleRoomAvailable').textContent = (selected.dataset.available || '0');
     singleRoomSummary.style.display = 'block';
     loadAvailableBeds(selected.value);
@@ -379,7 +380,6 @@ function renderFullRoomSummary(roomSelect) {
     }
 
     document.getElementById('fullRoomNumber').textContent = selected.dataset.roomNumber || '—';
-    document.getElementById('fullRoomBlock').textContent = selected.dataset.block || '—';
     document.getElementById('fullRoomFloor').textContent = selected.dataset.floor || '—';
     document.getElementById('fullRoomType').textContent = selected.dataset.type || '—';
     document.getElementById('fullRoomTotalBeds').textContent = selected.dataset.total || '0';
@@ -530,6 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     fullRoomSelect.value = '';
     singleRoomSelect.value = '';
+    setAccomodationMode('');
 
     const urlParams = new URLSearchParams(window.location.search);
     const prefillRoomId = urlParams.get('room_id');

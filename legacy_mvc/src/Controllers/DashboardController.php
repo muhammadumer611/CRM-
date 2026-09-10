@@ -15,12 +15,14 @@ class DashboardController {
 
         $dashboardService = new DashboardService();
         $stats = $dashboardService->getStats();
-        $recentActivity = $dashboardService->getRecentActivity();
+        $searchTerm = trim((string)($_GET['student_search'] ?? ''));
+        $studentResults = $dashboardService->searchStudents($searchTerm);
 
         View::render('admin/dashboard', [
             'title' => 'Dashboard',
             'stats' => $stats,
-            'recentActivity' => $recentActivity
+            'studentSearch' => $searchTerm,
+            'studentResults' => $studentResults
         ], 'admin');
     }
 }

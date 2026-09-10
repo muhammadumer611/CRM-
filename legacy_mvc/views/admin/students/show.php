@@ -140,9 +140,6 @@
     <div class="card" style="margin-top:1rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
             <h4 style="color:var(--primary);margin:0;"><i class="fas fa-file-invoice-dollar"></i> Fee History</h4>
-            <a href="<?php echo $config['base_url']; ?>/fees/create" class="btn btn-sm btn-primary">
-                <i class="fas fa-plus"></i> New Invoice
-            </a>
         </div>
         <div class="table-responsive">
             <table>

@@ -10,9 +10,21 @@
     <!-- Filters -->
     <div style="margin-bottom:1.5rem;">
         <form action="<?php echo $config['base_url']; ?>/students" method="GET" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-            <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px;">
+            <div class="form-group" style="margin-bottom:0;flex:1;min-width:220px;">
                 <label class="form-label">Search</label>
-                <input type="text" name="search" class="form-control" placeholder="Name, CNIC, ID, Phone..." value="<?php echo htmlspecialchars($filters['search']); ?>">
+                <input type="text" name="search" class="form-control" placeholder="Name, CNIC, ID, phone, room or bed..." value="<?php echo htmlspecialchars($filters['search']); ?>">
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:0 0 150px;">
+                <label class="form-label">District / Address</label>
+                <input type="text" name="district" class="form-control" placeholder="e.g. Sargodha" value="<?php echo htmlspecialchars($filters['district'] ?? ''); ?>">
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:0 0 110px;">
+                <label class="form-label">Room</label>
+                <input type="text" name="room" class="form-control" placeholder="101" value="<?php echo htmlspecialchars($filters['room'] ?? ''); ?>">
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:0 0 90px;">
+                <label class="form-label">Bed</label>
+                <input type="number" name="bed" class="form-control" min="1" value="<?php echo htmlspecialchars($filters['bed'] ?? ''); ?>">
             </div>
             <div class="form-group" style="margin-bottom:0;flex:0 0 150px;">
                 <label class="form-label">Status</label>
@@ -23,7 +35,7 @@
                 </select>
             </div>
             <button type="submit" class="btn btn-primary" style="height:42px;"><i class="fas fa-filter"></i> Filter</button>
-            <?php if ($filters['search'] || $filters['status']): ?>
+            <?php if ($filters['search'] || $filters['status'] || ($filters['district'] ?? '') || ($filters['room'] ?? '') || ($filters['bed'] ?? '') !== ''): ?>
                 <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="height:42px;background:#334155;color:white;">Clear</a>
             <?php endif; ?>
         </form>
@@ -61,7 +73,7 @@
                         <td>
                             <?php if ($s['room_number']): ?>
                                 <span style="color:var(--primary);font-weight:600;">
-                                    <?php echo htmlspecialchars($s['block'] . '-' . $s['room_number']); ?>
+                                    Room <?php echo htmlspecialchars($s['room_number']); ?>
                                 </span><br>
                                 <small style="color:var(--text-muted);">Bed <?php echo (int)$s['bed_number']; ?></small>
                             <?php else: ?>

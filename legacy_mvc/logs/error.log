@@ -47,3 +47,18 @@ Stack trace:
 #1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/api/allocation...')
 #2 {main}
 [01-Sep-2026 22:10:05 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[10-Sep-2026 09:06:23 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[2026-09-10 09:52:23] Uncaught Exception Error: "Unknown named parameter $id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/fees/pending/1')
+#2 {main}
+[10-Sep-2026 09:53:22 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[10-Sep-2026 14:26:14 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 14:26:15 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[10-Sep-2026 14:27:53 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 14:27:54 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[10-Sep-2026 14:39:46 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 15:12:58 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[10-Sep-2026 15:22:15 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 15:22:23 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
