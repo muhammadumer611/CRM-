@@ -1082,7 +1082,7 @@ class FeeRepository {
 
     public function findStudentInvoices($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $stmt = $db->prepare("SELECT f.*, s.full_name, s.student_id_str FROM fee_records f JOIN students s ON s.id = f.student_id WHERE f.student_id = ? ORDER BY f.due_date ASC, f.id ASC");
+        $stmt = $db->prepare("SELECT f.*, s.full_name, s.student_id_str FROM fee_records f JOIN students s ON s.id = f.student_id WHERE f.student_id = ? ORDER BY f.billing_year DESC, f.billing_month DESC, f.id DESC");
         $stmt->execute([$studentId]);
         return $stmt->fetchAll();
     }

@@ -282,7 +282,7 @@ class StudentController {
         $config = require APP_ROOT . '/config/app.php';
         $accountService = new StudentAccountService();
         $account = $accountService->getStudentAccount((int)$id);
-        $currentFee = $account['current_fee'] ?? null;
+        $currentFee = $account['active_fee'] ?? $account['current_fee'] ?? null;
 
         if (!$currentFee) {
             Session::set('error', 'This student does not have a valid monthly fee configured.');
@@ -293,6 +293,21 @@ class StudentController {
         $result = (new FeeService())->payFee((int)$currentFee['id'], $_POST);
         Session::set($result['success'] ? 'success' : 'error', $result['success']
             ? 'Payment recorded successfully. Receipt: ' . ($result['receipt_number'] ?? 'created')
+            : $result['error']);
+        header('Location: ' . $config['base_url'] . '/students/account/' . (int)$id);
+        exit;
+    }
+
+    public function accountInvoice($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+
+        CSRF::verifyToken($_POST['csrf_token'] ?? '');
+        $config = require APP_ROOT . '/config/app.php';
+        $result = (new StudentAccountService())->createNextMonthlyFee((int)$id);
+        Session::set($result['success'] ? 'success' : 'error', $result['success']
+            ? 'Monthly fee created for ' . date('F Y', mktime(0, 0, 0, $result['month'], 1, $result['year'])) . '.'
             : $result['error']);
         header('Location: ' . $config['base_url'] . '/students/account/' . (int)$id);
         exit;

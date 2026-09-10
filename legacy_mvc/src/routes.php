@@ -19,6 +19,7 @@ $router->add('GET', '/students/edit/{id}', 'StudentController', 'edit');
 $router->add('POST', '/students/update/{id}', 'StudentController', 'update');
 $router->add('GET', '/students/account/{id}', 'StudentController', 'account');
 $router->add('POST', '/students/account/payment/{id}', 'StudentController', 'accountPayment');
+$router->add('POST', '/students/account/invoice/{id}', 'StudentController', 'accountInvoice');
 $router->add('POST', '/students/checkout/{id}', 'StudentController', 'checkout');
 
 // Room routes

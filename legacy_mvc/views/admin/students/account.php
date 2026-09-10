@@ -12,12 +12,12 @@
         </div>
     </div>
 
-    <?php $currentFee = $account['current_fee'] ?? null; $currentTotal = $currentFee ? (float)$currentFee['amount'] + (float)$currentFee['additional_charges'] - (float)$currentFee['discount'] : 0; $currentPaid = $currentFee ? (float)$currentFee['paid_amount'] : 0; $currentPending = max(0, $currentTotal - $currentPaid); ?>
+    <?php $currentFee = $account['active_fee'] ?? $account['current_fee'] ?? null; $nextPeriod = $account['next_billing_period'] ?? ['month' => date('n'), 'year' => date('Y')]; $currentTotal = $currentFee ? (float)$currentFee['amount'] + (float)$currentFee['additional_charges'] - (float)$currentFee['discount'] : 0; $currentPaid = $currentFee ? (float)$currentFee['paid_amount'] : 0; $currentPending = max(0, $currentTotal - $currentPaid); ?>
     <div class="card" style="margin: 0 0 1.5rem; border: 1px solid rgba(56,189,248,0.35);">
         <div class="card-header" style="margin-bottom: 0.5rem;">
             <div>
                 <h3 class="card-title">Fees / Financial Account</h3>
-                <div style="color:var(--text-muted);font-size:0.9rem;"><?php echo date('F Y', mktime(0, 0, 0, (int)($account['current_month'] ?? date('n')), 1, (int)($account['current_year'] ?? date('Y')))); ?></div>
+                <div style="color:var(--text-muted);font-size:0.9rem;"><?php echo $currentFee ? date('F Y', mktime(0, 0, 0, (int)$currentFee['billing_month'], 1, (int)$currentFee['billing_year'])) : 'No billing period created'; ?></div>
             </div>
             <?php if ($currentFee): ?><span class="badge" style="background:<?php echo $currentFee['status'] === 'Paid' ? '#10b981' : '#f59e0b'; ?>22;color:<?php echo $currentFee['status'] === 'Paid' ? '#10b981' : '#f59e0b'; ?>;"><?php echo htmlspecialchars($currentFee['status']); ?></span><?php endif; ?>
         </div>
@@ -39,7 +39,15 @@
             <button type="submit" class="btn btn-primary"><i class="fas fa-check-circle"></i> Submit Payment</button>
         </form>
         <?php endif; ?>
-        <?php else: ?><div style="color:var(--text-muted);">No monthly fee is configured for this active student.</div><?php endif; ?>
+        <?php else: ?>
+            <div style="color:var(--text-muted);margin-bottom:1rem;">No fee has been created for the current billing cycle.</div>
+        <?php endif; ?>
+        <?php if (!$currentFee || $currentFee['status'] === 'Paid'): ?>
+        <form action="<?php echo $config['base_url']; ?>/students/account/invoice/<?php echo (int)$student['id']; ?>" method="POST" style="margin-top:1rem;">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Add Monthly Fee — <?php echo date('F Y', mktime(0, 0, 0, (int)$nextPeriod['month'], 1, (int)$nextPeriod['year'])); ?></button>
+        </form>
+        <?php endif; ?>
     </div>
 
     <div class="row">
@@ -90,7 +98,6 @@
                 <?php if (empty($invoices)): ?>
                     <tr><td colspan="7" style="text-align: center; padding: 1.5rem;">No invoices found.</td></tr>
                 <?php else: foreach ($invoices as $invoice): $invoiceTotal = (float)($invoice['amount'] ?? 0) + (float)($invoice['additional_charges'] ?? 0) - (float)($invoice['discount'] ?? 0); $invoiceBalance = max(0, $invoiceTotal - (float)($invoice['paid_amount'] ?? 0)); ?>
-                        <tr><td colspan="7" style="text-align: center; padding: 1.5rem;">No payments recorded yet.</td></tr>
                     <tr>
                         <td><?php echo htmlspecialchars($invoice['invoice_number'] ?? '#'.$invoice['id']); ?></td>
                         <td><?php echo date('F Y', mktime(0,0,0,(int)($invoice['billing_month'] ?? 1),1,(int)($invoice['billing_year'] ?? date('Y')))); ?></td>
