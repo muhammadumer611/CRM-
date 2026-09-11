@@ -54,6 +54,17 @@ class RoomService {
             ];
         }
 
+        $resRepo = new \App\Repositories\ReservationRepository();
+        foreach ($resRepo->getActiveBedNumbersForRoom($roomId) as $reservedBed) {
+            $occupiedBedsMap[(int)$reservedBed] = [
+                'allocation_id' => 0,
+                'student_id' => 0,
+                'student_name' => 'Reserved',
+                'student_id_str' => '',
+                'joining_date' => ''
+            ];
+        }
+
         $totalBeds = (int)$room['total_beds'];
         $beds = [];
         $occupiedBedNumbers = [];
@@ -66,7 +77,7 @@ class RoomService {
                 $beds[] = [
                     'bed_number' => $i,
                     'is_occupied' => true,
-                    'status' => 'Occupied',
+                    'status' => (isset($occupiedBedsMap[$i]['student_name']) && $occupiedBedsMap[$i]['student_name'] === 'Reserved') ? 'Reserved' : 'Occupied',
                     'occupant' => $occupiedBedsMap[$i]
                 ];
             } else {

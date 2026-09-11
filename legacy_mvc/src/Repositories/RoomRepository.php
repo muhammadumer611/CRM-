@@ -129,36 +129,20 @@ class RoomRepository {
             return [];
         }
 
-        $summary = $this->db->prepare("
-            SELECT
-                COUNT(*) AS active_allocations,
-                COALESCE(SUM(CASE
-                    WHEN bed_number = 0 THEN :total_beds
-                    WHEN bed_number > 0 THEN 1
-                    ELSE 0
-                END), 0) AS effective_occupied_beds,
-                COALESCE(SUM(CASE WHEN bed_number = 0 THEN 1 ELSE 0 END), 0) AS full_room_allocations
-            FROM room_allocations
-            WHERE room_id = :room_id AND status = 'Active'
-        ");
-        $summary->execute([
-            'total_beds' => (int)$room['total_beds'],
-            'room_id' => (int)$roomId,
-        ]);
-        $row = $summary->fetch();
-        $effectiveOccupied = max((int)($row['effective_occupied_beds'] ?? 0), (int)($room['occupied_beds'] ?? 0));
-        $fullRoomAllocations = (int)($row['full_room_allocations'] ?? 0);
-
-        if ($fullRoomAllocations > 0 || $effectiveOccupied >= (int)$room['total_beds']) {
-            return [];
-        }
-
         $occupied = [];
         $stmt = $this->db->prepare("SELECT DISTINCT bed_number FROM room_allocations WHERE room_id = ? AND status = 'Active' AND bed_number > 0 ORDER BY bed_number ASC");
         $stmt->execute([$roomId]);
         foreach ($stmt->fetchAll() as $rowBed) {
             if ((int)$rowBed['bed_number'] > 0) {
                 $occupied[(int)$rowBed['bed_number']] = true;
+            }
+        }
+
+        $resStmt = $this->db->prepare("SELECT DISTINCT bed_number FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED', 'ARRIVED') AND bed_number > 0 ORDER BY bed_number ASC");
+        $resStmt->execute([$roomId]);
+        foreach ($resStmt->fetchAll() as $rowRes) {
+            if ((int)$rowRes['bed_number'] > 0) {
+                $occupied[(int)$rowRes['bed_number']] = true;
             }
         }
 
@@ -313,12 +297,21 @@ class RoomRepository {
     }
 
     public function getAllAvailableRooms() {
-        $stmt = $this->db->query("
-            SELECT * FROM rooms 
-            WHERE status != 'Disabled' AND status != 'Occupied' AND total_beds > occupied_beds
-            ORDER BY room_number ASC
-        ");
-        return $stmt->fetchAll();
+        $stmt = $this->db->query("SELECT * FROM rooms WHERE status != 'Disabled' ORDER BY room_number ASC");
+        $rooms = $stmt->fetchAll();
+        $available = [];
+
+        foreach ($rooms as $room) {
+            $availableBeds = $this->getAvailableBedsForRoom((int)$room['id']);
+            if (!empty($availableBeds)) {
+                $room['available_bed_numbers'] = $availableBeds;
+                $room['available_beds'] = $availableBeds;
+                $room['available_beds_count'] = count($availableBeds);
+                $available[] = $room;
+            }
+        }
+
+        return $available;
     }
 
     public function reconcileOccupancy($roomId = null) {

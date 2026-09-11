@@ -69,7 +69,7 @@ class StudentController {
         }
 
         if ($accommodationType === 'single') {
-            $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation', 'room_id', 'bed_number', 'joining_date', 'monthly_fee'];
+            $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation', 'room_id', 'bed_number', 'joining_date', 'monthly_fee', 'added_by_name'];
             foreach ($required as $field) {
                 if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
                     Session::set('error', 'Please fill all required fields: ' . str_replace('_', ' ', $field) . '.');
@@ -80,6 +80,11 @@ class StudentController {
         } elseif ($accommodationType === 'full_room' || $accommodationType === 'full') {
             if (!isset($_POST['room_id']) || trim((string)$_POST['room_id']) === '') {
                 Session::set('error', 'Please select a room.');
+                header('Location: ' . $config['base_url'] . '/students/create');
+                exit;
+            }
+            if (!isset($_POST['added_by_name']) || trim((string)$_POST['added_by_name']) === '') {
+                Session::set('error', 'Added By is required. Please enter the staff member name.');
                 header('Location: ' . $config['base_url'] . '/students/create');
                 exit;
             }
@@ -233,6 +238,20 @@ class StudentController {
         $remarks = trim($_POST['remarks'] ?? '');
         $securityDeduction = isset($_POST['security_deduction']) && $_POST['security_deduction'] !== '' ? (float)$_POST['security_deduction'] : 0.0;
         $securityRefundRemarks = trim($_POST['security_refund_remarks'] ?? '');
+        $checkedOutByName = trim((string)($_POST['checked_out_by_name'] ?? ''));
+        $processedByName = trim((string)($_POST['processed_by_name'] ?? ''));
+
+        if ($checkedOutByName === '') {
+            Session::set('error', 'Checked Out By is required. Please enter the staff member name who processed the checkout.');
+            header('Location: ' . $config['base_url'] . '/students/view/' . $id);
+            exit;
+        }
+
+        if ($processedByName === '') {
+            Session::set('error', 'Processed By is required. Please enter the staff member name.');
+            header('Location: ' . $config['base_url'] . '/students/view/' . $id);
+            exit;
+        }
 
         $alumniService = new \App\Services\AlumniService();
         $result = $alumniService->convertToAlumni(
@@ -241,7 +260,9 @@ class StudentController {
             $leavingReason,
             $remarks,
             $securityDeduction,
-            $securityRefundRemarks
+            $securityRefundRemarks,
+            $checkedOutByName,
+            $processedByName
         );
 
         if ($result['success']) {

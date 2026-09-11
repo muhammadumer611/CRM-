@@ -825,7 +825,7 @@ class FeeRepository {
      * Record a payment against an invoice. Stores in fee_payments, updates fee_records.
      * Returns ['success', 'receipt_number', 'new_status'] or ['success' => false, 'error']
      */
-    public function recordPayment($invoiceId, $amount, $paymentMethod, $transactionRef, $remarks, $adminId, $paymentDate = null, $pdo = null) {
+    public function recordPayment($invoiceId, $amount, $paymentMethod, $transactionRef, $remarks, $adminId, $paymentDate = null, $pdo = null, $receivedByName = null) {
         $db = $pdo ?? $this->db;
 
         // Get current invoice (locked)
@@ -845,10 +845,10 @@ class FeeRepository {
 
         // Insert payment record
         $stmtP = $db->prepare("
-            INSERT INTO fee_payments (invoice_id, receipt_number, amount, payment_date, payment_method, transaction_ref, remarks, received_by_admin, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Completed')
+            INSERT INTO fee_payments (invoice_id, receipt_number, amount, payment_date, payment_method, transaction_ref, remarks, received_by_admin, received_by_name, received_at, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'Completed')
         ");
-        $stmtP->execute([$invoiceId, $receiptNum, $amount, $paymentDate, $paymentMethod, $transactionRef ?: null, $remarks ?: null, $adminId ?: null]);
+        $stmtP->execute([$invoiceId, $receiptNum, $amount, $paymentDate, $paymentMethod, $transactionRef ?: null, $remarks ?: null, $adminId ?: null, trim((string)($receivedByName ?: '')) ?: null]);
 
         // Update invoice totals
         $newTotalPaid = (float)$invoice['paid_amount'] + $amount;
@@ -862,7 +862,7 @@ class FeeRepository {
 
     public function getPayments($invoiceId) {
         $stmt = $this->db->prepare("
-            SELECT fp.*, a.username AS received_by_name
+            SELECT fp.*, fp.received_by_name, a.username AS received_by_admin_username
             FROM fee_payments fp
             LEFT JOIN admins a ON fp.received_by_admin = a.id
             WHERE fp.invoice_id = ? AND fp.status = 'Completed'
@@ -882,7 +882,7 @@ class FeeRepository {
     public function createPayment($invoiceId, $data, $pdo = null) {
         $db = $pdo ?? $this->db;
         $receiptNumber = $data['receipt_number'] ?? $this->generateReceiptNumber($db);
-        $stmt = $db->prepare("INSERT INTO fee_payments (invoice_id, receipt_number, amount, payment_date, payment_method, transaction_ref, remarks, received_by_admin, status) VALUES (:invoice_id, :receipt_number, :amount, :payment_date, :payment_method, :transaction_ref, :remarks, :received_by_admin, :status)");
+        $stmt = $db->prepare("INSERT INTO fee_payments (invoice_id, receipt_number, amount, payment_date, payment_method, transaction_ref, remarks, received_by_admin, received_by_name, received_at, status) VALUES (:invoice_id, :receipt_number, :amount, :payment_date, :payment_method, :transaction_ref, :remarks, :received_by_admin, :received_by_name, NOW(), :status)");
         $ok = $stmt->execute([
             'invoice_id' => $invoiceId,
             'receipt_number' => $receiptNumber,
@@ -892,6 +892,7 @@ class FeeRepository {
             'transaction_ref' => $data['transaction_ref'] ?? null,
             'remarks' => $data['remarks'] ?? null,
             'received_by_admin' => $data['received_by_admin'] ?? null,
+            'received_by_name' => trim((string)($data['received_by_name'] ?? '')) ?: null,
             'status' => $data['status'] ?? 'Completed'
         ]);
 

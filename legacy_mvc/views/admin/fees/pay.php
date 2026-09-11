@@ -74,6 +74,12 @@ $statusColor = $statusColors[$fee['status']] ?? '#94a3b8';
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
+                        <label class="form-label">Received By *</label>
+                        <input type="text" name="received_by_name" class="form-control" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
                         <label class="form-label">Payment Amount (Rs.) *</label>
                         <input type="number" name="paid_amount" class="form-control" step="0.01" min="0.01"
                                max="<?php echo $remaining; ?>"

@@ -98,6 +98,7 @@ class FeeService {
         $paidAmount    = (float)($data['paid_amount'] ?? 0);
         $paymentMethod = trim($data['payment_method'] ?? '');
         $transactionRef = trim($data['transaction_ref'] ?? '');
+        $receivedByName = trim((string)($data['received_by_name'] ?? ''));
         $remarks       = trim($data['remarks'] ?? '');
         $paymentDate = trim((string)($data['payment_date'] ?? date('Y-m-d')));
         $parsedDate = \DateTime::createFromFormat('!Y-m-d', $paymentDate);
@@ -107,6 +108,10 @@ class FeeService {
         }
         if (!$parsedDate || $parsedDate->format('Y-m-d') !== $paymentDate || $paymentDate > date('Y-m-d')) {
             return ['success' => false, 'error' => 'Payment date must be a valid date and cannot be in the future.'];
+        }
+
+        if ($receivedByName === '') {
+            return ['success' => false, 'error' => 'Received By is required. Please enter the staff member name who received the payment.'];
         }
 
         $totalAmount = (float)$invoice['amount'] + (float)($invoice['additional_charges'] ?? 0) - (float)($invoice['discount'] ?? 0);
@@ -130,7 +135,8 @@ class FeeService {
                 $remarks,
                 Session::get('admin_id'),
                 $paymentDate,
-                $this->db
+                $this->db,
+                $receivedByName
             );
 
             if (!$result['success']) throw new Exception($result['error']);

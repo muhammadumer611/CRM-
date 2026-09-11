@@ -16,11 +16,11 @@ class AlumniRepository {
         $sql = "INSERT INTO alumni (
                     original_student_id, name, cnic, phone, guardian_info, 
                     previous_room, previous_bed, joining_date, leaving_date, 
-                    leaving_reason, final_fee_status, remarks
+                    leaving_reason, final_fee_status, remarks, checked_out_by_name, checked_out_at, processed_by_name, processed_at
                 ) VALUES (
                     :original_student_id, :name, :cnic, :phone, :guardian_info, 
                     :previous_room, :previous_bed, :joining_date, :leaving_date, 
-                    :leaving_reason, :final_fee_status, :remarks
+                    :leaving_reason, :final_fee_status, :remarks, :checked_out_by_name, NOW(), :processed_by_name, NOW()
                 )";
         
         $stmt = $db->prepare($sql);
@@ -36,7 +36,9 @@ class AlumniRepository {
             'leaving_date' => $data['leaving_date'],
             'leaving_reason' => $data['leaving_reason'],
             'final_fee_status' => $data['final_fee_status'],
-            'remarks' => $data['remarks'] ?? null
+            'remarks' => $data['remarks'] ?? null,
+            'checked_out_by_name' => $data['checked_out_by_name'] ?? null,
+            'processed_by_name' => $data['processed_by_name'] ?? null,
         ]);
         return $db->lastInsertId();
     }

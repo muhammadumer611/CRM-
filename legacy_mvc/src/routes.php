@@ -45,6 +45,16 @@ $router->add('GET', '/fees/pay/{id}', 'FeeController', 'pay');
 $router->add('POST', '/fees/storePayment/{id}', 'FeeController', 'storePayment');
 $router->add('GET', '/fees/receipt/{id}', 'FeeController', 'receipt');
 
+// Reservation routes
+$router->add('GET', '/reservations', 'ReservationController', 'index');
+$router->add('GET', '/reservations/create', 'ReservationController', 'create');
+$router->add('POST', '/reservations/store', 'ReservationController', 'store');
+$router->add('GET', '/reservations/view/{id}', 'ReservationController', 'show');
+$router->add('GET', '/reservations/convert/{id}', 'ReservationController', 'convert');
+$router->add('POST', '/reservations/convert/{id}', 'ReservationController', 'processConvert');
+$router->add('POST', '/reservations/confirm/{id}', 'ReservationController', 'confirm');
+$router->add('POST', '/reservations/cancel/{id}', 'ReservationController', 'cancel');
+
 // Reports routes
 $router->add('GET', '/reports', 'ReportsController', 'index');
 $router->add('GET', '/reports/export/csv', 'ReportsController', 'exportCsv');

@@ -47,9 +47,14 @@ class AllocationService {
         $bedNumber = (int)($data['bed_number'] ?? 0);
         $date = !empty($data['joining_date']) ? $data['joining_date'] : date('Y-m-d');
         $remarks = !empty($data['remarks']) ? trim($data['remarks']) : null;
+        $allocatedByName = trim((string)($data['allocated_by_name'] ?? ''));
 
         if ($studentId <= 0) {
             return ['success' => false, 'error' => 'Please select a valid student.'];
+        }
+
+        if ($allocatedByName === '') {
+            return ['success' => false, 'error' => 'Allocated By is required. Please enter the staff member name.'];
         }
 
         if ($roomId <= 0) {
@@ -116,10 +121,10 @@ class AllocationService {
 
             // Insert new Allocation
             $stmtInsert = $this->db->prepare("
-                INSERT INTO room_allocations (student_id, room_id, bed_number, joining_date, status, remarks)
-                VALUES (?, ?, ?, ?, 'Active', ?)
+                INSERT INTO room_allocations (student_id, room_id, bed_number, joining_date, status, remarks, allocated_by_name)
+                VALUES (?, ?, ?, ?, 'Active', ?, ?)
             ");
-            $stmtInsert->execute([$studentId, $roomId, $bedNumber, $date, $remarks]);
+            $stmtInsert->execute([$studentId, $roomId, $bedNumber, $date, $remarks, $allocatedByName]);
             $allocationId = $this->db->lastInsertId();
 
             // Reconcile Room Occupancy

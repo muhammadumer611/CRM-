@@ -94,6 +94,30 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
         <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;"><?php echo $stats['occupied_beds']; ?> occupied of <?php echo $stats['total_beds']; ?> total</div>
     </div>
     </a>
+    <a href="<?php echo $config['base_url']; ?>/reservations"
+       style="display:block;text-decoration:none;color:inherit;border-radius:8px;transition:transform 0.15s,box-shadow 0.15s;"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(99,102,241,0.35)';"
+       onmouseout="this.style.transform='';this.style.boxShadow='';"
+       title="Click to view active reservations">
+    <div class="card" style="margin:0;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;cursor:pointer;height:100%;">
+        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
+            Reservations <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;">
+            <?php
+                $reservationSummary = (new \App\Services\ReservationService())->getReservationSummary();
+                $pendingReservationTotal = 0;
+                foreach ($reservationSummary as $item) {
+                    if (in_array($item['status'], ['PENDING', 'CONFIRMED', 'ARRIVED'], true)) {
+                        $pendingReservationTotal += (int)$item['total'];
+                    }
+                }
+                echo (int)$pendingReservationTotal;
+            ?>
+        </div>
+        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">pending & confirmed reservations</div>
+    </div>
+    </a>
     <a href="<?php echo $config['base_url']; ?>/fees/pending"
        style="display:block;text-decoration:none;color:inherit;border-radius:8px;transition:transform 0.15s,box-shadow 0.15s;"
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(245,158,11,0.35)';"

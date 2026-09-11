@@ -181,6 +181,16 @@
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
             <div class="form-group">
+                <label class="form-label">Checked Out By *</label>
+                <input type="text" name="checked_out_by_name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Processed By *</label>
+                <input type="text" name="processed_by_name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">Leaving Date *</label>
                 <input type="date" name="leaving_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
             </div>

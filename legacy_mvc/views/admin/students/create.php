@@ -32,6 +32,11 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
     <form action="<?php echo $config['base_url']; ?>/students/store" method="POST" id="studentOnboardForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
 
+        <div class="form-group">
+            <label class="form-label">Added By *</label>
+            <input type="text" name="added_by_name" class="form-control" required>
+        </div>
+
         <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-house-user"></i> Accommodation Type</h4>
             <div class="row">

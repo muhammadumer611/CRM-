@@ -25,7 +25,13 @@ class AlumniService {
         $this->db = Database::getInstance()->getConnection();
     }
 
-    public function convertToAlumni($studentId, $leavingDate, $leavingReason, $remarks = '', $securityDeduction = 0.0, $securityRefundRemarks = '') {
+    public function convertToAlumni($studentId, $leavingDate, $leavingReason, $remarks = '', $securityDeduction = 0.0, $securityRefundRemarks = '', $checkedOutByName = '', $processedByName = '') {
+        $checkedOutByName = trim((string)$checkedOutByName);
+        $processedByName = trim((string)$processedByName);
+        if ($checkedOutByName === '' || $processedByName === '') {
+            return ['success' => false, 'error' => 'Checked Out By and Processed By are required.'];
+        }
+
         $this->db->beginTransaction();
 
         try {
@@ -105,26 +111,27 @@ class AlumniService {
                 $deduction = min($rem, max(0.0, (float)$securityDeduction));
                 $refund = $rem - $deduction;
                 $adminId = Session::get('admin_id');
+                $processedStaffName = trim((string)($processedByName ?: $checkedOutByName));
 
                 if ($deduction > 0) {
                     $stmtTx1 = $this->db->prepare("
-                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin)
-                        VALUES (?, 'ADJUSTMENT', ?, ?, ?)
+                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin, processed_by_name, processed_at)
+                        VALUES (?, 'ADJUSTMENT', ?, ?, ?, ?, NOW())
                     ");
-                    $stmtTx1->execute([$securityDeposit['id'], $deduction, $securityRefundRemarks ?: 'Deduction upon checkout', $adminId]);
+                    $stmtTx1->execute([$securityDeposit['id'], $deduction, $securityRefundRemarks ?: 'Deduction upon checkout', $adminId, $processedStaffName]);
                 }
 
                 if ($refund > 0) {
                     $stmtTx2 = $this->db->prepare("
-                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin)
-                        VALUES (?, 'REFUND', ?, ?, ?)
+                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin, processed_by_name, processed_at)
+                        VALUES (?, 'REFUND', ?, ?, ?, ?, NOW())
                     ");
-                    $stmtTx2->execute([$securityDeposit['id'], $refund, $securityRefundRemarks ?: 'Refunded upon checkout', $adminId]);
+                    $stmtTx2->execute([$securityDeposit['id'], $refund, $securityRefundRemarks ?: 'Refunded upon checkout', $adminId, $processedStaffName]);
                 }
 
                 $newDepositStatus = ($refund > 0) ? 'REFUNDED' : 'FORFEITED';
-                $stmtUpdateSD = $this->db->prepare("UPDATE security_deposits SET remaining_amount = 0.00, status = ? WHERE id = ?");
-                $stmtUpdateSD->execute([$newDepositStatus, $securityDeposit['id']]);
+                $stmtUpdateSD = $this->db->prepare("UPDATE security_deposits SET remaining_amount = 0.00, status = ?, processed_by_name = ?, processed_at = NOW() WHERE id = ?");
+                $stmtUpdateSD->execute([$newDepositStatus, $processedStaffName, $securityDeposit['id']]);
 
                 $depositSettlement = [
                     'original_amount' => (float)$securityDeposit['original_amount'],
@@ -155,7 +162,9 @@ class AlumniService {
                 'leaving_date' => $leavingDate,
                 'leaving_reason' => $leavingReason,
                 'final_fee_status' => $finalFeeStatus,
-                'remarks' => $remarks
+                'remarks' => $remarks,
+                'checked_out_by_name' => trim((string)$checkedOutByName),
+                'processed_by_name' => trim((string)($processedByName ?: $checkedOutByName)),
             ], $this->db);
 
             // Set Student Status to Inactive

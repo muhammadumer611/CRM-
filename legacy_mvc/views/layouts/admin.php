@@ -141,18 +141,13 @@
             .modal-header, .modal-body { padding-left: 1rem; padding-right: 1rem; }
         }
 
-        /* Mobile sidebar overlay */
-        .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+        .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1100; }
         .hamburger-btn { display:none; background:none; border:1px solid var(--border); color:var(--text); border-radius:6px; padding:0.4rem 0.6rem; cursor:pointer; font-size:1rem; }
 
         @media (max-width: 768px) {
-            .detail-grid { grid-template-columns: 1fr; }
-            .modal-dialog { width:100%; }
-            .modal-header, .modal-body { padding-left:1rem; padding-right:1rem; }
-            .content { padding:1rem; }
-            .sidebar { position:fixed; left:-260px; top:0; height:100vh; z-index:100; transition:left 0.3s ease; }
-            .sidebar.open { left:0; }
-            .sidebar-overlay.show { display:block; }
+            .sidebar { left:0; transform:translateX(-105%); transition:transform 0.25s ease; z-index:1200; }
+            body.sidebar-open .sidebar { transform:translateX(0); }
+            body.sidebar-open .sidebar-overlay { display:block; }
             .hamburger-btn { display:inline-flex; align-items:center; gap:0.4rem; }
             .main-content { width:100%; }
             td, th { padding:0.6rem 0.5rem; font-size:0.82rem; }
@@ -160,13 +155,39 @@
             .row { margin: 0; }
             .user-menu span { display: none; }
             .logout-btn { font-size: 0.75rem; }
+            .table-responsive table { min-width: 680px; }
+            .table-responsive { margin-left: -0.25rem; margin-right: -0.25rem; }
+            form[style*="display:flex"] { width: 100%; }
+            form[style*="display:flex"] .form-control[style*="max-width"] { max-width: 100% !important; flex: 1 1 100%; }
+            td form { display: flex !important; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+            td form .form-control { min-width: 130px; flex: 1 1 130px; }
         }
 
         @media (max-width: 480px) {
-            .topbar { align-items: center; }
+            .topbar { align-items: center; padding:0.75rem; }
             .topbar-title { max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .notification-wrap { display: none; }
-            .btn { width: 100%; justify-content: center; }
+            .content { padding:0.75rem; }
+            .card { padding:0.875rem; margin-bottom:1rem; }
+            .card-header { align-items:flex-start; }
+            .card-header > .btn, .card-header > a.btn { width:auto; }
+            .btn { width:100%; justify-content:center; }
+            .card-header .btn { width:auto; }
+            .form-group { margin-bottom:1rem; }
+            .modal { padding:0.75rem; }
+            .modal-dialog { max-height:95vh; }
+            .modal-header { padding:0.875rem; }
+            .modal-body { padding:0.875rem; max-height:calc(95vh - 90px); }
+            .section-header { align-items:flex-start; }
+            .details-grid { gap:1rem; }
+        }
+
+        @media (max-width: 360px) {
+            html { font-size:15px; }
+            .topbar-title { font-size:0.95rem; }
+            .user-menu { gap:0.35rem; }
+            .logout-btn { font-size:0.7rem; }
+            th, td { padding:0.5rem 0.35rem; font-size:0.75rem; }
         }
     </style>
 </head>
@@ -184,6 +205,9 @@
             </a>
             <a href="<?php echo $config['base_url']; ?>/students" class="nav-item <?php echo preg_match('#/student#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-user-graduate"></i> Students
+            </a>
+            <a href="<?php echo $config['base_url']; ?>/reservations" class="nav-item <?php echo preg_match('#/reservation#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-calendar-check"></i> Reservations
             </a>
             <a href="<?php echo $config['base_url']; ?>/rooms" class="nav-item <?php echo preg_match('#/room#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-door-open"></i> Rooms
@@ -271,14 +295,13 @@ function toggleSidebar() {
     var s = document.getElementById('sidebar');
     var o = document.getElementById('sidebarOverlay');
     if (s && o) {
-        s.classList.toggle('open');
-        o.classList.toggle('show');
+        document.body.classList.toggle('sidebar-open');
     }
 }
 // Close sidebar when a nav link is clicked on mobile
 document.querySelectorAll('.sidebar .nav-item').forEach(function(el) {
     el.addEventListener('click', function() {
-        if (window.innerWidth <= 768) toggleSidebar();
+        if (window.innerWidth <= 900 && document.body.classList.contains('sidebar-open')) toggleSidebar();
     });
 });
 </script>

@@ -78,6 +78,49 @@ CREATE TABLE IF NOT EXISTS room_occupants (
     KEY idx_room_occupants_allocation (room_allocation_id)
 );
 
+CREATE TABLE IF NOT EXISTS reservations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    cnic VARCHAR(15) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    district VARCHAR(80) NOT NULL,
+    room_id INT NOT NULL,
+    bed_number INT NOT NULL,
+    reservation_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    reservation_date DATE NOT NULL,
+    expected_arrival_date DATE NULL,
+    status ENUM('PENDING', 'CONFIRMED', 'ARRIVED', 'CANCELLED', 'EXPIRED') NOT NULL DEFAULT 'PENDING',
+    notes TEXT NULL,
+    converted_student_id INT NULL,
+    converted_at TIMESTAMP NULL,
+    cancelled_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
+    FOREIGN KEY (converted_student_id) REFERENCES students(id) ON DELETE SET NULL,
+    KEY idx_reservations_room_bed (room_id, bed_number),
+    KEY idx_reservations_status (status),
+    KEY idx_reservations_cnic (cnic),
+    KEY idx_reservations_date (reservation_date)
+);
+
+CREATE TABLE IF NOT EXISTS reservation_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reservation_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    payment_date DATE NOT NULL,
+    payment_method ENUM('Cash', 'Bank Transfer', 'Online', 'Card', 'Other') NOT NULL DEFAULT 'Cash',
+    transaction_ref VARCHAR(100) NOT NULL,
+    notes TEXT NULL,
+    created_by_admin INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_admin) REFERENCES admins(id) ON DELETE SET NULL,
+    UNIQUE KEY uk_reservation_payment_ref (transaction_ref),
+    KEY idx_reservation_payments_reservation (reservation_id, payment_date)
+);
+
 CREATE TABLE fee_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_number VARCHAR(50) NULL,

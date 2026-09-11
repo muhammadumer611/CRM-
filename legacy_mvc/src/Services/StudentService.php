@@ -71,6 +71,11 @@ class StudentService {
     }
 
     public function onboardSinglePerson($data) {
+        $addedByName = trim((string)($data['added_by_name'] ?? ''));
+        if ($addedByName === '') {
+            return ['success' => false, 'error' => 'Added By is required. Please enter the staff member name who added this student.'];
+        }
+
         $cleanCnic = self::sanitizeCnic($data['cnic'] ?? '');
         if (!self::validateCnic($cleanCnic)) {
             return ['success' => false, 'error' => 'Please enter a valid CNIC.'];
@@ -102,7 +107,10 @@ class StudentService {
             return ['success' => false, 'error' => 'Please select an available bed.'];
         }
 
-        $this->db->beginTransaction();
+        $shouldCommit = !$this->db->inTransaction();
+        if ($shouldCommit) {
+            $this->db->beginTransaction();
+        }
 
         try {
             $stmtCnic = $this->db->prepare("SELECT id FROM students WHERE cnic = ? FOR UPDATE");
@@ -156,6 +164,8 @@ class StudentService {
                 'relation' => trim($data['relation']),
                 'status' => 'Active',
                 'monthly_fee' => $monthlyFee,
+                'added_by_name' => $addedByName,
+                'added_at' => date('Y-m-d H:i:s'),
             ];
 
             $studentId = $this->studentRepo->create($dbData, $this->db);
@@ -186,16 +196,25 @@ class StudentService {
             $invoiceId = $this->db->lastInsertId();
 
             StudentHistoryService::record($studentId, 'STUDENT_CREATED', 'Single-person onboarding completed.', null, array_merge($dbData, ['allocation_id' => $allocationId, 'invoice_id' => $invoiceId]), Session::get('admin_id'), $this->db);
-            $this->db->commit();
+            if ($shouldCommit) {
+                $this->db->commit();
+            }
 
             return ['success' => true, 'id' => $studentId, 'student_id_str' => $studentIdStr];
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($shouldCommit && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
     public function onboardFullRoom($data) {
+        $addedByName = trim((string)($data['added_by_name'] ?? ''));
+        if ($addedByName === '') {
+            return ['success' => false, 'error' => 'Added By is required. Please enter the staff member name who added this student.'];
+        }
+
         $roomId = !empty($data['room_id']) ? (int)$data['room_id'] : 0;
         $monthlyRoomFee = isset($data['monthly_room_fee']) && $data['monthly_room_fee'] !== '' ? (float)$data['monthly_room_fee'] : 0.0;
         $securityDeposit = isset($data['security_deposit']) && $data['security_deposit'] !== '' ? (float)$data['security_deposit'] : 0.0;
@@ -215,7 +234,10 @@ class StudentService {
             return ['success' => false, 'error' => 'Please add at least one occupant.'];
         }
 
-        $this->db->beginTransaction();
+        $shouldCommit = !$this->db->inTransaction();
+        if ($shouldCommit) {
+            $this->db->beginTransaction();
+        }
 
         try {
             $stmtRoom = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
@@ -287,6 +309,8 @@ class StudentService {
                     'relation' => trim((string)($occupant['relation'] ?? '')) ?: 'Other',
                     'status' => 'Active',
                     'monthly_fee' => $monthlyRoomFee,
+                    'added_by_name' => $addedByName,
+                    'added_at' => date('Y-m-d H:i:s'),
                 ];
 
                 $studentId = $this->studentRepo->create($dbData, $this->db);

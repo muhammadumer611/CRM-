@@ -86,6 +86,10 @@
     <form action="<?php echo $config['base_url']; ?>/allocations/store" method="POST" id="allocationForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
         <input type="hidden" name="bed_number" id="selected_bed_number" value="" required>
+        <div class="form-group">
+            <label class="form-label">Allocated By *</label>
+            <input type="text" name="allocated_by_name" class="form-control" required>
+        </div>
         
         <div class="row">
             <div class="col-md-6 form-group">
