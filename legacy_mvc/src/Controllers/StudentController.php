@@ -24,7 +24,7 @@ class StudentController {
         
         $filters = [
             'search' => $_GET['search'] ?? '',
-            'status' => $_GET['status'] ?? '',
+            'status' => 'Active',
             'district' => $_GET['district'] ?? '',
             'room' => $_GET['room'] ?? '',
             'bed' => $_GET['bed'] ?? ''
@@ -132,6 +132,12 @@ class StudentController {
             Session::set('error', 'Student not found.');
             $config = require APP_ROOT . '/config/app.php';
             header('Location: ' . $config['base_url'] . '/students');
+            exit;
+        }
+        if ($student['status'] !== 'Active') {
+            Session::set('error', 'This student is inactive/alumni. Active student editing is unavailable.');
+            $config = require APP_ROOT . '/config/app.php';
+            header('Location: ' . $config['base_url'] . '/students/view/' . (int)$id);
             exit;
         }
 
@@ -280,6 +286,11 @@ class StudentController {
         if (!$student) {
             Session::set('error', 'Student not found.');
             header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students');
+            exit;
+        }
+        if ($student['status'] !== 'Active') {
+            Session::set('error', 'This student is inactive/alumni. Current resident account actions are unavailable.');
+            header('Location: ' . (require APP_ROOT . '/config/app.php')['base_url'] . '/students/view/' . (int)$id);
             exit;
         }
 

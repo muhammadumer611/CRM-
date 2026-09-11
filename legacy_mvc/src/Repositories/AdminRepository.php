@@ -17,6 +17,12 @@ class AdminRepository {
         return $stmt->fetch();
     }
 
+    public function findById($id) {
+        $stmt = $this->db->prepare("SELECT * FROM admins WHERE id = ?");
+        $stmt->execute([(int)$id]);
+        return $stmt->fetch();
+    }
+
     public function logAction($adminId, $action, $description, $ip) {
         $stmt = $this->db->prepare("INSERT INTO system_logs (admin_id, action, description, ip_address) VALUES (?, ?, ?, ?)");
         $stmt->execute([$adminId, $action, $description, $ip]);

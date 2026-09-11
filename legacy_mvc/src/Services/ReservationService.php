@@ -66,30 +66,28 @@ class ReservationService {
             return ['success' => false, 'error' => 'Reservation amount cannot be negative.'];
         }
 
-        $roomStmt = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
-        $roomStmt->execute([$roomId]);
-        $room = $roomStmt->fetch();
-        if (!$room) {
-            return ['success' => false, 'error' => 'Selected room was not found.'];
-        }
-
-        if (($room['status'] ?? '') === 'Disabled') {
-            return ['success' => false, 'error' => 'This room is disabled.'];
-        }
-
-        if ($bedNumber < 1 || $bedNumber > (int)$room['total_beds']) {
-            return ['success' => false, 'error' => 'Selected bed is invalid for this room.'];
-        }
-
         $this->db->beginTransaction();
         try {
+            $roomStmt = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
+            $roomStmt->execute([$roomId]);
+            $room = $roomStmt->fetch();
+            if (!$room) {
+                throw new Exception('Selected room was not found.');
+            }
+            if (($room['status'] ?? '') === 'Disabled') {
+                throw new Exception('This room is disabled.');
+            }
+            if ($bedNumber < 1 || $bedNumber > (int)$room['total_beds']) {
+                throw new Exception('Selected bed is invalid for this room.');
+            }
+
             $existingStudentStmt = $this->db->prepare("SELECT id FROM students WHERE cnic = ? AND status = 'Active' LIMIT 1 FOR UPDATE");
             $existingStudentStmt->execute([$cnic]);
             if ($existingStudentStmt->fetch()) {
                 throw new Exception('A student with this CNIC already exists in the active student list. Please review the existing student before creating a reservation.');
             }
 
-            $duplicateStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED', 'ARRIVED') FOR UPDATE");
+            $duplicateStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED') FOR UPDATE");
             $duplicateStmt->execute([$roomId, $bedNumber]);
             if ($duplicateStmt->fetch()) {
                 throw new Exception('This room and bed already has an active reservation.');
@@ -101,7 +99,7 @@ class ReservationService {
                 throw new Exception('This bed is already occupied by an active student and cannot be reserved.');
             }
 
-            if (!in_array($status, ['PENDING', 'CONFIRMED', 'ARRIVED', 'CANCELLED', 'EXPIRED'], true)) {
+            if (!in_array($status, ['PENDING', 'CONFIRMED'], true)) {
                 throw new Exception('Invalid reservation status provided.');
             }
 
@@ -140,11 +138,17 @@ class ReservationService {
             return ['success' => false, 'error' => 'Reservation not found.'];
         }
 
-        $allowed = ['PENDING', 'CONFIRMED', 'ARRIVED', 'CANCELLED', 'EXPIRED'];
         $status = strtoupper(trim((string)($data['status'] ?? $reservation['status'])));
 
-        if (!in_array($status, $allowed, true)) {
-            return ['success' => false, 'error' => 'Invalid reservation status.'];
+        $allowedTransitions = [
+            'PENDING' => ['PENDING', 'CONFIRMED', 'CANCELLED'],
+            'CONFIRMED' => ['CONFIRMED', 'CANCELLED'],
+            'ARRIVED' => ['ARRIVED'],
+            'CANCELLED' => ['CANCELLED'],
+            'EXPIRED' => ['EXPIRED'],
+        ];
+        if (!in_array($status, $allowedTransitions[$reservation['status']] ?? [], true)) {
+            return ['success' => false, 'error' => 'Invalid reservation status transition.'];
         }
 
         $this->db->beginTransaction();
@@ -194,6 +198,11 @@ class ReservationService {
 
         $this->db->beginTransaction();
         try {
+            $lock = $this->db->prepare("SELECT status FROM reservations WHERE id = ? FOR UPDATE");
+            $lock->execute([(int)$id]);
+            if (($lock->fetchColumn() ?? '') !== 'PENDING') {
+                throw new Exception('Reservation is no longer pending.');
+            }
             $stmt = $this->db->prepare("UPDATE reservations SET status = 'CONFIRMED', updated_at = CURRENT_TIMESTAMP WHERE id = ?");
             $stmt->execute([(int)$id]);
             $this->db->commit();
@@ -221,6 +230,13 @@ class ReservationService {
 
         $this->db->beginTransaction();
         try {
+            $reservationStmt = $this->db->prepare("SELECT * FROM reservations WHERE id = ? FOR UPDATE");
+            $reservationStmt->execute([(int)$reservationId]);
+            $reservation = $reservationStmt->fetch();
+            if (!$reservation || !in_array($reservation['status'], ['PENDING', 'CONFIRMED'], true)) {
+                throw new Exception('Only active reservations can be converted.');
+            }
+
             $convertedByName = trim((string)($studentPayload['converted_by_name'] ?? ''));
             if ($convertedByName === '') {
                 throw new Exception('Converted By is required. Please enter the staff member who converted the reservation.');
@@ -270,6 +286,7 @@ class ReservationService {
                 'monthly_fee' => !empty($studentPayload['monthly_fee']) ? (float)$studentPayload['monthly_fee'] : (float)$room['monthly_fee'],
                 'security_deposit' => !empty($studentPayload['security_deposit']) ? (float)$studentPayload['security_deposit'] : 0.0,
                 'added_by_name' => $convertedByName,
+                'exclude_reservation_id' => (int)$reservationId,
             ];
 
             $studentResult = $studentService->onboardSinglePerson($payload);
@@ -277,7 +294,7 @@ class ReservationService {
                 throw new Exception($studentResult['error']);
             }
 
-            $reservUpdate = $this->db->prepare("UPDATE reservations SET status = 'ARRIVED', converted_student_id = ?, converted_by_name = ?, converted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $reservUpdate = $this->db->prepare("UPDATE reservations SET status = 'ARRIVED', converted_student_id = ?, converted_by_name = ?, converted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('PENDING', 'CONFIRMED')");
             $reservUpdate->execute([(int)$studentResult['id'], $convertedByName, (int)$reservationId]);
 
             $this->db->commit();
@@ -305,6 +322,12 @@ class ReservationService {
 
         $this->db->beginTransaction();
         try {
+            $lock = $this->db->prepare("SELECT status FROM reservations WHERE id = ? FOR UPDATE");
+            $lock->execute([(int)$id]);
+            $lockedStatus = $lock->fetchColumn();
+            if (!$lockedStatus || in_array($lockedStatus, ['CANCELLED', 'EXPIRED', 'ARRIVED'], true)) {
+                throw new Exception('This reservation cannot be cancelled in its current state.');
+            }
             $stmt = $this->db->prepare("UPDATE reservations SET status = 'CANCELLED', cancelled_by_name = ?, cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
             $stmt->execute([$cancelledByName, (int)$id]);
             $this->db->commit();

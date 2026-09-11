@@ -64,25 +64,13 @@ class RoomRepository {
     public function findAllWithAvailability() {
         $query = "
             SELECT r.*,
-                   COUNT(ra.id) AS active_allocations,
-                   COALESCE(SUM(CASE
-                       WHEN ra.status = 'Active' AND ra.bed_number = 0 THEN r.total_beds
-                       WHEN ra.status = 'Active' AND ra.bed_number > 0 THEN 1
-                       ELSE 0
-                   END), 0) AS active_occupied_beds,
-                   COALESCE(SUM(CASE
-                       WHEN ra.status = 'Active' AND ra.bed_number = 0 THEN 1
-                       ELSE 0
-                   END), 0) AS full_room_allocations,
-                   (r.total_beds - COALESCE(SUM(CASE
-                       WHEN ra.status = 'Active' AND ra.bed_number = 0 THEN r.total_beds
-                       WHEN ra.status = 'Active' AND ra.bed_number > 0 THEN 1
-                       ELSE 0
-                   END), 0)) AS available_beds
+                   (SELECT COUNT(*) FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = r.id AND ra.status = 'Active') AS active_allocations,
+                   (SELECT COALESCE(SUM(CASE WHEN ra.bed_number = 0 THEN r.total_beds ELSE 1 END), 0) FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = r.id AND ra.status = 'Active') AS active_occupied_beds,
+                   (SELECT COUNT(DISTINCT res.bed_number) FROM reservations res WHERE res.room_id = r.id AND res.status IN ('PENDING', 'CONFIRMED')) AS active_reserved_beds,
+                   (SELECT COUNT(*) FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = r.id AND ra.status = 'Active' AND ra.bed_number = 0) AS full_room_allocations,
+                   (r.total_beds - (SELECT COALESCE(SUM(CASE WHEN ra.bed_number = 0 THEN r.total_beds ELSE 1 END), 0) FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = r.id AND ra.status = 'Active') - (SELECT COUNT(DISTINCT res.bed_number) FROM reservations res WHERE res.room_id = r.id AND res.status IN ('PENDING', 'CONFIRMED'))) AS available_beds
             FROM rooms r
-            LEFT JOIN room_allocations ra ON ra.room_id = r.id AND ra.status = 'Active'
             WHERE r.status != 'Disabled'
-            GROUP BY r.id
             ORDER BY r.room_number ASC
         ";
 
@@ -102,10 +90,11 @@ class RoomRepository {
         foreach ($rooms as $room) {
             $totalBeds = (int)($room['total_beds'] ?? 0);
             $activeOccupied = (int)($room['active_occupied_beds'] ?? 0);
-            $cachedOccupied = (int)($room['occupied_beds'] ?? 0);
-            $effectiveOccupied = max($activeOccupied, $cachedOccupied);
+                $reservedBeds = (int)($room['active_reserved_beds'] ?? 0);
+                $effectiveOccupied = $activeOccupied + $reservedBeds;
             $availableBeds = max(0, $totalBeds - $effectiveOccupied);
             $activeAllocations = (int)($room['active_allocations'] ?? 0);
+                $activeAllocations = (int)($room['active_allocations'] ?? 0);
             $fullRoomAllocations = (int)($room['full_room_allocations'] ?? 0);
             $isEligible = false;
 
@@ -130,15 +119,22 @@ class RoomRepository {
         }
 
         $occupied = [];
-        $stmt = $this->db->prepare("SELECT DISTINCT bed_number FROM room_allocations WHERE room_id = ? AND status = 'Active' AND bed_number > 0 ORDER BY bed_number ASC");
+        $stmt = $this->db->prepare("SELECT DISTINCT ra.bed_number FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = ? AND ra.status = 'Active' ORDER BY ra.bed_number ASC");
         $stmt->execute([$roomId]);
+        $hasFullRoomAllocation = false;
         foreach ($stmt->fetchAll() as $rowBed) {
-            if ((int)$rowBed['bed_number'] > 0) {
+            if ((int)$rowBed['bed_number'] === 0) {
+                $hasFullRoomAllocation = true;
+            } elseif ((int)$rowBed['bed_number'] > 0) {
                 $occupied[(int)$rowBed['bed_number']] = true;
             }
         }
 
-        $resStmt = $this->db->prepare("SELECT DISTINCT bed_number FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED', 'ARRIVED') AND bed_number > 0 ORDER BY bed_number ASC");
+        if ($hasFullRoomAllocation) {
+            return [];
+        }
+
+        $resStmt = $this->db->prepare("SELECT DISTINCT bed_number FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED') AND bed_number > 0 ORDER BY bed_number ASC");
         $resStmt->execute([$roomId]);
         foreach ($resStmt->fetchAll() as $rowRes) {
             if ((int)$rowRes['bed_number'] > 0) {
@@ -170,8 +166,9 @@ class RoomRepository {
                     WHEN bed_number > 0 THEN 1
                     ELSE 0
                 END), 0) AS effective_occupied_beds
-            FROM room_allocations
-            WHERE room_id = :room_id AND status = 'Active'
+            FROM room_allocations ra
+            JOIN students s ON s.id = ra.student_id AND s.status = 'Active'
+            WHERE ra.room_id = :room_id AND ra.status = 'Active'
         ");
         $summary->execute([
             'total_beds' => (int)$room['total_beds'],
@@ -179,20 +176,24 @@ class RoomRepository {
         ]);
         $row = $summary->fetch();
         $effectiveOccupied = (int)($row['effective_occupied_beds'] ?? 0);
+        $reservedStmt = $this->db->prepare("SELECT COUNT(DISTINCT bed_number) FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED')");
+        $reservedStmt->execute([(int)$roomId]);
+        $reservedBeds = (int)$reservedStmt->fetchColumn();
 
         return [
             'room_id' => (int)$roomId,
             'total_beds' => (int)$room['total_beds'],
             'active_allocations' => (int)($row['active_allocations'] ?? 0),
             'effective_occupied_beds' => $effectiveOccupied,
-            'available_beds' => max(0, (int)$room['total_beds'] - $effectiveOccupied),
+            'active_reserved_beds' => $reservedBeds,
+            'available_beds' => max(0, (int)$room['total_beds'] - $effectiveOccupied - $reservedBeds),
             'occupied_bed_numbers' => $this->getOccupiedBedNumbersForRoom($roomId),
             'available_bed_numbers' => $this->getAvailableBedsForRoom($roomId),
         ];
     }
 
     public function getOccupiedBedNumbersForRoom($roomId) {
-        $stmt = $this->db->prepare("SELECT DISTINCT bed_number FROM room_allocations WHERE room_id = ? AND status = 'Active' AND bed_number > 0 ORDER BY bed_number ASC");
+        $stmt = $this->db->prepare("SELECT DISTINCT ra.bed_number FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = ? AND ra.status = 'Active' AND ra.bed_number > 0 ORDER BY ra.bed_number ASC");
         $stmt->execute([$roomId]);
         $beds = [];
         foreach ($stmt->fetchAll() as $row) {
@@ -267,7 +268,7 @@ class RoomRepository {
             SELECT ra.id, ra.student_id, ra.room_id, ra.bed_number, ra.joining_date, ra.status,
                    s.full_name as student_name, s.student_id_str
             FROM room_allocations ra
-            JOIN students s ON ra.student_id = s.id
+            JOIN students s ON ra.student_id = s.id AND s.status = 'Active'
             WHERE ra.room_id = ? AND ra.status = 'Active'
             ORDER BY ra.bed_number ASC
         ");
@@ -276,7 +277,7 @@ class RoomRepository {
     }
 
     public function countActiveAllocations($roomId) {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = ? AND ra.status = 'Active'");
         $stmt->execute([$roomId]);
         return (int)$stmt->fetchColumn();
     }
@@ -390,7 +391,7 @@ class RoomRepository {
                 SELECT ra.id, ra.bed_number, ra.student_id, ra.joining_date,
                        s.full_name as student_name, s.student_id_str
                 FROM room_allocations ra
-                JOIN students s ON ra.student_id = s.id
+                JOIN students s ON ra.student_id = s.id AND s.status = 'Active'
                 WHERE ra.room_id = ? AND ra.status = 'Active'
                 ORDER BY ra.bed_number ASC
             ");
@@ -409,8 +410,16 @@ class RoomRepository {
                 }
             }
 
+            $reservedStmt = $this->db->prepare("SELECT DISTINCT bed_number FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED') AND bed_number > 0");
+            $reservedStmt->execute([$roomId]);
+            $reservedBedNumbers = [];
+            foreach ($reservedStmt->fetchAll() as $reservation) {
+                $reservedBedNumbers[(int)$reservation['bed_number']] = true;
+            }
+
             $availableBedNumbers = [];
             $occupiedBedNumbers = [];
+            $reservedBedNumbersList = [];
 
             if ($hasFullRoomAlloc) {
                 for ($i = 1; $i <= $totalBeds; $i++) {
@@ -420,6 +429,8 @@ class RoomRepository {
                 for ($i = 1; $i <= $totalBeds; $i++) {
                     if (isset($occupiedBedsMap[$i])) {
                         $occupiedBedNumbers[] = $i;
+                    } elseif (isset($reservedBedNumbers[$i])) {
+                        $reservedBedNumbersList[] = $i;
                     } else {
                         $availableBedNumbers[] = $i;
                     }
@@ -452,7 +463,8 @@ class RoomRepository {
                     'available_beds' => $availableCount,
                     'status' => $roomStatus,
                     'available_bed_numbers' => $availableBedNumbers,
-                    'occupied_bed_numbers' => $occupiedBedNumbers
+                    'occupied_bed_numbers' => $occupiedBedNumbers,
+                    'reserved_bed_numbers' => $reservedBedNumbersList
                 ];
                 $totalAvailableBeds += $availableCount;
             }

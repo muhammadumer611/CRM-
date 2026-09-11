@@ -16,7 +16,7 @@ class FeeRepository {
             SELECT f.*, s.full_name, s.student_id_str 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
-            WHERE f.charge_type = 'MONTHLY_FEE'
+            WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
         ";
         $params = [];
 
@@ -61,7 +61,7 @@ class FeeRepository {
             SELECT COUNT(*) 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
-            WHERE f.charge_type = 'MONTHLY_FEE'
+            WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
         ";
         $params = [];
 
@@ -645,8 +645,10 @@ class FeeRepository {
         }
 
         if (!empty($filters['search'])) {
-            $sql .= " AND (s.full_name LIKE :search OR s.student_id_str LIKE :search)";
-            $params['search'] = '%' . trim((string)$filters['search']) . '%';
+            $sql .= " AND (s.full_name LIKE :search_name OR s.student_id_str LIKE :search_student_id)";
+            $search = '%' . trim((string)$filters['search']) . '%';
+            $params['search_name'] = $search;
+            $params['search_student_id'] = $search;
         }
 
         if (!empty($filters['status'])) {

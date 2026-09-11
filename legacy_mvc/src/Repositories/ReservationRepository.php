@@ -73,7 +73,7 @@ class ReservationRepository {
     }
 
     public function getActiveBedNumbersForRoom($roomId) {
-        $stmt = $this->db->prepare("SELECT DISTINCT bed_number FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED', 'ARRIVED') ORDER BY bed_number ASC");
+        $stmt = $this->db->prepare("SELECT DISTINCT bed_number FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED') ORDER BY bed_number ASC");
         $stmt->execute([(int)$roomId]);
         $beds = [];
         foreach ($stmt->fetchAll() as $row) {
@@ -83,7 +83,7 @@ class ReservationRepository {
     }
 
     public function isBedAvailable($roomId, $bedNumber, $excludeReservationId = null) {
-        $stmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED', 'ARRIVED') AND (? IS NULL OR id != ?) LIMIT 1");
+        $stmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED') AND (? IS NULL OR id != ?) LIMIT 1");
         $stmt->execute([(int)$roomId, (int)$bedNumber, $excludeReservationId, $excludeReservationId]);
         if ($stmt->fetch()) {
             return false;
@@ -114,7 +114,7 @@ class ReservationRepository {
     }
 
     public function countActiveReservationsForRoom($roomId) {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED', 'ARRIVED')");
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED')");
         $stmt->execute([(int)$roomId]);
         return (int)$stmt->fetchColumn();
     }

@@ -19,7 +19,7 @@ class StudentRepository {
                   FROM students s
                   LEFT JOIN room_allocations ra ON s.id = ra.student_id AND ra.status = 'Active'
                   LEFT JOIN rooms r ON ra.room_id = r.id
-                  WHERE 1=1";
+                  WHERE s.status = 'Active'";
         $params = [];
 
         if (!empty($filters['search'])) {
@@ -70,7 +70,7 @@ class StudentRepository {
     }
     
     public function count($filters = []) {
-        $query = "SELECT COUNT(*) FROM students s LEFT JOIN room_allocations ra ON s.id = ra.student_id AND ra.status = 'Active' LEFT JOIN rooms r ON ra.room_id = r.id WHERE 1=1";
+        $query = "SELECT COUNT(*) FROM students s LEFT JOIN room_allocations ra ON s.id = ra.student_id AND ra.status = 'Active' LEFT JOIN rooms r ON ra.room_id = r.id WHERE s.status = 'Active'";
         $params = [];
 
         if (!empty($filters['search'])) {

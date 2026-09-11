@@ -110,6 +110,12 @@ class AllocationService {
                 throw new Exception("Selected bed is already occupied.");
             }
 
+            $stmtBedReservation = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED') FOR UPDATE");
+            $stmtBedReservation->execute([$roomId, $bedNumber]);
+            if ($stmtBedReservation->fetch()) {
+                throw new Exception("Bed is no longer available. It is reserved.");
+            }
+
             // Verify room has capacity
             $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
             $stmtCount->execute([$roomId]);

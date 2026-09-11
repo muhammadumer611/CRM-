@@ -3,8 +3,9 @@
 $roomRepository = new \App\Repositories\RoomRepository();
 $roomCatalog = [];
 foreach ($roomRepository->findAllWithAvailability() as $room) {
-    $occupied = (int)($room['occupied_beds'] ?? 0);
-    $available = max(0, (int)$room['total_beds'] - $occupied);
+    $occupied = (int)($room['active_occupied_beds'] ?? 0);
+    $reserved = (int)($room['active_reserved_beds'] ?? 0);
+    $available = max(0, (int)($room['available_beds'] ?? ((int)$room['total_beds'] - $occupied - $reserved)));
     $roomCatalog[] = [
         'id' => (int)$room['id'],
         'room_number' => $room['room_number'],
@@ -13,6 +14,7 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
         'room_type' => $room['room_type'],
         'total_beds' => (int)$room['total_beds'],
         'occupied_beds' => $occupied,
+        'reserved_beds' => $reserved,
         'available_beds' => $available,
         'available_capacity' => $available,
         'status' => $room['status'] ?? 'Available'

@@ -60,7 +60,8 @@
                                             )
                                         )
                                     );
-                                ?>"><?php echo htmlspecialchars($reservation['status']); ?></span>
+                                    $displayStatus = $reservation['status'] === 'PENDING' ? 'RESERVED' : $reservation['status'];
+                                    ?>"><?php echo htmlspecialchars($displayStatus); ?></span>
                             </td>
                             <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                                 <a href="<?php echo $config['base_url']; ?>/reservations/view/<?php echo (int)$reservation['id']; ?>" class="btn btn-sm" style="background:#1e293b;color:#e2e8f0;border:1px solid var(--border);">View</a>

@@ -35,7 +35,6 @@ class AlumniService {
         $this->db->beginTransaction();
 
         try {
-            // Lock and fetch student
             $stmt = $this->db->prepare("SELECT * FROM students WHERE id = ? FOR UPDATE");
             $stmt->execute([$studentId]);
             $student = $stmt->fetch();
@@ -47,60 +46,56 @@ class AlumniService {
                 throw new Exception("Only active students can be converted to alumni.");
             }
 
-            // Duplicate protection
             $stmtCheck = $this->db->prepare("SELECT COUNT(*) FROM alumni WHERE original_student_id = ? FOR UPDATE");
             $stmtCheck->execute([$student['student_id_str']]);
-            if ($stmtCheck->fetchColumn() > 0) {
+            if ((int)$stmtCheck->fetchColumn() > 0) {
                 throw new Exception("Alumni record already exists for this student.");
             }
 
-            // Calculate outstanding fees
-            $outstandingFee = $this->feeRepo->getOutstandingBalance($studentId, $this->db);
-            $finalFeeStatus = ($outstandingFee > 0) ? "Has Pending Dues (Rs. " . number_format($outstandingFee, 2) . ")" : "Cleared";
-
-            // Process Active Room Allocation
             $stmtAlloc = $this->db->prepare("SELECT * FROM room_allocations WHERE student_id = ? AND status = 'Active' FOR UPDATE");
             $stmtAlloc->execute([$studentId]);
             $alloc = $stmtAlloc->fetch();
-
-            $prevRoomStr = null;
-            $prevBed = null;
-            $joiningDate = null;
-
-            if ($alloc) {
-                $prevRoomId = $alloc['room_id'];
-                $prevBed = $alloc['bed_number'];
-                $joiningDate = $alloc['joining_date'];
-
-                // Get Room Info
-                $stmtRoom = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
-                $stmtRoom->execute([$prevRoomId]);
-                $room = $stmtRoom->fetch();
-
-                if (!$room) {
-                    throw new Exception("Associated room not found.");
-                }
-
-                $prevRoomStr = $room['block'] . '-' . $room['room_number'];
-
-                // Close Allocation
-                $stmtCloseAlloc = $this->db->prepare("UPDATE room_allocations SET status = 'Closed', leaving_date = ? WHERE id = ?");
-                $stmtCloseAlloc->execute([$leavingDate, $alloc['id']]);
-
-                // Update Room Occupancy
-                $newOccupied = max(0, $room['occupied_beds'] - 1);
-                $newStatus = ($newOccupied == 0) ? 'Available' : 'Partially Occupied';
-                
-                // Do not override 'Disabled' status
-                if ($room['status'] === 'Disabled') {
-                    $newStatus = 'Disabled';
-                }
-                
-                $stmtUpdateRoom = $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?");
-                $stmtUpdateRoom->execute([$newOccupied, $newStatus, $prevRoomId]);
+            if (!$alloc) {
+                throw new Exception("Only active allocation can be closed for alumni conversion.");
             }
 
-            // Process Security Deposit Settlement (if any deposit was held)
+            $prevRoomId = (int)$alloc['room_id'];
+            $prevBed = $alloc['bed_number'];
+            $joiningDate = $alloc['joining_date'];
+
+            $stmtRoom = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
+            $stmtRoom->execute([$prevRoomId]);
+            $room = $stmtRoom->fetch();
+            if (!$room) {
+                throw new Exception("Associated room not found.");
+            }
+
+            $prevRoomStr = $room['block'] . '-' . $room['room_number'];
+            $outstandingFee = $this->feeRepo->getOutstandingBalance($studentId, $this->db);
+            $finalFeeStatus = ($outstandingFee > 0) ? "Has Pending Dues (Rs. " . number_format($outstandingFee, 2) . ")" : "Cleared";
+
+            $activeCountAfterRelease = 0;
+            $stmtCloseAlloc = $this->db->prepare("UPDATE room_allocations SET status = 'Closed', leaving_date = ? WHERE id = ?");
+            $stmtCloseAlloc->execute([$leavingDate, $alloc['id']]);
+
+            $countStmt = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+            $countStmt->execute([$prevRoomId]);
+            $activeCountAfterRelease = (int)$countStmt->fetchColumn();
+
+            $newStatus = $room['status'];
+            if ($newStatus !== 'Disabled') {
+                if ($activeCountAfterRelease === 0) {
+                    $newStatus = 'Available';
+                } elseif ($activeCountAfterRelease < (int)$room['total_beds']) {
+                    $newStatus = 'Partially Occupied';
+                } else {
+                    $newStatus = 'Occupied';
+                }
+            }
+
+            $stmtUpdateRoom = $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?");
+            $stmtUpdateRoom->execute([$activeCountAfterRelease, $newStatus, $prevRoomId]);
+
             $stmtSD = $this->db->prepare("SELECT * FROM security_deposits WHERE student_id = ? AND status IN ('HELD', 'PARTIALLY_REFUNDED') FOR UPDATE");
             $stmtSD->execute([$studentId]);
             $securityDeposit = $stmtSD->fetch();
@@ -114,18 +109,12 @@ class AlumniService {
                 $processedStaffName = trim((string)($processedByName ?: $checkedOutByName));
 
                 if ($deduction > 0) {
-                    $stmtTx1 = $this->db->prepare("
-                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin, processed_by_name, processed_at)
-                        VALUES (?, 'ADJUSTMENT', ?, ?, ?, ?, NOW())
-                    ");
+                    $stmtTx1 = $this->db->prepare("INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin, processed_by_name, processed_at) VALUES (?, 'ADJUSTMENT', ?, ?, ?, ?, NOW())");
                     $stmtTx1->execute([$securityDeposit['id'], $deduction, $securityRefundRemarks ?: 'Deduction upon checkout', $adminId, $processedStaffName]);
                 }
 
                 if ($refund > 0) {
-                    $stmtTx2 = $this->db->prepare("
-                        INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin, processed_by_name, processed_at)
-                        VALUES (?, 'REFUND', ?, ?, ?, ?, NOW())
-                    ");
+                    $stmtTx2 = $this->db->prepare("INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, created_by_admin, processed_by_name, processed_at) VALUES (?, 'REFUND', ?, ?, ?, ?, NOW())");
                     $stmtTx2->execute([$securityDeposit['id'], $refund, $securityRefundRemarks ?: 'Refunded upon checkout', $adminId, $processedStaffName]);
                 }
 
@@ -142,7 +131,6 @@ class AlumniService {
                 ];
             }
 
-            // Create Alumni Record
             $guardianInfo = json_encode([
                 'name' => $student['guardian_name'],
                 'phone' => $student['guardian_phone'],
@@ -167,14 +155,12 @@ class AlumniService {
                 'processed_by_name' => trim((string)($processedByName ?: $checkedOutByName)),
             ], $this->db);
 
-            // Set Student Status to Inactive
             $stmtUpdateStudent = $this->db->prepare("UPDATE students SET status = 'Inactive' WHERE id = ?");
             $stmtUpdateStudent->execute([$studentId]);
 
-            // Create History Record
             $oldValue = [
                 'status' => 'Active',
-                'room_allocation' => $alloc ? ['room' => $prevRoomStr, 'bed' => $prevBed] : null,
+                'room_allocation' => ['room' => $prevRoomStr, 'bed' => $prevBed],
                 'security_deposit' => $securityDeposit ? ['status' => $securityDeposit['status'], 'remaining' => $securityDeposit['remaining_amount']] : null
             ];
             $newValue = [
@@ -183,7 +169,7 @@ class AlumniService {
                 'leaving_date' => $leavingDate,
                 'security_settlement' => $depositSettlement
             ];
-            
+
             StudentHistoryService::record(
                 $studentId,
                 'STUDENT_MARKED_ALUMNI',
@@ -195,9 +181,7 @@ class AlumniService {
             );
 
             $this->db->commit();
-
             return ['success' => true, 'alumni_id' => $alumniId, 'deposit_settlement' => $depositSettlement];
-            
         } catch (Exception $e) {
             $this->db->rollBack();
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';

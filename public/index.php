@@ -1,6 +1,12 @@
 <?php
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
+// Legacy MVC UI endpoints are owned by the legacy MVC module.
+if (preg_match('#^/(?:[^/]+/)?api/(?:alumni|allocations/available-beds)(?:/|$)#', $uri)) {
+    require_once __DIR__ . '/../legacy_mvc/public/index.php';
+    exit;
+}
+
 if (strpos($uri, '/api/') === 0 || $uri === '/api' || $uri === '/health') {
     // API backend entry point
     require_once __DIR__ . '/../config/config.php';

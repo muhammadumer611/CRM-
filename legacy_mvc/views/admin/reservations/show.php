@@ -6,6 +6,17 @@
             <a href="<?php echo $config['base_url']; ?>/reservations" class="btn" style="background:#334155;color:white;">Back</a>
             <?php if (in_array($reservation['status'], ['PENDING', 'CONFIRMED'], true)): ?>
                 <a href="<?php echo $config['base_url']; ?>/reservations/convert/<?php echo (int)$reservation['id']; ?>" class="btn btn-primary">Convert to Student</a>
+                <?php if ($reservation['status'] === 'PENDING'): ?>
+                    <form method="POST" action="<?php echo $config['base_url']; ?>/reservations/confirm/<?php echo (int)$reservation['id']; ?>" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <button type="submit" class="btn btn-primary">Confirm Arrival</button>
+                    </form>
+                <?php endif; ?>
+                <form method="POST" action="<?php echo $config['base_url']; ?>/reservations/cancel/<?php echo (int)$reservation['id']; ?>" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                    <input type="hidden" name="cancelled_by_name" value="<?php echo htmlspecialchars(\App\Core\Auth::user()); ?>">
+                    <button type="submit" class="btn btn-danger">Cancel Reservation</button>
+                </form>
             <?php endif; ?>
         </div>
     </div>
@@ -27,7 +38,8 @@
                 <div class="form-group"><label class="form-label">Bed</label><div class="form-control" style="background:#0f172a;">Bed <?php echo (int)$reservation['bed_number']; ?></div></div>
                 <div class="form-group"><label class="form-label">Reservation Date</label><div class="form-control" style="background:#0f172a;"><?php echo htmlspecialchars($reservation['reservation_date']); ?></div></div>
                 <div class="form-group"><label class="form-label">Expected Arrival</label><div class="form-control" style="background:#0f172a;"><?php echo htmlspecialchars($reservation['expected_arrival_date']); ?></div></div>
-                <div class="form-group"><label class="form-label">Status</label><div class="form-control" style="background:#0f172a;"><span class="badge badge-warning"><?php echo htmlspecialchars($reservation['status']); ?></span></div></div>
+                <?php $displayStatus = $reservation['status'] === 'PENDING' ? 'RESERVED' : $reservation['status']; ?>
+                <div class="form-group"><label class="form-label">Status</label><div class="form-control" style="background:#0f172a;"><span class="badge badge-warning"><?php echo htmlspecialchars($displayStatus); ?></span></div></div>
             </div>
         </div>
     </div>

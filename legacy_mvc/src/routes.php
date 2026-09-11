@@ -67,6 +67,11 @@ $router->add('POST', '/notifications/mark-all-read', 'NotificationController', '
 // Database status routes
 $router->add('GET', '/db-status', 'DatabaseStatusController', 'index');
 
+// Account settings routes
+$router->add('GET', '/account-settings', 'AdminSettingsController', 'index');
+$router->add('POST', '/account-settings/username', 'AdminSettingsController', 'updateUsername');
+$router->add('POST', '/account-settings/password', 'AdminSettingsController', 'updatePassword');
+
 // Alumni routes
 $router->add('GET', '/alumni', 'AlumniController', 'index');
 $router->add('GET', '/api/alumni', 'AlumniController', 'apiGetAll');

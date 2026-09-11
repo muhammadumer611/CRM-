@@ -38,7 +38,8 @@
         .notification-item-title { font-weight: 600; margin-bottom: 0.2rem; }
         .notification-item-meta { font-size: 0.75rem; color: var(--text-muted); }
         .content { padding: 2rem; overflow-y: auto; flex: 1; }
-        .card { background-color: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .card { background-color: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; animation: pageRise .28s ease both; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.18); border-color: rgba(56,189,248,.35); }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .card-title { font-size: 1.1rem; font-weight: 600; }
 
@@ -95,7 +96,9 @@
         th { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.875rem; white-space: nowrap; }
         td { padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; white-space: normal; }
         tr:hover td { background-color: rgba(255,255,255,0.02); }
-        .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2,132,199,.18); }
+        .btn:active { transform: translateY(0); box-shadow: none; }
         .btn-primary { background-color: var(--primary-dark); color: white; }
         .btn-primary:hover { background-color: #0369a1; }
         .btn-danger { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
@@ -104,7 +107,7 @@
         .form-group { margin-bottom: 1.25rem; }
         .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted); }
         .form-control { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background-color: var(--bg); color: var(--text); font-family: inherit; }
-        .form-control:focus { outline: none; border-color: var(--primary); }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(56,189,248,.12); }
         select.form-control { appearance: none; }
         textarea.form-control { resize: vertical; min-height: 100px; }
         .row { display: flex; flex-wrap: wrap; margin: -0.75rem; }
@@ -140,6 +143,9 @@
             .modal-dialog { width: 100%; }
             .modal-header, .modal-body { padding-left: 1rem; padding-right: 1rem; }
         }
+
+        @keyframes pageRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
         .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1100; }
         .hamburger-btn { display:none; background:none; border:1px solid var(--border); color:var(--text); border-radius:6px; padding:0.4rem 0.6rem; cursor:pointer; font-size:1rem; }
@@ -227,6 +233,9 @@
             <a href="<?php echo $config['base_url']; ?>/notifications" class="nav-item <?php echo preg_match('#/notification#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-bell"></i> Notifications
             </a>
+            <a href="<?php echo $config['base_url']; ?>/account-settings" class="nav-item <?php echo preg_match('#/account-settings#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
+                <i class="fas fa-user-cog"></i> Account Settings
+            </a>
         </div>
     </div>
     
@@ -302,6 +311,18 @@ function toggleSidebar() {
 document.querySelectorAll('.sidebar .nav-item').forEach(function(el) {
     el.addEventListener('click', function() {
         if (window.innerWidth <= 900 && document.body.classList.contains('sidebar-open')) toggleSidebar();
+    });
+});
+</script>
+<script>
+document.querySelectorAll('form').forEach(function(form) {
+    form.addEventListener('submit', function() {
+        var button = form.querySelector('button[type="submit"]');
+        if (!button || button.dataset.submitting === '1') return;
+        button.dataset.submitting = '1';
+        button.disabled = true;
+        button.classList.add('is-loading');
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     });
 });
 </script>

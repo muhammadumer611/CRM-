@@ -60,8 +60,11 @@ class AlumniRepository {
         $params = [];
 
         if (!empty($filters['search'])) {
-            $query .= " AND (name LIKE :search OR cnic LIKE :search OR original_student_id LIKE :search)";
-            $params['search'] = '%' . $filters['search'] . '%';
+            $query .= " AND (name LIKE :search_name OR cnic LIKE :search_cnic OR original_student_id LIKE :search_student_id)";
+            $search = '%' . trim((string)$filters['search']) . '%';
+            $params['search_name'] = $search;
+            $params['search_cnic'] = $search;
+            $params['search_student_id'] = $search;
         }
 
         $query .= " ORDER BY created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;

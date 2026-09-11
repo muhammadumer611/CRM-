@@ -49,13 +49,20 @@ class DashboardService {
         $stmt = $this->db->query("SELECT COALESCE(SUM(total_beds), 0) FROM rooms WHERE status != 'Disabled'");
         $stats['total_beds'] = (int)$stmt->fetchColumn();
 
-        $stmt = $this->db->query("SELECT COALESCE(SUM(occupied_beds), 0) FROM rooms WHERE status != 'Disabled'");
+        $occupiedSql = "
+            SELECT COALESCE(SUM(CASE WHEN ra.bed_number = 0 THEN r.total_beds ELSE 1 END), 0)
+            FROM room_allocations ra JOIN rooms r ON r.id = ra.room_id JOIN students s ON s.id = ra.student_id AND s.status = 'Active'
+            WHERE ra.status = 'Active' AND r.status != 'Disabled'
+        ";
+        $stmt = $this->db->query($occupiedSql);
         $stats['occupied_beds'] = (int)$stmt->fetchColumn();
+        $reservedSql = "SELECT COUNT(DISTINCT CONCAT(res.room_id, ':', res.bed_number)) FROM reservations res JOIN rooms r ON r.id = res.room_id WHERE res.status IN ('PENDING', 'CONFIRMED') AND r.status != 'Disabled'";
+        $stats['occupied_beds'] += (int)$this->db->query($reservedSql)->fetchColumn();
 
         $stats['available_beds'] = max(0, $stats['total_beds'] - $stats['occupied_beds']);
 
         // Fees — Monthly invoices
-        $stmt = $this->db->query("SELECT COALESCE(SUM(paid_amount), 0) FROM fee_records WHERE charge_type = 'MONTHLY_FEE' AND YEAR(invoice_date) = YEAR(CURDATE()) AND MONTH(invoice_date) = MONTH(CURDATE())");
+        $stmt = $this->db->query("SELECT COALESCE(SUM(fr.paid_amount), 0) FROM fee_records fr JOIN students s ON s.id = fr.student_id WHERE fr.charge_type = 'MONTHLY_FEE' AND s.status = 'Active' AND YEAR(fr.invoice_date) = YEAR(CURDATE()) AND MONTH(fr.invoice_date) = MONTH(CURDATE())");
         $stats['this_month_collected'] = (float)$stmt->fetchColumn();
 
         $stmt = $this->db->query("
@@ -133,14 +140,15 @@ class DashboardService {
                     GROUP BY student_id
                 ) current_fee ON current_fee.latest_id = fr.id
             ) latest ON latest.student_id = s.id
-            WHERE s.full_name LIKE ?
+                        WHERE s.status = 'Active'
+                            AND (s.full_name LIKE ?
                OR s.cnic LIKE ?
                OR s.cnic LIKE ?
                OR s.phone LIKE ?
                OR s.student_id_str LIKE ?
                OR s.address LIKE ?
                OR r.room_number LIKE ?
-               OR CAST(ra.bed_number AS CHAR) LIKE ?
+               OR CAST(ra.bed_number AS CHAR) LIKE ?)
             ORDER BY CASE WHEN s.status = 'Active' THEN 0 ELSE 1 END, s.full_name ASC
             LIMIT ?
         ";

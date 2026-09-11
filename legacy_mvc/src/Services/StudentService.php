@@ -140,6 +140,19 @@ class StudentService {
                 throw new Exception('Selected bed is already occupied.');
             }
 
+            $reservationId = (int)($data['exclude_reservation_id'] ?? 0);
+            $reservationSql = "SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED')";
+            $reservationParams = [$roomId, $bedNumber];
+            if ($reservationId > 0) {
+                $reservationSql .= " AND id != ?";
+                $reservationParams[] = $reservationId;
+            }
+            $stmtReservation = $this->db->prepare($reservationSql . ' FOR UPDATE');
+            $stmtReservation->execute($reservationParams);
+            if ($stmtReservation->fetch()) {
+                throw new Exception('Bed is no longer available. It is reserved.');
+            }
+
             $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
             $stmtCount->execute([$roomId]);
             $currentOccupied = (int)$stmtCount->fetchColumn();
@@ -250,6 +263,12 @@ class StudentService {
                 throw new Exception('Selected room is disabled.');
             }
 
+            $reservationStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED') LIMIT 1 FOR UPDATE");
+            $reservationStmt->execute([$roomId]);
+            if ($reservationStmt->fetch()) {
+                throw new Exception('This room contains an active reservation and cannot be assigned as a full room.');
+            }
+
             $totalBeds = (int)$room['total_beds'];
             $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
             $stmtCount->execute([$roomId]);
@@ -319,6 +338,11 @@ class StudentService {
                 }
 
                 $bedNumber = array_shift($availableBeds);
+                $reservationStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED') FOR UPDATE");
+                $reservationStmt->execute([$roomId, $bedNumber]);
+                if ($reservationStmt->fetch()) {
+                    throw new Exception('Bed is no longer available. It is reserved.');
+                }
                 $stmtAlloc = $this->db->prepare("INSERT INTO room_allocations (student_id, room_id, bed_number, joining_date, status) VALUES (?, ?, ?, ?, 'Active')");
                 $stmtAlloc->execute([$studentId, $roomId, $bedNumber, $joiningDate]);
                 $createdStudentIds[] = ['id' => $studentId, 'student_id_str' => $studentIdStr, 'bed_number' => $bedNumber];
