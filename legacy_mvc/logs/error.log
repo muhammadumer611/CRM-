@@ -68,3 +68,4 @@ Stack trace:
 [11-Sep-2026 08:25:25 Europe/Berlin] PHP Warning:  Undefined array key "REQUEST_METHOD" in D:\CRM\legacy_mvc\src\Core\Router.php on line 25
 [11-Sep-2026 11:24:45 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
 [11-Sep-2026 11:34:32 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[12-Sep-2026 08:10:34 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
