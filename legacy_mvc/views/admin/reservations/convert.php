@@ -50,10 +50,25 @@
                 <div class="form-group"><label class="form-label">Guardian Phone</label><input type="text" name="guardian_phone" class="form-control" required></div>
             </div>
             <div class="col-md-6">
-                <div class="form-group"><label class="form-label">Guardian CNIC</label><input type="text" name="guardian_cnic" class="form-control" required></div>
+                <div class="form-group"><label class="form-label">Relation</label><select name="relation" class="form-control"><option value="Father">Father</option><option value="Mother">Mother</option><option value="Brother">Brother</option><option value="Sister">Sister</option><option value="Other">Other</option></select></div>
             </div>
             <div class="col-md-6">
-                <div class="form-group"><label class="form-label">Relation</label><select name="relation" class="form-control"><option value="Father">Father</option><option value="Mother">Mother</option><option value="Brother">Brother</option><option value="Sister">Sister</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-label">Resident Type</label><select name="resident_type" class="form-control"><option value="Student">Student</option><option value="Job / Working">Job / Working</option></select></div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group"><label class="form-label">College / University Name</label><input type="text" name="college_university" class="form-control"></div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group"><label class="form-label">Job / Workplace</label><input type="text" name="job_workplace" class="form-control"></div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group"><label class="form-label">Vehicle Number</label><input type="text" name="vehicle_number" class="form-control"></div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group"><label class="form-label">Vehicle Type</label><select name="vehicle_type" class="form-control"><option value="">Select...</option><option value="Motorcycle / Bike">Motorcycle / Bike</option><option value="Car">Car</option><option value="Other">Other</option></select></div>
+            </div>
+            <div class="col-12">
+                <div class="form-group"><label class="form-label">Note</label><textarea name="note" class="form-control" rows="3"></textarea></div>
             </div>
         </div>
 

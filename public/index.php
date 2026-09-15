@@ -2,7 +2,7 @@
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
 // Legacy MVC UI endpoints are owned by the legacy MVC module.
-if (preg_match('#^/(?:[^/]+/)?api/(?:alumni|allocations/available-beds)(?:/|$)#', $uri)) {
+if (preg_match('#^/(?:[^/]+/)?api/(?:alumni(?:/[^/]+)?|allocations/available-beds(?:/[^/]+)?)$#', $uri)) {
     require_once __DIR__ . '/../legacy_mvc/public/index.php';
     exit;
 }
@@ -47,5 +47,11 @@ if (strpos($uri, '/api/') === 0 || $uri === '/api' || $uri === '/health') {
 }
 
 // Browser requests should load the legacy MVC admin UI
-$_GET['url'] = trim($uri, '/');
+$config = require __DIR__ . '/../config/app.php';
+$basePath = parse_url($config['base_url'] ?? '', PHP_URL_PATH) ?: '';
+$requestPath = $uri;
+if ($basePath !== '' && strpos($requestPath, $basePath) === 0) {
+    $requestPath = substr($requestPath, strlen($basePath));
+}
+$_GET['url'] = trim($requestPath, '/');
 require_once __DIR__ . '/../legacy_mvc/public/index.php';

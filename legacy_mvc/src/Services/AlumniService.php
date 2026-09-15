@@ -134,7 +134,6 @@ class AlumniService {
             $guardianInfo = json_encode([
                 'name' => $student['guardian_name'],
                 'phone' => $student['guardian_phone'],
-                'cnic' => $student['guardian_cnic'],
                 'relation' => $student['relation']
             ]);
 

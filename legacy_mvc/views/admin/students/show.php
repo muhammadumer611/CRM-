@@ -64,13 +64,37 @@
                         'Name' => $student['guardian_name'],
                         'Relation' => $student['relation'],
                         'Phone' => $student['guardian_phone'],
-                        'CNIC' => \App\Services\StudentService::formatCnic($student['guardian_cnic']),
                         'Address' => $student['guardian_address'] ?? '—'
                     ]; ?>
                     <?php foreach ($rows2 as $label => $val): ?>
                     <tr>
                         <td style="padding:0.5rem 0;color:var(--text-muted);font-size:0.85rem;width:35%;vertical-align:top;"><?php echo $label; ?></td>
                         <td style="padding:0.5rem 0;font-weight:500;font-size:0.9rem;"><?php echo htmlspecialchars($val); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+            </div>
+
+            <div class="card" style="margin-bottom:1rem;">
+                <h4 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-user-tie"></i> Resident Details</h4>
+                <table style="width:100%;border-collapse:collapse;">
+                    <?php
+                        $vehicleNumber = trim((string)($student['vehicle_number'] ?? ''));
+                        $vehicleType = trim((string)($student['vehicle_type'] ?? ''));
+                        $vehicleDisplay = ($vehicleNumber !== '' || $vehicleType !== '')
+                            ? trim(($vehicleNumber !== '' ? $vehicleNumber : '') . ($vehicleNumber !== '' && $vehicleType !== '' ? ' / ' : '') . ($vehicleType !== '' ? $vehicleType : ''))
+                            : 'None / No Vehicle';
+                        $residentRows = [
+                        'Resident Type' => $student['resident_type'] ?? 'Student',
+                        'College / University' => $student['college_university'] ?? '—',
+                        'Job / Workplace' => $student['job_workplace'] ?? '—',
+                        'Vehicle' => $vehicleDisplay,
+                        'Note' => $student['note'] ?? '—'
+                    ]; ?>
+                    <?php foreach ($residentRows as $label => $val): ?>
+                    <tr>
+                        <td style="padding:0.5rem 0;color:var(--text-muted);font-size:0.85rem;width:35%;vertical-align:top;"><?php echo $label; ?></td>
+                        <td style="padding:0.5rem 0;font-weight:500;font-size:0.9rem;white-space:pre-wrap;"><?php echo htmlspecialchars($val); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </table>

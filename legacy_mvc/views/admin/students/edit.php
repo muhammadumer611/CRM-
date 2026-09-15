@@ -124,17 +124,66 @@
                         <input type="text" name="guardian_phone" class="form-control" required value="<?php echo htmlspecialchars($student['guardian_phone']); ?>">
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Guardian CNIC *</label>
-                        <input type="text" name="guardian_cnic" class="form-control" required maxlength="15"
-                               value="<?php echo htmlspecialchars(\App\Services\StudentService::formatCnic($student['guardian_cnic'])); ?>">
-                    </div>
-                </div>
                 <div class="col-12">
                     <div class="form-group">
                         <label class="form-label">Guardian Address</label>
                         <input type="text" name="guardian_address" class="form-control" value="<?php echo htmlspecialchars($student['guardian_address'] ?? ''); ?>">
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color:var(--border);margin:1.25rem 0;">
+            <h5 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-user-tie"></i> Resident & Vehicle Information</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">Resident Type *</label>
+                        <select name="resident_type" id="residentTypeEdit" class="form-control">
+                            <?php foreach(['Student','Job / Working'] as $type): ?>
+                                <option value="<?php echo $type; ?>" <?php echo (($student['resident_type'] ?? 'Student') === $type ? 'selected' : ''); ?>><?php echo $type; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6" id="collegeUniversityEditWrap" style="display:<?php echo (($student['resident_type'] ?? 'Student') === 'Student' ? 'block' : 'none'); ?>;">
+                    <div class="form-group">
+                        <label class="form-label">College / University Name</label>
+                        <input type="text" name="college_university" class="form-control" value="<?php echo htmlspecialchars($student['college_university'] ?? ''); ?>">
+                    </div>
+                </div>
+                <div class="col-md-6" id="jobWorkplaceEditWrap" style="display:<?php echo (($student['resident_type'] ?? 'Student') === 'Job / Working' ? 'block' : 'none'); ?>;">
+                    <div class="form-group">
+                        <label class="form-label">Job / Workplace</label>
+                        <input type="text" name="job_workplace" class="form-control" value="<?php echo htmlspecialchars($student['job_workplace'] ?? ''); ?>">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Number</label>
+                        <input type="text" name="vehicle_number" class="form-control" value="<?php echo htmlspecialchars($student['vehicle_number'] ?? ''); ?>">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Type</label>
+                        <select name="vehicle_type" id="vehicleTypeEdit" class="form-control">
+                            <option value="">Select...</option>
+                            <?php foreach(['Motorcycle / Bike','Car','Other'] as $vt): ?>
+                                <option value="<?php echo $vt; ?>" <?php echo (($student['vehicle_type'] ?? '') === $vt ? 'selected' : ''); ?>><?php echo $vt; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6" id="vehicleTypeOtherEditWrap" style="display:<?php echo (($student['vehicle_type'] ?? '') === 'Other' ? 'block' : 'none'); ?>;">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Type (Other)</label>
+                        <input type="text" name="vehicle_type_other" class="form-control" value="<?php echo htmlspecialchars((($student['vehicle_type'] ?? '') === 'Other' && !empty($student['vehicle_type']) && !in_array($student['vehicle_type'], ['Motorcycle / Bike', 'Car'], true)) ? $student['vehicle_type'] : ''); ?>">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="form-group">
+                        <label class="form-label">Note</label>
+                        <textarea name="note" class="form-control" rows="4"><?php echo htmlspecialchars($student['note'] ?? ''); ?></textarea>
                     </div>
                 </div>
             </div>

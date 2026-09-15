@@ -218,12 +218,6 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                             <input type="text" name="guardian_phone" class="form-control" placeholder="e.g. 03001234567">
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label class="form-label">Guardian CNIC *</label>
-                            <input type="text" name="guardian_cnic" class="form-control" maxlength="15" placeholder="e.g. 12345-1234567-1">
-                        </div>
-                    </div>
                     <div class="col-12">
                         <div class="form-group">
                             <label class="form-label">Guardian Address</label>
@@ -231,6 +225,70 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div id="residentInfoSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-user-tie"></i> Resident Information</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">Resident Type *</label>
+                        <select name="resident_type" id="residentType" class="form-control">
+                            <option value="Student">Student</option>
+                            <option value="Job / Working">Job / Working</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6" id="collegeUniversityWrapper">
+                    <div class="form-group">
+                        <label class="form-label">College / University Name</label>
+                        <input type="text" name="college_university" id="collegeUniversity" class="form-control" placeholder="e.g. University of Lahore">
+                    </div>
+                </div>
+                <div class="col-md-6" id="jobWorkplaceWrapper" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">Job / Workplace</label>
+                        <input type="text" name="job_workplace" id="jobWorkplace" class="form-control" placeholder="e.g. XYZ Company">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="vehicleInfoSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-motorcycle"></i> Vehicle Information</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Number</label>
+                        <input type="text" name="vehicle_number" class="form-control" placeholder="e.g. ABC-123">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Type</label>
+                        <select name="vehicle_type" id="vehicleType" class="form-control">
+                            <option value="">Select...</option>
+                            <option value="Motorcycle / Bike">Motorcycle / Bike</option>
+                            <option value="Car">Car</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6" id="vehicleTypeOtherWrapper" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">Vehicle Type (Other)</label>
+                        <input type="text" name="vehicle_type_other" class="form-control" placeholder="Describe vehicle type">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="noteSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+            <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-sticky-note"></i> Note</h4>
+            <div class="form-group">
+                <label class="form-label">Note</label>
+                <textarea name="note" class="form-control" rows="4" placeholder="Optional additional information for the resident"></textarea>
             </div>
         </div>
 
@@ -296,8 +354,12 @@ function setAccomodationMode(mode) {
         field.disabled = !fullVisible;
     });
     document.getElementById('studentInfoSection').style.display = 'block';
+    document.getElementById('residentInfoSection').style.display = 'block';
+    document.getElementById('vehicleInfoSection').style.display = 'block';
+    document.getElementById('noteSection').style.display = 'block';
     document.getElementById('financialSection').style.display = 'block';
     financialSection.style.display = 'block';
+    updateResidentFields();
     if (singleVisible) {
         monthlyFeeLabel.textContent = 'Monthly Fee (Rs.) *';
         document.getElementById('monthlyFeeInput').name = 'monthly_fee';
@@ -526,6 +588,48 @@ document.getElementById('studentOnboardForm').addEventListener('submit', functio
     }
 });
 
+function updateResidentFields() {
+    const residentType = document.getElementById('residentType');
+    const collegeWrap = document.getElementById('collegeUniversityWrapper');
+    const jobWrap = document.getElementById('jobWorkplaceWrapper');
+    const vehicleType = document.getElementById('vehicleType');
+    const vehicleOtherWrap = document.getElementById('vehicleTypeOtherWrapper');
+    const residentInfoSection = document.getElementById('residentInfoSection');
+    const vehicleInfoSection = document.getElementById('vehicleInfoSection');
+    const noteSection = document.getElementById('noteSection');
+
+    if (residentType && residentInfoSection) {
+        residentInfoSection.style.display = 'block';
+    }
+    if (vehicleType && vehicleInfoSection) {
+        vehicleInfoSection.style.display = 'block';
+    }
+    if (noteSection) {
+        noteSection.style.display = 'block';
+    }
+
+    if (collegeWrap && jobWrap) {
+        const type = residentType ? residentType.value : 'Student';
+        collegeWrap.style.display = type === 'Student' ? 'block' : 'none';
+        jobWrap.style.display = type === 'Job / Working' ? 'block' : 'none';
+    }
+
+    if (vehicleType && vehicleOtherWrap) {
+        vehicleOtherWrap.style.display = vehicleType.value === 'Other' ? 'block' : 'none';
+    }
+}
+
+function bindResidentAndVehicleToggles() {
+    const residentType = document.getElementById('residentType');
+    const vehicleType = document.getElementById('vehicleType');
+    if (residentType) {
+        residentType.addEventListener('change', updateResidentFields);
+    }
+    if (vehicleType) {
+        vehicleType.addEventListener('change', updateResidentFields);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const baseUrl = '<?php echo $config['base_url']; ?>';
     document.body.dataset.baseUrl = baseUrl;
@@ -535,9 +639,11 @@ document.addEventListener('DOMContentLoaded', function() {
             card.classList.add('selected');
         }
     });
+    bindResidentAndVehicleToggles();
     fullRoomSelect.value = '';
     singleRoomSelect.value = '';
     setAccomodationMode('');
+    updateResidentFields();
 
     const urlParams = new URLSearchParams(window.location.search);
     const prefillRoomId = urlParams.get('room_id');

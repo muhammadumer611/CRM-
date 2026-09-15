@@ -69,13 +69,23 @@ class StudentController {
         }
 
         if ($accommodationType === 'single') {
-            $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'guardian_cnic', 'relation', 'room_id', 'bed_number', 'joining_date', 'monthly_fee', 'added_by_name'];
+            $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'relation', 'resident_type', 'room_id', 'bed_number', 'joining_date', 'monthly_fee', 'added_by_name'];
             foreach ($required as $field) {
                 if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
                     Session::set('error', 'Please fill all required fields: ' . str_replace('_', ' ', $field) . '.');
                     header('Location: ' . $config['base_url'] . '/students/create');
                     exit;
                 }
+            }
+            if (($_POST['resident_type'] ?? '') === 'Student' && trim((string)($_POST['college_university'] ?? '')) === '') {
+                Session::set('error', 'College / University is required when Resident Type is Student.');
+                header('Location: ' . $config['base_url'] . '/students/create');
+                exit;
+            }
+            if (($_POST['resident_type'] ?? '') === 'Job / Working' && trim((string)($_POST['job_workplace'] ?? '')) === '') {
+                Session::set('error', 'Job / Workplace is required when Resident Type is Job / Working.');
+                header('Location: ' . $config['base_url'] . '/students/create');
+                exit;
             }
         } elseif ($accommodationType === 'full_room' || $accommodationType === 'full') {
             if (!isset($_POST['room_id']) || trim((string)$_POST['room_id']) === '') {

@@ -52,6 +52,27 @@ class StudentService {
         return (string)$cnic;
     }
 
+    private static function normalizeResidentType($value) {
+        $type = trim((string)($value ?? ''));
+        if (in_array($type, ['Job / Working', 'Job', 'Working'], true)) {
+            return 'Job / Working';
+        }
+        return 'Student';
+    }
+
+    private static function normalizeVehicleType($selectedValue, $otherValue = '') {
+        $selected = trim((string)($selectedValue ?? ''));
+        if ($selected === '') {
+            return null;
+        }
+        if ($selected === 'Other') {
+            $custom = trim((string)($otherValue ?? ''));
+            return $custom !== '' ? $custom : null;
+        }
+        $valid = ['Motorcycle / Bike', 'Car', 'Other'];
+        return in_array($selected, $valid, true) ? $selected : null;
+    }
+
     // ============================================================
     // ATOMIC STUDENT ONBOARDING (Phase 13)
     // Single transaction: student + allocation + fee + security deposit + history + audit
@@ -76,14 +97,23 @@ class StudentService {
             return ['success' => false, 'error' => 'Added By is required. Please enter the staff member name who added this student.'];
         }
 
+        $residentType = self::normalizeResidentType($data['resident_type'] ?? 'Student');
+        $collegeUniversity = trim((string)($data['college_university'] ?? ''));
+        $jobWorkplace = trim((string)($data['job_workplace'] ?? ''));
+        $vehicleNumber = trim((string)($data['vehicle_number'] ?? ''));
+        $vehicleType = self::normalizeVehicleType($data['vehicle_type'] ?? '', $data['vehicle_type_other'] ?? '');
+        $note = trim((string)($data['note'] ?? ''));
+
+        if ($residentType === 'Student' && $collegeUniversity === '') {
+            return ['success' => false, 'error' => 'College / University is required for Student residents.'];
+        }
+        if ($residentType === 'Job / Working' && $jobWorkplace === '') {
+            return ['success' => false, 'error' => 'Job / Workplace is required for Job / Working residents.'];
+        }
+
         $cleanCnic = self::sanitizeCnic($data['cnic'] ?? '');
         if (!self::validateCnic($cleanCnic)) {
             return ['success' => false, 'error' => 'Please enter a valid CNIC.'];
-        }
-
-        $cleanGuardianCnic = self::sanitizeCnic($data['guardian_cnic'] ?? '');
-        if (!empty($data['guardian_cnic']) && !self::validateCnic($cleanGuardianCnic)) {
-            return ['success' => false, 'error' => 'Please enter a valid guardian CNIC.'];
         }
 
         $monthlyFee = isset($data['monthly_fee']) && $data['monthly_fee'] !== '' ? (float)$data['monthly_fee'] : 0.0;
@@ -172,9 +202,14 @@ class StudentService {
                 'address' => trim($data['address']),
                 'guardian_name' => trim($data['guardian_name']),
                 'guardian_phone' => trim($data['guardian_phone']),
-                'guardian_cnic' => $cleanGuardianCnic ?: $cleanCnic,
                 'guardian_address' => empty($data['guardian_address']) ? null : trim($data['guardian_address']),
                 'relation' => trim($data['relation']),
+                'resident_type' => $residentType,
+                'college_university' => $residentType === 'Student' && $collegeUniversity !== '' ? $collegeUniversity : null,
+                'job_workplace' => $residentType === 'Job / Working' && $jobWorkplace !== '' ? $jobWorkplace : null,
+                'vehicle_number' => $vehicleNumber !== '' ? $vehicleNumber : null,
+                'vehicle_type' => $vehicleType !== '' ? $vehicleType : null,
+                'note' => $note !== '' ? $note : null,
                 'status' => 'Active',
                 'monthly_fee' => $monthlyFee,
                 'added_by_name' => $addedByName,
@@ -311,7 +346,12 @@ class StudentService {
                 $phone = trim((string)($occupant['phone'] ?? '')) ?: '00000000000';
                 $guardianName = trim((string)($occupant['guardian_name'] ?? '')) ?: ($fullName . ' Guardian');
                 $guardianPhone = trim((string)($occupant['guardian_phone'] ?? '')) ?: '00000000000';
-                $guardianCnic = self::sanitizeCnic($occupant['guardian_cnic'] ?? '') ?: $cnic;
+                $residentType = self::normalizeResidentType($occupant['resident_type'] ?? 'Student');
+                $collegeUniversity = trim((string)($occupant['college_university'] ?? ''));
+                $jobWorkplace = trim((string)($occupant['job_workplace'] ?? ''));
+                $vehicleNumber = trim((string)($occupant['vehicle_number'] ?? ''));
+                $vehicleType = self::normalizeVehicleType($occupant['vehicle_type'] ?? '', $occupant['vehicle_type_other'] ?? '');
+                $note = trim((string)($occupant['note'] ?? ''));
 
                 $dbData = [
                     'student_id_str' => $studentIdStr,
@@ -323,9 +363,14 @@ class StudentService {
                     'address' => trim((string)($occupant['address'] ?? '')) ?: 'Full room occupant',
                     'guardian_name' => $guardianName,
                     'guardian_phone' => $guardianPhone,
-                    'guardian_cnic' => $guardianCnic,
                     'guardian_address' => empty($occupant['guardian_address'] ?? '') ? null : trim((string)$occupant['guardian_address']),
                     'relation' => trim((string)($occupant['relation'] ?? '')) ?: 'Other',
+                    'resident_type' => $residentType,
+                    'college_university' => $residentType === 'Student' && $collegeUniversity !== '' ? $collegeUniversity : null,
+                    'job_workplace' => $residentType === 'Job / Working' && $jobWorkplace !== '' ? $jobWorkplace : null,
+                    'vehicle_number' => $vehicleNumber !== '' ? $vehicleNumber : null,
+                    'vehicle_type' => $vehicleType !== '' ? $vehicleType : null,
+                    'note' => $note !== '' ? $note : null,
                     'status' => 'Active',
                     'monthly_fee' => $monthlyRoomFee,
                     'added_by_name' => $addedByName,
@@ -385,33 +430,47 @@ class StudentService {
         $student = $this->studentRepo->findById($id);
         if (!$student) return ['success' => false, 'error' => 'Student not found.'];
 
+        $residentType = self::normalizeResidentType($data['resident_type'] ?? 'Student');
+        $collegeUniversity = trim((string)($data['college_university'] ?? ''));
+        $jobWorkplace = trim((string)($data['job_workplace'] ?? ''));
+        $vehicleNumber = trim((string)($data['vehicle_number'] ?? ''));
+        $vehicleType = self::normalizeVehicleType($data['vehicle_type'] ?? '', $data['vehicle_type_other'] ?? '');
+        $note = trim((string)($data['note'] ?? ''));
+
+        if ($residentType === 'Student' && $collegeUniversity === '') {
+            return ['success' => false, 'error' => 'College / University is required for Student residents.'];
+        }
+        if ($residentType === 'Job / Working' && $jobWorkplace === '') {
+            return ['success' => false, 'error' => 'Job / Workplace is required for Job / Working residents.'];
+        }
+
         $cleanCnic = self::sanitizeCnic($data['cnic'] ?? '');
         if (!self::validateCnic($cleanCnic)) {
             return ['success' => false, 'error' => 'CNIC must be 13 digits (e.g. 12345-1234567-1 or 1234512345671).'];
         }
 
-        $cleanGuardianCnic = self::sanitizeCnic($data['guardian_cnic'] ?? '');
-        if (!empty($data['guardian_cnic']) && !self::validateCnic($cleanGuardianCnic)) {
-            return ['success' => false, 'error' => 'Guardian CNIC must be 13 digits (e.g. 12345-1234567-1 or 1234512345671).'];
-        }
-        
         if ($this->studentRepo->findByCnic($cleanCnic, $id)) {
             return ['success' => false, 'error' => 'A student with this CNIC already exists.'];
         }
 
         $dbData = [
-            'full_name'        => trim($data['full_name']),
-            'cnic'             => $cleanCnic,
-            'phone'            => trim($data['phone']),
-            'email'            => empty($data['email'])          ? null : trim($data['email']),
-            'blood_group'      => empty($data['blood_group'])    ? null : trim($data['blood_group']),
-            'address'          => trim($data['address']),
-            'guardian_name'    => trim($data['guardian_name']),
-            'guardian_phone'   => trim($data['guardian_phone']),
-            'guardian_cnic'    => $cleanGuardianCnic,
-            'guardian_address' => empty($data['guardian_address']) ? null : trim($data['guardian_address']),
-            'relation'         => trim($data['relation']),
-            'status'           => $data['status'] ?? 'Active'
+            'full_name'          => trim($data['full_name']),
+            'cnic'               => $cleanCnic,
+            'phone'              => trim($data['phone']),
+            'email'              => empty($data['email'])          ? null : trim($data['email']),
+            'blood_group'        => empty($data['blood_group'])    ? null : trim($data['blood_group']),
+            'address'            => trim($data['address']),
+            'guardian_name'      => trim($data['guardian_name']),
+            'guardian_phone'     => trim($data['guardian_phone']),
+            'guardian_address'   => empty($data['guardian_address']) ? null : trim($data['guardian_address']),
+            'relation'           => trim($data['relation']),
+            'resident_type'      => $residentType,
+            'college_university' => $residentType === 'Student' ? ($collegeUniversity !== '' ? $collegeUniversity : null) : null,
+            'job_workplace'      => $residentType === 'Job / Working' ? ($jobWorkplace !== '' ? $jobWorkplace : null) : null,
+            'vehicle_number'     => $vehicleNumber !== '' ? $vehicleNumber : null,
+            'vehicle_type'       => $vehicleType !== '' ? $vehicleType : null,
+            'note'               => $note !== '' ? $note : null,
+            'status'             => $data['status'] ?? 'Active'
         ];
 
         // Update monthly_fee if provided explicitly
