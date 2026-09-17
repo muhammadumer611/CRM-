@@ -164,7 +164,7 @@ class StudentService {
                 throw new Exception('Selected bed is invalid for this room.');
             }
 
-            $stmtBed = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND bed_number = ? AND status = 'Active' FOR UPDATE");
+            $stmtBed = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND (bed_number = ? OR bed_number = 0) AND status = 'Active' FOR UPDATE");
             $stmtBed->execute([$roomId, $bedNumber]);
             if ($stmtBed->fetch()) {
                 throw new Exception('Selected bed is already occupied.');
@@ -296,6 +296,12 @@ class StudentService {
             }
             if ($room['status'] === 'Disabled') {
                 throw new Exception('Selected room is disabled.');
+            }
+
+            $fullRoomStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND bed_number = 0 AND status = 'Active' FOR UPDATE");
+            $fullRoomStmt->execute([$roomId]);
+            if ($fullRoomStmt->fetch()) {
+                throw new Exception('This room is already assigned as a full room.');
             }
 
             $reservationStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND status IN ('PENDING', 'CONFIRMED') LIMIT 1 FOR UPDATE");

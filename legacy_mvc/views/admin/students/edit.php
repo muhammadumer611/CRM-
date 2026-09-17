@@ -1,5 +1,9 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
 <?php $resolvedBackUrl = !empty($backUrl) ? $backUrl : $config['base_url'] . '/students'; ?>
+<?php
+    $vehicleTypeValue = trim((string)($student['vehicle_type'] ?? ''));
+    $vehicleTypeIsCustom = $vehicleTypeValue !== '' && !in_array($vehicleTypeValue, ['Motorcycle / Bike', 'Car'], true);
+?>
 <div style="max-width:900px;margin:0 auto;">
 
     <!-- Header -->
@@ -169,15 +173,15 @@
                         <select name="vehicle_type" id="vehicleTypeEdit" class="form-control">
                             <option value="">Select...</option>
                             <?php foreach(['Motorcycle / Bike','Car','Other'] as $vt): ?>
-                                <option value="<?php echo $vt; ?>" <?php echo (($student['vehicle_type'] ?? '') === $vt ? 'selected' : ''); ?>><?php echo $vt; ?></option>
+                                <option value="<?php echo $vt; ?>" <?php echo (($vehicleTypeIsCustom ? 'Other' : $vehicleTypeValue) === $vt ? 'selected' : ''); ?>><?php echo $vt; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
-                <div class="col-md-6" id="vehicleTypeOtherEditWrap" style="display:<?php echo (($student['vehicle_type'] ?? '') === 'Other' ? 'block' : 'none'); ?>;">
+                <div class="col-md-6" id="vehicleTypeOtherEditWrap" style="display:<?php echo ($vehicleTypeIsCustom ? 'block' : 'none'); ?>;">
                     <div class="form-group">
                         <label class="form-label">Vehicle Type (Other)</label>
-                        <input type="text" name="vehicle_type_other" class="form-control" value="<?php echo htmlspecialchars((($student['vehicle_type'] ?? '') === 'Other' && !empty($student['vehicle_type']) && !in_array($student['vehicle_type'], ['Motorcycle / Bike', 'Car'], true)) ? $student['vehicle_type'] : ''); ?>">
+                        <input type="text" name="vehicle_type_other" class="form-control" value="<?php echo htmlspecialchars($vehicleTypeIsCustom ? $vehicleTypeValue : ''); ?>">
                     </div>
                 </div>
                 <div class="col-12">

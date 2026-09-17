@@ -46,6 +46,9 @@
         .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7); z-index: 2000; padding: 1.5rem; }
         .modal.show { display: flex; }
         .modal-dialog { width: min(100%, 960px); max-height: 90vh; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); background: #0f172a; box-shadow: 0 20px 40px rgba(2, 6, 23, 0.45); }
+        .checkout-dialog { max-height: min(90vh, 900px); display: flex; flex-direction: column; min-height: 0; }
+        .checkout-dialog > div:first-child { flex: 0 0 auto; }
+        .checkout-form { min-height: 0; overflow-y: auto; padding: 0 0.25rem 0.25rem 0; overscroll-behavior: contain; }
         .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
         .modal-title { font-size: 1.1rem; font-weight: 700; }
@@ -141,6 +144,7 @@
             .details-grid { grid-template-columns: 1fr; }
             .detail-item-full { grid-column: auto; }
             .modal-dialog { width: 100%; }
+            .checkout-dialog { max-height: 95vh; }
             .modal-header, .modal-body { padding-left: 1rem; padding-right: 1rem; }
         }
 

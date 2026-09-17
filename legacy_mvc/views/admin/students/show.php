@@ -195,13 +195,13 @@
 <?php if ($student['status'] === 'Active'): ?>
 <?php $depAmount = $securityDeposit ? (float)$securityDeposit['remaining_amount'] : 0.0; ?>
 <div class="modal" id="checkoutModal" style="display:none;align-items:center;justify-content:center;">
-    <div class="modal-dialog" style="max-width:550px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+    <div class="modal-dialog checkout-dialog" style="max-width:550px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex:0 0 auto;">
             <h3 style="margin:0;color:var(--danger);"><i class="fas fa-sign-out-alt"></i> Student Checkout / Alumni</h3>
             <button type="button" class="btn-close" onclick="closeCheckoutModal()"></button>
         </div>
 
-        <form action="<?php echo $config['base_url']; ?>/students/checkout/<?php echo $student['id']; ?>" method="POST" id="checkoutForm">
+        <form action="<?php echo $config['base_url']; ?>/students/checkout/<?php echo $student['id']; ?>" method="POST" id="checkoutForm" class="checkout-form">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
 
             <div class="form-group">

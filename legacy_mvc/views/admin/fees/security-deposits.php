@@ -43,7 +43,7 @@
                             <option value="Held" <?php echo (($filters['status'] ?? '') === 'Held') ? 'selected' : ''; ?>>Held</option>
                             <option value="Partially Deducted" <?php echo (($filters['status'] ?? '') === 'Partially Deducted') ? 'selected' : ''; ?>>Partially Deducted</option>
                             <option value="Refunded" <?php echo (($filters['status'] ?? '') === 'Refunded') ? 'selected' : ''; ?>>Refunded</option>
-                            <option value="Settled" <?php echo (($filters['status'] ?? '') === 'Settled') ? 'selected' : ''; ?>>Settled</option>
+                            <option value="Settled" <?php echo (($filters['status'] ?? '') === 'Settled') ? 'selected' : ''; ?>>Settled / Forfeited</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary">Apply</button>

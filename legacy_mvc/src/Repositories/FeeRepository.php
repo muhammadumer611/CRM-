@@ -164,6 +164,7 @@ class FeeRepository {
                 ra.room_id,
                 ra.bed_number,
                 r.room_number,
+                r.block,
                 r.floor,
                 r.room_type
             FROM fee_records fr
@@ -269,7 +270,7 @@ class FeeRepository {
                     'address' => $row['address'],
                     'room_id' => $row['room_id'] ? (int)$row['room_id'] : null,
                     'room_number' => $row['room_number'],
-                    'block' => $row['block'],
+                    'block' => $row['block'] ?? '',
                     'floor' => $row['floor'],
                     'room_type' => $row['room_type'],
                     'bed_number' => $row['bed_number'] ? (int)$row['bed_number'] : null,
@@ -1227,7 +1228,7 @@ class FeeRepository {
         $stmtRefunded = $this->db->query("SELECT COALESCE(SUM(original_amount - remaining_amount), 0) FROM security_deposits WHERE status = 'REFUNDED'");
         $totalRefunded = (float)$stmtRefunded->fetchColumn();
 
-        $stmtDeducted = $this->db->query("SELECT COALESCE(SUM(original_amount - remaining_amount), 0) FROM security_deposits WHERE status = 'DEDUCTED'");
+        $stmtDeducted = $this->db->query("SELECT COALESCE(SUM(original_amount - remaining_amount), 0) FROM security_deposits WHERE status IN ('ADJUSTED', 'PARTIALLY_REFUNDED', 'FORFEITED', 'DEDUCTED')");
         $totalDeducted = (float)$stmtDeducted->fetchColumn();
 
         return [
@@ -1248,7 +1249,7 @@ class FeeRepository {
                 s.cnic,
                 s.created_at AS admission_date,
                 sd.original_amount AS security_amount,
-                CASE WHEN sd.status = 'DEDUCTED' THEN (sd.original_amount - sd.remaining_amount) ELSE 0 END AS amount_deducted,
+                CASE WHEN sd.status IN ('ADJUSTED', 'PARTIALLY_REFUNDED', 'FORFEITED', 'DEDUCTED') THEN (sd.original_amount - sd.remaining_amount) ELSE 0 END AS amount_deducted,
                 CASE WHEN sd.status = 'REFUNDED' THEN (sd.original_amount - sd.remaining_amount) ELSE 0 END AS amount_refunded,
                 sd.remaining_amount AS current_balance,
                 sd.status AS deposit_status
@@ -1265,8 +1266,15 @@ class FeeRepository {
         }
 
         if (!empty($filters['status'])) {
-            $sql .= " AND sd.status = ?";
-            $params[] = strtoupper($filters['status']);
+            $statusMap = [
+                'Held' => ['HELD'],
+                'Partially Deducted' => ['ADJUSTED', 'PARTIALLY_REFUNDED'],
+                'Refunded' => ['REFUNDED'],
+                'Settled' => ['FORFEITED', 'DEDUCTED'],
+            ];
+            $statuses = $statusMap[$filters['status']] ?? [strtoupper($filters['status'])];
+            $sql .= ' AND sd.status IN (' . implode(',', array_fill(0, count($statuses), '?')) . ')';
+            $params = array_merge($params, $statuses);
         }
 
         $sql .= " ORDER BY sd.id DESC";

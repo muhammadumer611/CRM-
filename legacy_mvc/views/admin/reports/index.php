@@ -40,7 +40,7 @@
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                 <a href="<?php echo $config['base_url']; ?>/dashboard" class="btn" style="background:#1e293b; color:white;"><i class="fas fa-arrow-left"></i> Back</a>
                 <button type="button" class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Print Report</button>
-                <a href="<?php echo $config['base_url']; ?>/reports/export/csv<?php echo $_SERVER['QUERY_STRING'] ? '?' . $_SERVER['QUERY_STRING'] : ''; ?>" class="btn" style="background:#10b981; color:white;"><i class="fas fa-file-csv"></i> Export CSV</a>
+                <a href="<?php echo $config['base_url']; ?>/reports/export/csv<?php echo !empty($_SERVER['QUERY_STRING']) ? '?' . htmlspecialchars($_SERVER['QUERY_STRING'], ENT_QUOTES, 'UTF-8') : ''; ?>" class="btn" style="background:#10b981; color:white;"><i class="fas fa-file-csv"></i> Export CSV</a>
             </div>
         </div>
 

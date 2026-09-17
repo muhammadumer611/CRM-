@@ -42,24 +42,13 @@ class DashboardService {
         $stmt = $this->db->query("SELECT COUNT(*) FROM students");
         $stats['total_students'] = (int)$stmt->fetchColumn();
 
-        // Rooms & Beds
-        $stmt = $this->db->query("SELECT COUNT(*) FROM rooms WHERE status != 'Disabled'");
-        $stats['total_rooms'] = (int)$stmt->fetchColumn();
-
-        $stmt = $this->db->query("SELECT COALESCE(SUM(total_beds), 0) FROM rooms WHERE status != 'Disabled'");
-        $stats['total_beds'] = (int)$stmt->fetchColumn();
-
-        $occupiedSql = "
-            SELECT COALESCE(SUM(CASE WHEN ra.bed_number = 0 THEN r.total_beds ELSE 1 END), 0)
-            FROM room_allocations ra JOIN rooms r ON r.id = ra.room_id JOIN students s ON s.id = ra.student_id AND s.status = 'Active'
-            WHERE ra.status = 'Active' AND r.status != 'Disabled'
-        ";
-        $stmt = $this->db->query($occupiedSql);
-        $stats['occupied_beds'] = (int)$stmt->fetchColumn();
-        $reservedSql = "SELECT COUNT(DISTINCT CONCAT(res.room_id, ':', res.bed_number)) FROM reservations res JOIN rooms r ON r.id = res.room_id WHERE res.status IN ('PENDING', 'CONFIRMED') AND r.status != 'Disabled'";
-        $stats['occupied_beds'] += (int)$this->db->query($reservedSql)->fetchColumn();
-
-        $stats['available_beds'] = max(0, $stats['total_beds'] - $stats['occupied_beds']);
+        // Use the same allocation/reservation-aware calculation as the Available Beds page.
+        $roomRepo = new \App\Repositories\RoomRepository();
+        $availability = $roomRepo->getAvailableBedsOverview();
+        $stats['total_rooms'] = (int)$this->db->query("SELECT COUNT(*) FROM rooms WHERE status != 'Disabled'")->fetchColumn();
+        $stats['total_beds'] = (int)$this->db->query("SELECT COALESCE(SUM(total_beds), 0) FROM rooms WHERE status != 'Disabled'")->fetchColumn();
+        $stats['available_beds'] = (int)($availability['total_available_beds'] ?? 0);
+        $stats['occupied_beds'] = max(0, $stats['total_beds'] - $stats['available_beds']);
 
         // Fees — Monthly invoices
         $stmt = $this->db->query("SELECT COALESCE(SUM(fr.paid_amount), 0) FROM fee_records fr JOIN students s ON s.id = fr.student_id WHERE fr.charge_type = 'MONTHLY_FEE' AND s.status = 'Active' AND YEAR(fr.invoice_date) = YEAR(CURDATE()) AND MONTH(fr.invoice_date) = MONTH(CURDATE())");
@@ -147,6 +136,12 @@ class DashboardService {
                OR s.phone LIKE ?
                OR s.student_id_str LIKE ?
                OR s.address LIKE ?
+               OR s.guardian_name LIKE ?
+               OR s.guardian_phone LIKE ?
+               OR s.vehicle_number LIKE ?
+               OR s.vehicle_type LIKE ?
+               OR s.college_university LIKE ?
+               OR s.job_workplace LIKE ?
                OR r.room_number LIKE ?
                OR CAST(ra.bed_number AS CHAR) LIKE ?)
             ORDER BY CASE WHEN s.status = 'Active' THEN 0 ELSE 1 END, s.full_name ASC
@@ -161,7 +156,13 @@ class DashboardService {
         $stmt->bindValue(6, $like);
         $stmt->bindValue(7, $like);
         $stmt->bindValue(8, $like);
-        $stmt->bindValue(9, $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(9, $like);
+        $stmt->bindValue(10, $like);
+        $stmt->bindValue(11, $like);
+        $stmt->bindValue(12, $like);
+        $stmt->bindValue(13, $like);
+        $stmt->bindValue(14, $like);
+        $stmt->bindValue(15, $limit, \PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
     }

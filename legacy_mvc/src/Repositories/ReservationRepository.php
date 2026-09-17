@@ -89,7 +89,7 @@ class ReservationRepository {
             return false;
         }
 
-        $allocStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND bed_number = ? AND status = 'Active' LIMIT 1");
+        $allocStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND (bed_number = ? OR bed_number = 0) AND status = 'Active' LIMIT 1");
         $allocStmt->execute([(int)$roomId, (int)$bedNumber]);
         return !$allocStmt->fetch();
     }

@@ -93,7 +93,7 @@ class ReservationService {
                 throw new Exception('This room and bed already has an active reservation.');
             }
 
-            $allocStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND bed_number = ? AND status = 'Active' FOR UPDATE");
+            $allocStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND (bed_number = ? OR bed_number = 0) AND status = 'Active' FOR UPDATE");
             $allocStmt->execute([$roomId, $bedNumber]);
             if ($allocStmt->fetch()) {
                 throw new Exception('This bed is already occupied by an active student and cannot be reserved.');
@@ -162,6 +162,24 @@ class ReservationService {
                 $releaseStmt = $this->db->prepare("UPDATE reservations SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP WHERE id = ?");
                 $releaseStmt->execute([(int)$id]);
             } else {
+                $targetRoomId = (int)($data['room_id'] ?? $reservation['room_id']);
+                $targetBedNumber = (int)($data['bed_number'] ?? $reservation['bed_number']);
+                $roomStmt = $this->db->prepare('SELECT total_beds, status FROM rooms WHERE id = ? FOR UPDATE');
+                $roomStmt->execute([$targetRoomId]);
+                $targetRoom = $roomStmt->fetch();
+                if (!$targetRoom || $targetRoom['status'] === 'Disabled' || $targetBedNumber < 1 || $targetBedNumber > (int)$targetRoom['total_beds']) {
+                    throw new Exception('Selected room or bed is invalid.');
+                }
+                $conflictStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED') AND id != ? FOR UPDATE");
+                $conflictStmt->execute([$targetRoomId, $targetBedNumber, (int)$id]);
+                if ($conflictStmt->fetch()) {
+                    throw new Exception('This room and bed already has an active reservation.');
+                }
+                $allocationStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND (bed_number = ? OR bed_number = 0) AND status = 'Active' FOR UPDATE");
+                $allocationStmt->execute([$targetRoomId, $targetBedNumber]);
+                if ($allocationStmt->fetch()) {
+                    throw new Exception('This bed is already occupied by an active student.');
+                }
                 $updateStmt = $this->db->prepare("UPDATE reservations SET status = ?, full_name = ?, cnic = ?, phone = ?, district = ?, room_id = ?, bed_number = ?, reservation_amount = ?, expected_arrival_date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
                 $updateStmt->execute([
                     $status,
@@ -169,8 +187,8 @@ class ReservationService {
                     preg_replace('/[^0-9]/', '', (string)($data['cnic'] ?? $reservation['cnic'])),
                     trim((string)($data['phone'] ?? $reservation['phone'])),
                     trim((string)($data['district'] ?? $reservation['district'])),
-                    (int)($data['room_id'] ?? $reservation['room_id']),
-                    (int)($data['bed_number'] ?? $reservation['bed_number']),
+                    $targetRoomId,
+                    $targetBedNumber,
                     (float)($data['reservation_amount'] ?? $reservation['reservation_amount']),
                     !empty($data['expected_arrival_date']) ? $data['expected_arrival_date'] : $reservation['expected_arrival_date'],
                     trim((string)($data['notes'] ?? $reservation['notes'])),
@@ -281,8 +299,8 @@ class ReservationService {
                 'resident_type' => trim((string)($studentPayload['resident_type'] ?? 'Student')),
                 'college_university' => trim((string)($studentPayload['college_university'] ?? '')),
                 'job_workplace' => trim((string)($studentPayload['job_workplace'] ?? '')),
-                'vehicle_number' => trim((string)($studentPayload['vehicle_number'] ?? '')),
-                'vehicle_type' => trim((string)($studentPayload['vehicle_type'] ?? '')),
+                'vehicle_number' => trim((string)($studentPayload['vehicle_number'] ?? '')) !== '' ? trim((string)$studentPayload['vehicle_number']) : null,
+                'vehicle_type' => trim((string)($studentPayload['vehicle_type'] ?? '')) !== '' ? trim((string)$studentPayload['vehicle_type']) : null,
                 'vehicle_type_other' => trim((string)($studentPayload['vehicle_type_other'] ?? '')),
                 'note' => trim((string)($studentPayload['note'] ?? '')),
                 'relation' => trim((string)($studentPayload['relation'] ?? 'Father')),

@@ -29,11 +29,11 @@ class StudentRepository {
             
             if (strlen($cleanDigits) >= 3) {
                 $cleanTerm = '%' . $cleanDigits . '%';
-                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
-                $params = array_merge($params, [$searchTerm, $searchTerm, $cleanTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR s.guardian_name LIKE ? OR s.guardian_phone LIKE ? OR s.vehicle_number LIKE ? OR s.vehicle_type LIKE ? OR s.college_university LIKE ? OR s.job_workplace LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
+                $params = array_merge($params, [$searchTerm, $searchTerm, $cleanTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             } else {
-                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
-                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR s.guardian_name LIKE ? OR s.guardian_phone LIKE ? OR s.vehicle_number LIKE ? OR s.vehicle_type LIKE ? OR s.college_university LIKE ? OR s.job_workplace LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
+                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             }
         }
         
@@ -83,8 +83,8 @@ class StudentRepository {
                 $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
                 $params = array_merge($params, [$searchTerm, $searchTerm, $cleanTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             } else {
-                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
-                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+                $query .= " AND (s.full_name LIKE ? OR s.cnic LIKE ? OR s.student_id_str LIKE ? OR s.phone LIKE ? OR s.address LIKE ? OR s.guardian_name LIKE ? OR s.guardian_phone LIKE ? OR s.vehicle_number LIKE ? OR s.vehicle_type LIKE ? OR s.college_university LIKE ? OR s.job_workplace LIKE ? OR r.room_number LIKE ? OR CAST(ra.bed_number AS CHAR) LIKE ?)";
+                $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
             }
         }
         
