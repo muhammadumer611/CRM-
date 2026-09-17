@@ -8,6 +8,7 @@
     <form method="GET" action="<?php echo $config['base_url']; ?>/reservations" style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;">
         <input type="text" name="search" class="form-control" value="<?php echo htmlspecialchars($filters['search'] ?? ''); ?>" placeholder="Search by name, CNIC, phone, room..." style="max-width:380px;">
         <select name="status" class="form-control" style="max-width:180px;">
+            <option value="ACTIVE" <?php echo (($filters['status'] ?? '') === 'ACTIVE') ? 'selected' : ''; ?>>Active Reservations</option>
             <option value="">All Status</option>
             <option value="PENDING" <?php echo (($filters['status'] ?? '') === 'PENDING') ? 'selected' : ''; ?>>PENDING</option>
             <option value="CONFIRMED" <?php echo (($filters['status'] ?? '') === 'CONFIRMED') ? 'selected' : ''; ?>>CONFIRMED</option>

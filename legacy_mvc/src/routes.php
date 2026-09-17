@@ -33,13 +33,15 @@ $router->add('POST', '/rooms/delete/{id}', 'RoomController', 'delete');
 
 // Availability API routes
 $router->add('GET', '/api/allocations/available-beds/{id}', 'AllocationController', 'apiAvailableBeds');
+$router->add('POST', '/allocations/store', 'AllocationController', 'store');
+$router->add('POST', '/allocations/remove/{id}', 'AllocationController', 'remove');
 
 // Fee routes
 $router->add('GET', '/fees', 'FeeController', 'index');
 $router->add('GET', '/fees/collection', 'FeeController', 'collection');
 $router->add('GET', '/fees/paid', 'FeeController', 'paid');
 $router->add('GET', '/fees/pending', 'FeeController', 'pending');
-$router->add('GET', '/fees/pending/{id}', 'FeeController', 'pendingDetail');
+$router->add('GET', '/fees/pending/{studentId}', 'FeeController', 'pendingDetail');
 $router->add('GET', '/fees/security-deposits', 'FeeController', 'securityDeposits');
 $router->add('GET', '/fees/pay/{id}', 'FeeController', 'pay');
 $router->add('POST', '/fees/storePayment/{id}', 'FeeController', 'storePayment');
@@ -59,11 +61,6 @@ $router->add('POST', '/reservations/cancel/{id}', 'ReservationController', 'canc
 $router->add('GET', '/reports', 'ReportsController', 'index');
 $router->add('GET', '/reports/export/csv', 'ReportsController', 'exportCsv');
 
-// Notification routes
-$router->add('GET', '/notifications', 'NotificationController', 'index');
-$router->add('POST', '/notifications/mark-read/{id}', 'NotificationController', 'markRead');
-$router->add('POST', '/notifications/mark-all-read', 'NotificationController', 'markAllRead');
-
 // Database status routes
 $router->add('GET', '/db-status', 'DatabaseStatusController', 'index');
 
@@ -76,7 +73,7 @@ $router->add('POST', '/account-settings/password', 'AdminSettingsController', 'u
 $router->add('GET', '/alumni', 'AlumniController', 'index');
 $router->add('GET', '/api/alumni', 'AlumniController', 'apiGetAll');
 $router->add('POST', '/api/alumni/transfer', 'AlumniController', 'apiTransfer');
-$router->add('GET', '/api/alumni/student/{id}', 'AlumniController', 'apiGetByStudentId');
+$router->add('GET', '/api/alumni/student/{studentIdStr}', 'AlumniController', 'apiGetByStudentId');
 $router->add('GET', '/api/alumni/{id}', 'AlumniController', 'apiGetById');
 
 // History routes

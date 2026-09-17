@@ -318,6 +318,12 @@ class ReservationService {
                 throw new Exception($studentResult['error']);
             }
 
+            $this->applyReservationAdvance(
+                (int)$reservationId,
+                (int)$studentResult['id'],
+                $convertedByName
+            );
+
             $reservUpdate = $this->db->prepare("UPDATE reservations SET status = 'ARRIVED', converted_student_id = ?, converted_by_name = ?, converted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('PENDING', 'CONFIRMED')");
             $reservUpdate->execute([(int)$studentResult['id'], $convertedByName, (int)$reservationId]);
 
@@ -326,6 +332,69 @@ class ReservationService {
         } catch (Exception $e) {
             $this->db->rollBack();
             return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    private function applyReservationAdvance($reservationId, $studentId, $processedByName) {
+        $paymentStmt = $this->db->prepare("SELECT * FROM reservation_payments WHERE reservation_id = ? AND status = 'Completed' AND applied_to_student_id IS NULL FOR UPDATE");
+        $paymentStmt->execute([(int)$reservationId]);
+        $sourcePayments = $paymentStmt->fetchAll();
+        $advance = 0.0;
+        $references = [];
+        foreach ($sourcePayments as $payment) {
+            $advance += (float)$payment['amount'];
+            if (!empty($payment['transaction_ref'])) {
+                $references[] = $payment['transaction_ref'];
+            }
+        }
+        if ($advance <= 0) {
+            return;
+        }
+
+        $invoiceStmt = $this->db->prepare("SELECT * FROM fee_records WHERE student_id = ? AND charge_type = 'MONTHLY_FEE' ORDER BY billing_year ASC, billing_month ASC, id ASC LIMIT 1 FOR UPDATE");
+        $invoiceStmt->execute([(int)$studentId]);
+        $invoice = $invoiceStmt->fetch();
+        if (!$invoice) {
+            throw new Exception('The converted student monthly invoice could not be found.');
+        }
+
+        $invoiceTotal = max(0.0, (float)$invoice['amount'] + (float)$invoice['additional_charges'] - (float)$invoice['discount']);
+        $outstanding = max(0.0, $invoiceTotal - (float)$invoice['paid_amount']);
+        $allocated = min($advance, $outstanding);
+        $excess = max(0.0, $advance - $allocated);
+
+        $feeRepo = new \App\Repositories\FeeRepository();
+        $receipt = $feeRepo->generateReceiptNumber($this->db);
+        $transactionRef = substr('RES-' . (int)$reservationId . (empty($references) ? '' : '-' . implode(',', $references)), 0, 100);
+        $paymentStmt = $this->db->prepare("INSERT INTO fee_payments (invoice_id, receipt_number, amount, payment_date, payment_method, transaction_ref, remarks, received_by_admin, received_by_name, received_at, status) VALUES (?, ?, ?, ?, 'Other', ?, ?, ?, ?, NOW(), 'Completed')");
+        $paymentStmt->execute([
+            (int)$invoice['id'],
+            $receipt,
+            $advance,
+            $sourcePayments[0]['payment_date'] ?? date('Y-m-d'),
+            $transactionRef,
+            'Reservation advance applied during conversion.',
+            (int)(Session::get('admin_id') ?? 0) ?: null,
+            $processedByName,
+        ]);
+        $feePaymentId = (int)$this->db->lastInsertId();
+
+        if ($allocated > 0) {
+            $allocationStmt = $this->db->prepare('INSERT INTO payment_allocations (payment_id, invoice_id, amount, allocated_at) VALUES (?, ?, ?, NOW())');
+            $allocationStmt->execute([$feePaymentId, (int)$invoice['id'], $allocated]);
+            $newPaid = (float)$invoice['paid_amount'] + $allocated;
+            $newStatus = $newPaid >= $invoiceTotal ? 'Paid' : 'Partial';
+            $updateInvoice = $this->db->prepare("UPDATE fee_records SET paid_amount = ?, status = ?, payment_date = ?, payment_method = 'Other', transaction_ref = ?, remarks = ? WHERE id = ?");
+            $updateInvoice->execute([$newPaid, $newStatus, $sourcePayments[0]['payment_date'] ?? date('Y-m-d'), $transactionRef, 'Reservation advance applied during conversion.', (int)$invoice['id']]);
+        }
+        if ($excess > 0) {
+            $creditStmt = $this->db->prepare('INSERT INTO student_credits (student_id, amount, source_type, source_id, reason) VALUES (?, ?, ?, ?, ?)');
+            $creditStmt->execute([(int)$studentId, $excess, 'RESERVATION_ADVANCE', (int)$reservationId, 'Reservation advance excess after first-month fee allocation.']);
+        }
+
+        $markStmt = $this->db->prepare('UPDATE reservation_payments SET applied_to_student_id = ?, applied_at = NOW() WHERE id = ? AND status = \'Completed\' AND applied_to_student_id IS NULL');
+        foreach ($sourcePayments as $payment) {
+            $markStmt->execute([(int)$studentId, (int)$payment['id']]);
         }
     }
 

@@ -31,14 +31,13 @@ return [
     'login_attempt_limit' => 5,
     'login_attempt_window' => 300,
     'login_lockout_duration' => 300,
-    'environment' => 'development', // 'development' or 'production'
+    'environment' => getenv('HMS_ENV') ?: 'production', // Set HMS_ENV=development for local diagnostics.
     'session' => [
         'name' => 'HMS_SECURE_SESSION',
         'lifetime' => 7200,
-        'secure' => false,
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
         'httponly' => true,
         'samesite' => 'Lax'
     ],
-    'notification_reminder_days' => 3,
     'max_room_beds' => 10
 ];

@@ -193,7 +193,6 @@
 
 <!-- Checkout Modal -->
 <?php if ($student['status'] === 'Active'): ?>
-<?php $depAmount = $securityDeposit ? (float)$securityDeposit['remaining_amount'] : 0.0; ?>
 <div class="modal" id="checkoutModal" style="display:none;align-items:center;justify-content:center;">
     <div class="modal-dialog checkout-dialog" style="max-width:550px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex:0 0 auto;">
@@ -203,16 +202,6 @@
 
         <form action="<?php echo $config['base_url']; ?>/students/checkout/<?php echo $student['id']; ?>" method="POST" id="checkoutForm" class="checkout-form">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
-
-            <div class="form-group">
-                <label class="form-label">Checked Out By *</label>
-                <input type="text" name="checked_out_by_name" class="form-control" required>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Processed By *</label>
-                <input type="text" name="processed_by_name" class="form-control" required>
-            </div>
 
             <div class="form-group">
                 <label class="form-label">Leaving Date *</label>
@@ -231,36 +220,6 @@
                 </select>
             </div>
 
-            <?php if ($depAmount > 0): ?>
-            <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:1rem;margin-bottom:1.25rem;">
-                <div style="font-weight:600;color:var(--primary);margin-bottom:0.5rem;"><i class="fas fa-shield-alt"></i> Security Deposit Settlement</div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;font-size:0.9rem;">
-                    <span>Held Security Deposit:</span>
-                    <strong>Rs. <?php echo number_format($depAmount, 2); ?></strong>
-                </div>
-
-                <div class="form-group" style="margin-bottom:0.75rem;">
-                    <label class="form-label">Deduction (Damage/Dues) Rs.</label>
-                    <input type="number" name="security_deduction" id="secDeduction" class="form-control" step="0.01" min="0" max="<?php echo $depAmount; ?>" value="0" oninput="calcRefund(<?php echo $depAmount; ?>)">
-                </div>
-
-                <div style="display:flex;justify-content:space-between;padding-top:0.5rem;border-top:1px solid var(--border);font-size:0.95rem;">
-                    <span>Refund to Student:</span>
-                    <strong id="refundDisplay" style="color:var(--success);">Rs. <?php echo number_format($depAmount, 2); ?></strong>
-                </div>
-
-                <div class="form-group" style="margin-top:0.75rem;margin-bottom:0;">
-                    <label class="form-label">Settlement Remarks</label>
-                    <input type="text" name="security_refund_remarks" class="form-control" placeholder="e.g. Full refund / Rs. 1500 deducted for repairs">
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <div class="form-group">
-                <label class="form-label">General Remarks (Optional)</label>
-                <textarea name="remarks" class="form-control" rows="2" placeholder="Any final remarks..."></textarea>
-            </div>
-
             <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
                 <button type="button" class="btn" style="background:#334155;color:white;" onclick="closeCheckoutModal()">Cancel</button>
                 <button type="submit" class="btn btn-danger"><i class="fas fa-check"></i> Confirm Checkout</button>
@@ -277,11 +236,6 @@ function openCheckoutModal() {
 function closeCheckoutModal() {
     const m = document.getElementById('checkoutModal');
     m.style.display = 'none';
-}
-function calcRefund(totalDeposit) {
-    const ded = parseFloat(document.getElementById('secDeduction').value) || 0;
-    const ref = Math.max(0, totalDeposit - ded);
-    document.getElementById('refundDisplay').textContent = 'Rs. ' + ref.toFixed(2);
 }
 </script>
 <?php endif; ?>

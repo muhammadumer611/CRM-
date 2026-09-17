@@ -5,7 +5,6 @@
 -- Date: 2026-08-13
 -- Purpose: Add tables and columns required by new features:
 --   - Reports & Analytics
---   - Notifications
 --   - Audit Logs
 --   - Complaints
 --
@@ -74,31 +73,6 @@ CREATE TABLE IF NOT EXISTS fee_payments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- PHASE 1.4: Create notifications Table
--- ============================================================================
--- Required by: NotificationService.php
--- Purpose: System-wide notifications for fees, payments, rooms, allocations, students
-
-CREATE TABLE IF NOT EXISTS notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(150) NOT NULL,
-    message TEXT NOT NULL,
-    type VARCHAR(30) NOT NULL DEFAULT 'system',
-    priority VARCHAR(20) NOT NULL DEFAULT 'medium',
-    entity_type VARCHAR(50) NULL,
-    entity_id INT NULL,
-    notification_key VARCHAR(255) NULL,
-    is_read TINYINT(1) NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    read_at TIMESTAMP NULL,
-    UNIQUE KEY uk_notifications_key (notification_key),
-    KEY idx_notifications_is_read (is_read),
-    KEY idx_notifications_type (type),
-    KEY idx_notifications_priority (priority),
-    KEY idx_notifications_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================================
 -- PHASE 1.5: Create complaints Table
 -- ============================================================================
 -- Required by: ComplaintService.php, ComplaintRepository.php, ComplaintController.php
@@ -139,7 +113,7 @@ VALUES (1, 'admin', 'admin@hostel.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3R
 -- SHOW TABLES;
 -- -- Should show 11 tables:
 -- -- admins, alumni, complaints, fee_payments, fee_records, 
--- -- notifications, room_allocations, rooms, student_history, students, system_logs
+-- -- room_allocations, rooms, student_history, students, system_logs
 --
 -- DESCRIBE system_logs;
 -- -- Should show: id, admin_id, action, entity_type, entity_id, description, 

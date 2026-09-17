@@ -1,0 +1,2 @@
+# Database backups must remain outside deployment packages.
+db/backup_*.sql

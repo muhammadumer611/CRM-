@@ -21,7 +21,7 @@ class ReservationController {
         $perPage = 20;
         $filters = [
             'search' => $_GET['search'] ?? '',
-            'status' => $_GET['status'] ?? ''
+            'status' => $_GET['status'] ?? 'ACTIVE'
         ];
 
         $result = $this->service->getAllReservations($filters, $page, $perPage);

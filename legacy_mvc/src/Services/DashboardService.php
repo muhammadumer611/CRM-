@@ -166,4 +166,52 @@ class DashboardService {
         $stmt->execute();
         return $stmt->fetchAll();
     }
+
+    public function getDashboardAlerts(): array {
+        $roomStmt = $this->db->query(<<<'SQL'
+            SELECT r.id, r.room_number, r.block, r.total_beds,
+                   COALESCE(SUM(CASE
+                       WHEN s.id IS NOT NULL AND ra.bed_number = 0 THEN r.total_beds
+                       WHEN s.id IS NOT NULL THEN 1
+                       ELSE 0
+                   END), 0) AS occupied_beds,
+                   (r.total_beds - COALESCE(SUM(CASE
+                       WHEN s.id IS NOT NULL AND ra.bed_number = 0 THEN r.total_beds
+                       WHEN s.id IS NOT NULL THEN 1
+                       ELSE 0
+                   END), 0)) AS available_beds
+            FROM rooms r
+            LEFT JOIN room_allocations ra
+                ON ra.room_id = r.id AND ra.status = 'Active'
+            LEFT JOIN students s
+                ON s.id = ra.student_id AND s.status = 'Active'
+            WHERE r.status != 'Disabled'
+            GROUP BY r.id, r.room_number, r.block, r.total_beds
+            HAVING available_beds = 1
+            ORDER BY r.room_number ASC
+        SQL);
+
+        $feeStmt = $this->db->prepare(<<<'SQL'
+            SELECT fr.id AS invoice_id, fr.student_id, fr.invoice_number,
+                   fr.billing_month, fr.billing_year, fr.amount,
+                   fr.additional_charges, fr.discount, fr.paid_amount,
+                   (fr.amount + fr.additional_charges - fr.discount - fr.paid_amount) AS pending_amount,
+                   s.full_name AS student_name, s.student_id_str
+            FROM fee_records fr
+            JOIN students s ON s.id = fr.student_id AND s.status = 'Active'
+            WHERE DAY(CURDATE()) > 10
+              AND fr.billing_month = MONTH(CURDATE())
+              AND fr.billing_year = YEAR(CURDATE())
+              AND fr.charge_type = 'MONTHLY_FEE'
+              AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+            ORDER BY pending_amount DESC, s.full_name ASC
+        SQL);
+        $feeStmt->execute();
+
+        return [
+            'rooms' => $roomStmt->fetchAll(),
+            'fees' => $feeStmt->fetchAll(),
+            'fee_alerts_active' => (int)date('j') > 10,
+        ];
+    }
 }

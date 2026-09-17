@@ -2,7 +2,7 @@
 <?php $resolvedBackUrl = !empty($backUrl) ? $backUrl : $config['base_url'] . '/students'; ?>
 <?php
     $vehicleTypeValue = trim((string)($student['vehicle_type'] ?? ''));
-    $vehicleTypeIsCustom = $vehicleTypeValue !== '' && !in_array($vehicleTypeValue, ['Motorcycle / Bike', 'Car'], true);
+    $vehicleTypeIsCustom = $vehicleTypeValue !== '' && !in_array($vehicleTypeValue, ['Motorcycle / Bike', 'Car', 'Nill'], true);
 ?>
 <div style="max-width:900px;margin:0 auto;">
 
@@ -46,6 +46,27 @@
         <form action="<?php echo $config['base_url']; ?>/students/update/<?php echo (int)$student['id']; ?>" method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
             <input type="hidden" name="_back_url" value="<?php echo htmlspecialchars($resolvedBackUrl); ?>">
+
+            <div class="card" style="background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.25);margin-bottom:1.25rem;">
+                <h5 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-bed"></i> Room / Bed Allocation</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Room</label>
+                        <select name="room_id" id="editRoomSelect" class="form-control" <?php echo $student['status'] !== 'Active' ? 'disabled' : ''; ?> required>
+                            <?php foreach (($roomOptions ?? []) as $room): ?>
+                                <option value="<?php echo (int)$room['id']; ?>" data-beds="<?php echo htmlspecialchars(json_encode(array_values($room['available_bed_numbers'] ?? []))); ?>" <?php echo ((int)($student['room_id'] ?? 0) === (int)$room['id']) ? 'selected' : ''; ?>>
+                                    Room <?php echo htmlspecialchars($room['room_number']); ?> (<?php echo htmlspecialchars($room['room_type']); ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Bed</label>
+                        <select name="bed_number" id="editBedSelect" class="form-control" <?php echo $student['status'] !== 'Active' ? 'disabled' : ''; ?> required></select>
+                    </div>
+                </div>
+                <small style="color:var(--text-muted);">Only available beds are listed. The current bed remains selectable for this student.</small>
+            </div>
 
             <!-- Personal Info -->
             <div class="row">
@@ -172,7 +193,7 @@
                         <label class="form-label">Vehicle Type</label>
                         <select name="vehicle_type" id="vehicleTypeEdit" class="form-control">
                             <option value="">Select...</option>
-                            <?php foreach(['Motorcycle / Bike','Car','Other'] as $vt): ?>
+                            <?php foreach(['Motorcycle / Bike','Car','Nill','Other'] as $vt): ?>
                                 <option value="<?php echo $vt; ?>" <?php echo (($vehicleTypeIsCustom ? 'Other' : $vehicleTypeValue) === $vt ? 'selected' : ''); ?>><?php echo $vt; ?></option>
                             <?php endforeach; ?>
                         </select>
@@ -288,3 +309,26 @@
     </div>
     <?php endif; ?>
 </div>
+<script>
+(function () {
+    const roomSelect = document.getElementById('editRoomSelect');
+    const bedSelect = document.getElementById('editBedSelect');
+    if (!roomSelect || !bedSelect) return;
+    const currentBed = <?php echo (int)($student['bed_number'] ?? 0); ?>;
+    function refreshBeds() {
+        const selected = roomSelect.options[roomSelect.selectedIndex];
+        let beds = [];
+        try { beds = JSON.parse(selected?.dataset.beds || '[]'); } catch (e) { beds = []; }
+        bedSelect.innerHTML = '<option value="">Select bed</option>';
+        beds.forEach(function (bed) {
+            const option = document.createElement('option');
+            option.value = bed;
+            option.textContent = 'Bed ' + bed;
+            if (Number(bed) === currentBed && Number(roomSelect.value) === <?php echo (int)($student['room_id'] ?? 0); ?>) option.selected = true;
+            bedSelect.appendChild(option);
+        });
+    }
+    roomSelect.addEventListener('change', refreshBeds);
+    refreshBeds();
+})();
+</script>

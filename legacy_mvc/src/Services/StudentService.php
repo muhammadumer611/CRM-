@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Repositories\StudentRepository;
 use App\Repositories\AdminRepository;
 use App\Repositories\FeeRepository;
+use App\Repositories\RoomRepository;
 use App\Core\Session;
 use App\Core\Database;
 use App\Services\StudentHistoryService;
@@ -14,12 +15,14 @@ class StudentService {
     private $studentRepo;
     private $adminRepo;
     private $feeRepo;
+    private $roomRepo;
     private $db;
 
     public function __construct() {
         $this->studentRepo = new StudentRepository();
         $this->adminRepo = new AdminRepository();
         $this->feeRepo = new FeeRepository();
+        $this->roomRepo = new RoomRepository();
         $this->db = Database::getInstance()->getConnection();
     }
 
@@ -69,7 +72,7 @@ class StudentService {
             $custom = trim((string)($otherValue ?? ''));
             return $custom !== '' ? $custom : null;
         }
-        $valid = ['Motorcycle / Bike', 'Car', 'Other'];
+        $valid = ['Motorcycle / Bike', 'Car', 'Nill', 'Other'];
         return in_array($selected, $valid, true) ? $selected : null;
     }
 
@@ -459,6 +462,21 @@ class StudentService {
             return ['success' => false, 'error' => 'A student with this CNIC already exists.'];
         }
 
+        $currentRoomId = !empty($student['room_id']) ? (int)$student['room_id'] : 0;
+        $currentBedNumber = isset($student['bed_number']) ? (int)$student['bed_number'] : 0;
+        $targetRoomId = array_key_exists('room_id', $data) && trim((string)$data['room_id']) !== ''
+            ? (int)$data['room_id'] : $currentRoomId;
+        $targetBedNumber = array_key_exists('bed_number', $data) && trim((string)$data['bed_number']) !== ''
+            ? (int)$data['bed_number'] : $currentBedNumber;
+        $allocationChanged = $targetRoomId !== $currentRoomId || $targetBedNumber !== $currentBedNumber;
+
+        if ($allocationChanged && ($student['status'] ?? 'Active') !== 'Active') {
+            return ['success' => false, 'error' => 'Only active students can be moved to another room or bed.'];
+        }
+        if ($allocationChanged && ($targetRoomId <= 0 || $targetBedNumber <= 0)) {
+            return ['success' => false, 'error' => 'Please select a valid room and bed.'];
+        }
+
         $dbData = [
             'full_name'          => trim($data['full_name']),
             'cnic'               => $cleanCnic,
@@ -484,7 +502,75 @@ class StudentService {
             $dbData['monthly_fee'] = (float)$data['monthly_fee'];
         }
 
-        if ($this->studentRepo->update($id, $dbData)) {
+        $startedTransaction = !$this->db->inTransaction();
+        if ($startedTransaction) {
+            $this->db->beginTransaction();
+        }
+
+        try {
+            $studentLock = $this->db->prepare("SELECT * FROM students WHERE id = ? FOR UPDATE");
+            $studentLock->execute([(int)$id]);
+            if (!$studentLock->fetch()) {
+                throw new Exception('Student not found.');
+            }
+
+            if ($allocationChanged) {
+                $roomIds = array_values(array_unique(array_filter([$currentRoomId, $targetRoomId])));
+                sort($roomIds, SORT_NUMERIC);
+                $lockedRooms = [];
+                foreach ($roomIds as $roomId) {
+                    $roomStmt = $this->db->prepare('SELECT * FROM rooms WHERE id = ? FOR UPDATE');
+                    $roomStmt->execute([$roomId]);
+                    $lockedRooms[$roomId] = $roomStmt->fetch();
+                }
+                $targetRoom = $lockedRooms[$targetRoomId] ?? null;
+                if (!$targetRoom || $targetRoom['status'] === 'Disabled' || $targetBedNumber > (int)$targetRoom['total_beds']) {
+                    throw new Exception('Selected room or bed is invalid.');
+                }
+
+                $reservationStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED') FOR UPDATE");
+                $reservationStmt->execute([$targetRoomId, $targetBedNumber]);
+                if ($reservationStmt->fetch()) {
+                    throw new Exception('Selected bed is reserved and cannot be allocated.');
+                }
+
+                $allocationStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND (bed_number = ? OR bed_number = 0) AND status = 'Active' AND student_id != ? FOR UPDATE");
+                $allocationStmt->execute([$targetRoomId, $targetBedNumber, (int)$id]);
+                if ($allocationStmt->fetch()) {
+                    throw new Exception('Selected bed is already occupied.');
+                }
+
+                $currentAllocationStmt = $this->db->prepare("SELECT id FROM room_allocations WHERE student_id = ? AND status = 'Active' FOR UPDATE");
+                $currentAllocationStmt->execute([(int)$id]);
+                $currentAllocation = $currentAllocationStmt->fetch();
+                if (!$currentAllocation) {
+                    throw new Exception('Active room allocation not found.');
+                }
+
+                $closeStmt = $this->db->prepare("UPDATE room_allocations SET status = 'Closed', leaving_date = ? WHERE id = ?");
+                $closeStmt->execute([date('Y-m-d'), (int)$currentAllocation['id']]);
+                $newAllocationStmt = $this->db->prepare("INSERT INTO room_allocations (student_id, room_id, bed_number, joining_date, status) VALUES (?, ?, ?, ?, 'Active')");
+                $newAllocationStmt->execute([(int)$id, $targetRoomId, $targetBedNumber, date('Y-m-d')]);
+            }
+
+            if (!$this->studentRepo->update($id, $dbData, $this->db)) {
+                throw new Exception('Failed to update student.');
+            }
+
+            if ($allocationChanged) {
+                foreach (array_values(array_unique(array_filter([$currentRoomId, $targetRoomId]))) as $roomId) {
+                    $countStmt = $this->db->prepare("SELECT COUNT(*) FROM room_allocations ra JOIN students s ON s.id = ra.student_id AND s.status = 'Active' WHERE ra.room_id = ? AND ra.status = 'Active'");
+                    $countStmt->execute([$roomId]);
+                    $occupied = (int)$countStmt->fetchColumn();
+                    $room = $lockedRooms[$roomId];
+                    $status = $room['status'];
+                    if ($status !== 'Disabled') {
+                        $status = $occupied === 0 ? 'Available' : ($occupied >= (int)$room['total_beds'] ? 'Occupied' : 'Partially Occupied');
+                    }
+                    $this->db->prepare('UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?')->execute([$occupied, $status, $roomId]);
+                }
+            }
+
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
             $this->adminRepo->logAction(Session::get('admin_id'), 'Update Student', "Updated student ID: {$student['student_id_str']}", $ip);
 
@@ -495,6 +581,11 @@ class StudentService {
                     $changes[$key]   = $value;
                     $oldValues[$key] = $student[$key];
                 }
+            }
+
+            if ($allocationChanged) {
+                $changes['room_allocation'] = ['room_id' => $targetRoomId, 'bed_number' => $targetBedNumber];
+                $oldValues['room_allocation'] = ['room_id' => $currentRoomId, 'bed_number' => $currentBedNumber];
             }
 
             if (!empty($changes)) {
@@ -511,13 +602,50 @@ class StudentService {
                     }
                 }
 
-                StudentHistoryService::record($id, $eventType, $desc, $oldValues, $changes);
+                if ($allocationChanged) {
+                    $eventType = 'ROOM_TRANSFERRED';
+                    $desc = 'Student room/bed allocation transferred.';
+                }
+                StudentHistoryService::record($id, $eventType, $desc, $oldValues, $changes, Session::get('admin_id'), $this->db);
             }
 
+            if ($startedTransaction) {
+                $this->db->commit();
+            }
             return ['success' => true];
+        } catch (Exception $e) {
+            if ($startedTransaction && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            return ['success' => false, 'error' => $e->getMessage()];
         }
-        
-        return ['success' => false, 'error' => 'Failed to update student.'];
+    }
+
+    public function getRoomOptionsForStudent($studentId) {
+        $student = $this->studentRepo->findById((int)$studentId);
+        if (!$student) {
+            return [];
+        }
+        $currentRoomId = (int)($student['room_id'] ?? 0);
+        $rooms = $this->roomRepo->findAllWithAvailability();
+        $options = [];
+        foreach ($rooms as $room) {
+            $roomId = (int)$room['id'];
+            if (($room['status'] ?? '') === 'Disabled') {
+                continue;
+            }
+            $beds = $this->roomRepo->getAvailableBedsForRoom($roomId);
+            if ($roomId === $currentRoomId && !empty($student['bed_number'])) {
+                $beds[] = (int)$student['bed_number'];
+                $beds = array_values(array_unique($beds));
+                sort($beds);
+            }
+            if (!empty($beds) || $roomId === $currentRoomId) {
+                $room['available_bed_numbers'] = $beds;
+                $options[] = $room;
+            }
+        }
+        return $options;
     }
 
     public function getStudentFeeHistory($studentId) {

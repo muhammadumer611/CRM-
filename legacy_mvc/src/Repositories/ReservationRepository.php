@@ -21,8 +21,12 @@ class ReservationRepository {
         $params = [];
 
         if (!empty($filters['status'])) {
-            $query .= " AND r.status = ?";
-            $params[] = $filters['status'];
+            if ($filters['status'] === 'ACTIVE') {
+                $query .= " AND r.status IN ('PENDING', 'CONFIRMED')";
+            } else {
+                $query .= " AND r.status = ?";
+                $params[] = $filters['status'];
+            }
         }
 
         if (!empty($filters['search'])) {
@@ -48,8 +52,12 @@ class ReservationRepository {
         $params = [];
 
         if (!empty($filters['status'])) {
-            $query .= " AND r.status = ?";
-            $params[] = $filters['status'];
+            if ($filters['status'] === 'ACTIVE') {
+                $query .= " AND r.status IN ('PENDING', 'CONFIRMED')";
+            } else {
+                $query .= " AND r.status = ?";
+                $params[] = $filters['status'];
+            }
         }
 
         if (!empty($filters['search'])) {

@@ -153,6 +153,7 @@ class StudentController {
 
         $feeHistory      = $this->studentService->getStudentFeeHistory($id);
         $securityDeposit = $this->studentService->getStudentSecurityDeposit($id);
+        $roomOptions     = $this->studentService->getRoomOptionsForStudent($id);
 
         // Propagate back URL so Cancel/Save can return to origin (active list or student list)
         $backUrl = !empty($_GET['from']) ? htmlspecialchars($_GET['from'], ENT_QUOTES, 'UTF-8') : null;
@@ -162,6 +163,7 @@ class StudentController {
             'student'         => $student,
             'feeHistory'      => $feeHistory,
             'securityDeposit' => $securityDeposit,
+            'roomOptions'     => $roomOptions,
             'csrf_token'      => CSRF::generateToken(),
             'backUrl'         => $backUrl
         ], 'admin');
@@ -251,23 +253,11 @@ class StudentController {
 
         $leavingDate = !empty($_POST['leaving_date']) ? $_POST['leaving_date'] : date('Y-m-d');
         $leavingReason = !empty($_POST['leaving_reason']) ? trim($_POST['leaving_reason']) : 'Course Completed';
-        $remarks = trim($_POST['remarks'] ?? '');
-        $securityDeduction = isset($_POST['security_deduction']) && $_POST['security_deduction'] !== '' ? (float)$_POST['security_deduction'] : 0.0;
-        $securityRefundRemarks = trim($_POST['security_refund_remarks'] ?? '');
-        $checkedOutByName = trim((string)($_POST['checked_out_by_name'] ?? ''));
-        $processedByName = trim((string)($_POST['processed_by_name'] ?? ''));
-
-        if ($checkedOutByName === '') {
-            Session::set('error', 'Checked Out By is required. Please enter the staff member name who processed the checkout.');
-            header('Location: ' . $config['base_url'] . '/students/view/' . $id);
-            exit;
-        }
-
-        if ($processedByName === '') {
-            Session::set('error', 'Processed By is required. Please enter the staff member name.');
-            header('Location: ' . $config['base_url'] . '/students/view/' . $id);
-            exit;
-        }
+        $remarks = '';
+        $securityDeduction = 0.0;
+        $securityRefundRemarks = '';
+        $checkedOutByName = trim((string)(Auth::user() ?: 'Admin'));
+        $processedByName = $checkedOutByName;
 
         $alumniService = new \App\Services\AlumniService();
         $result = $alumniService->convertToAlumni(

@@ -419,12 +419,6 @@ class FeeService {
             $this->feeRepo->updateOverdueStatuses($studentId, $db);
             $db->commit();
 
-            try {
-                \App\Services\NotificationService::newInstance()->generateMonthlyPendingFeeAlerts();
-            } catch (\Exception $ne) {
-                // Non-blocking notification sync
-            }
-
             return ['success' => true, 'payment_id' => $paymentId, 'receipt_number' => $paymentReceipt, 'allocations' => $allocationResult['allocations'], 'applied_total' => $allocationResult['applied_total']];
         } catch (\Exception $e) {
             $db->rollBack();

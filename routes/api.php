@@ -25,7 +25,7 @@ $router->add('GET', '/api/db-status', function() {
     $config = require __DIR__ . '/../config/database.php';
     $requiredTables = [
         'admins','students','rooms','room_allocations','fee_records','fee_payments',
-        'student_history','alumni','system_logs','notifications'
+        'student_history','alumni','system_logs'
     ];
 
     $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";

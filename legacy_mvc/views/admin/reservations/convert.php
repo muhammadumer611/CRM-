@@ -65,7 +65,7 @@
                 <div class="form-group"><label class="form-label">Vehicle Number</label><input type="text" name="vehicle_number" class="form-control"></div>
             </div>
             <div class="col-md-6">
-                <div class="form-group"><label class="form-label">Vehicle Type</label><select name="vehicle_type" class="form-control"><option value="">Select...</option><option value="Motorcycle / Bike">Motorcycle / Bike</option><option value="Car">Car</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-label">Vehicle Type</label><select name="vehicle_type" class="form-control"><option value="">Select...</option><option value="Motorcycle / Bike">Motorcycle / Bike</option><option value="Car">Car</option><option value="Nill">Nill</option><option value="Other">Other</option></select></div>
             </div>
             <div class="col-12">
                 <div class="form-group"><label class="form-label">Note</label><textarea name="note" class="form-control" rows="3"></textarea></div>

@@ -97,7 +97,6 @@
 |-------|----------|--------|-----------|
 | Late fee cron job scheduling | LOW | Not implemented | Manual trigger available via controller action |
 | Checkout settlement UI | LOW | Not end-to-end tested | Backend logic verified; form validation needs test pass |
-| Security deposit refund email notification | LOW | Not implemented | Manual email trigger available |
 | Multiple payment methods in single transaction | LOW | Not supported | Design supports payment method per transaction (OK per requirements) |
 
 ---

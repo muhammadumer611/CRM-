@@ -45,10 +45,6 @@ A complete web-based Hostel Management System built using PHP, MySQL, HTML, CSS 
 ### 💰 Fee Management
 ![Fees](screenshort/Fees.png)
 
-### 💰 Notification Management
-![Fees](screenshort/Notification.png)
-
-
 ### 💰 Fee Management
 ![Fees](screenshort/Alumni.png)
 

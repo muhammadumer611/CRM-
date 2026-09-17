@@ -271,6 +271,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                             <option value="">Select...</option>
                             <option value="Motorcycle / Bike">Motorcycle / Bike</option>
                             <option value="Car">Car</option>
+                            <option value="Nill">Nill</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>

@@ -91,9 +91,12 @@ CREATE TABLE IF NOT EXISTS reservations (
     expected_arrival_date DATE NULL,
     status ENUM('PENDING', 'CONFIRMED', 'ARRIVED', 'CANCELLED', 'EXPIRED') NOT NULL DEFAULT 'PENDING',
     notes TEXT NULL,
+    reserved_by_name VARCHAR(100) NULL,
     converted_student_id INT NULL,
     converted_at TIMESTAMP NULL,
+    converted_by_name VARCHAR(100) NULL,
     cancelled_at TIMESTAMP NULL,
+    cancelled_by_name VARCHAR(100) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
@@ -112,13 +115,18 @@ CREATE TABLE IF NOT EXISTS reservation_payments (
     payment_method ENUM('Cash', 'Bank Transfer', 'Online', 'Card', 'Other') NOT NULL DEFAULT 'Cash',
     transaction_ref VARCHAR(100) NOT NULL,
     notes TEXT NULL,
+    status ENUM('Completed', 'Reversed') NOT NULL DEFAULT 'Completed',
+    applied_to_student_id INT NULL,
+    applied_at TIMESTAMP NULL,
     created_by_admin INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
+    FOREIGN KEY (applied_to_student_id) REFERENCES students(id) ON DELETE SET NULL,
     FOREIGN KEY (created_by_admin) REFERENCES admins(id) ON DELETE SET NULL,
     UNIQUE KEY uk_reservation_payment_ref (transaction_ref),
-    KEY idx_reservation_payments_reservation (reservation_id, payment_date)
+    KEY idx_reservation_payments_reservation (reservation_id, payment_date),
+    KEY idx_reservation_payments_applied (applied_to_student_id, status)
 );
 
 CREATE TABLE fee_records (
@@ -252,25 +260,6 @@ CREATE TABLE system_logs (
     user_agent VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL
-);
-
-CREATE TABLE notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(150) NOT NULL,
-    message TEXT NOT NULL,
-    type VARCHAR(30) NOT NULL DEFAULT 'system',
-    priority VARCHAR(20) NOT NULL DEFAULT 'medium',
-    entity_type VARCHAR(50) NULL,
-    entity_id INT NULL,
-    notification_key VARCHAR(255) NULL,
-    is_read TINYINT(1) NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    read_at TIMESTAMP NULL,
-    UNIQUE KEY uk_notifications_key (notification_key),
-    KEY idx_notifications_is_read (is_read),
-    KEY idx_notifications_type (type),
-    KEY idx_notifications_priority (priority),
-    KEY idx_notifications_created_at (created_at)
 );
 
 -- Insert a default admin account (username: admin, password: password)

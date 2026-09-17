@@ -103,6 +103,12 @@ class AllocationService {
                 throw new Exception("Selected bed does not exist in this room. Valid beds are 1 to {$totalBeds}.");
             }
 
+            $stmtFullRoom = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND bed_number = 0 AND status = 'Active' FOR UPDATE");
+            $stmtFullRoom->execute([$roomId]);
+            if ($stmtFullRoom->fetch()) {
+                throw new Exception('This room is already assigned as FULL_ROOM.');
+            }
+
             // Check if that bed already has an ACTIVE allocation
             $stmtBedAlloc = $this->db->prepare("SELECT id FROM room_allocations WHERE room_id = ? AND bed_number = ? AND status = 'Active' FOR UPDATE");
             $stmtBedAlloc->execute([$roomId, $bedNumber]);
@@ -117,8 +123,8 @@ class AllocationService {
             }
 
             // Verify room has capacity
-            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
-            $stmtCount->execute([$roomId]);
+            $stmtCount = $this->db->prepare("SELECT COALESCE(SUM(CASE WHEN bed_number = 0 THEN ? ELSE 1 END), 0) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+            $stmtCount->execute([$totalBeds, $roomId]);
             $currentOccupied = (int)$stmtCount->fetchColumn();
 
             if ($currentOccupied >= $totalBeds) {

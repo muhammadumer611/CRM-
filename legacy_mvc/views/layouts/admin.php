@@ -27,16 +27,6 @@
         .topbar-title { font-size: 1.25rem; font-weight: 600; }
         .user-menu { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; }
         .logout-btn { color: var(--danger); font-weight: 500; font-size: 0.9rem; }
-        .notification-wrap { position: relative; }
-        .notification-bell { position: relative; color: var(--text); cursor: pointer; }
-        .notification-badge { position: absolute; top: -8px; right: -12px; background: #ef4444; color: white; border-radius: 999px; min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; padding: 0 5px; }
-        .notification-dropdown { position: absolute; right: 0; top: 42px; width: 320px; background: #0f172a; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.25); display: none; z-index: 50; }
-        .notification-wrap:hover .notification-dropdown, .notification-wrap:focus-within .notification-dropdown { display: block; }
-        .notification-item { display: block; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
-        .notification-item:hover { background: rgba(56,189,248,0.06); }
-        .notification-item.unread { background: rgba(14,165,233,0.04); }
-        .notification-item-title { font-weight: 600; margin-bottom: 0.2rem; }
-        .notification-item-meta { font-size: 0.75rem; color: var(--text-muted); }
         .content { padding: 2rem; overflow-y: auto; flex: 1; }
         .card { background-color: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; animation: pageRise .28s ease both; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.18); border-color: rgba(56,189,248,.35); }
@@ -138,7 +128,6 @@
             .content { padding: 1rem; }
             .card { padding: 1rem; }
             .card-header { flex-wrap: wrap; gap: 0.75rem; }
-            .notification-dropdown { width: min(88vw, 300px); }
             .sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(2,6,23,0.6); opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 1100; }
             body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
             .details-grid { grid-template-columns: 1fr; }
@@ -176,7 +165,6 @@
         @media (max-width: 480px) {
             .topbar { align-items: center; padding:0.75rem; }
             .topbar-title { max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            .notification-wrap { display: none; }
             .content { padding:0.75rem; }
             .card { padding:0.875rem; margin-bottom:1rem; }
             .card-header { align-items:flex-start; }
@@ -234,9 +222,6 @@
             <a href="<?php echo $config['base_url']; ?>/history" class="nav-item <?php echo preg_match('#/history#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-clock"></i> History
             </a>
-            <a href="<?php echo $config['base_url']; ?>/notifications" class="nav-item <?php echo preg_match('#/notification#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
-                <i class="fas fa-bell"></i> Notifications
-            </a>
             <a href="<?php echo $config['base_url']; ?>/account-settings" class="nav-item <?php echo preg_match('#/account-settings#', $_SERVER['REQUEST_URI']) ? 'active' : ''; ?>">
                 <i class="fas fa-user-cog"></i> Account Settings
             </a>
@@ -252,35 +237,6 @@
                 <div class="topbar-title"><?php echo htmlspecialchars($title ?? 'Dashboard'); ?></div>
             </div>
             <div class="user-menu">
-                <div class="notification-wrap">
-                    <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-bell" aria-label="Notifications">
-                        <i class="fas fa-bell"></i>
-                        <?php $notificationService = new \App\Services\NotificationService(); $unreadCount = $notificationService->getUnreadCount(); ?>
-                        <?php if ($unreadCount > 0): ?>
-                            <span class="notification-badge"><?php echo (int)$unreadCount; ?></span>
-                        <?php endif; ?>
-                    </a>
-                    <div class="notification-dropdown">
-                        <?php $recent = $notificationService->getRecentUnread(5); ?>
-                        <?php if (empty($recent)): ?>
-                            <div class="notification-item">
-                                <div class="notification-item-title">No new notifications</div>
-                                <div class="notification-item-meta">You're all caught up.</div>
-                            </div>
-                        <?php else: ?>
-                            <?php foreach ($recent as $item): ?>
-                                <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item unread">
-                                    <div class="notification-item-title"><?php echo htmlspecialchars($item['title']); ?></div>
-                                    <div class="notification-item-meta"><?php echo htmlspecialchars(substr($item['message'], 0, 70)); ?><?php echo strlen((string)$item['message']) > 70 ? '...' : ''; ?></div>
-                                    <div class="notification-item-meta"><?php echo htmlspecialchars(date('M d, H:i', strtotime($item['created_at']))); ?></div>
-                                </a>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        <a href="<?php echo $config['base_url']; ?>/notifications" class="notification-item" style="text-align:center; font-weight:600;">
-                            View All Notifications
-                        </a>
-                    </div>
-                </div>
                 <span><i class="fas fa-user-circle"></i> <?php echo htmlspecialchars(\App\Core\Auth::user()); ?></span>
                 <a href="<?php echo $config['base_url']; ?>/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>

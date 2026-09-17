@@ -1,7 +1,11 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
 
 <style>
-    .dashboard-shell { animation: dashboard-enter 0.35s ease-out both; }
+    .dashboard-shell { animation: dashboard-enter 0.35s ease-out both; display:flex; flex-direction:column; }
+    .dashboard-shell .student-search-panel { order:1; }
+    .dashboard-shell .dashboard-summary { order:2; }
+    .dashboard-shell .dashboard-alerts { order:3; }
+    .dashboard-shell .dashboard-quick-actions { order:4; }
     .dashboard-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
     .dashboard-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(15,23,42,0.22); }
     .student-search-panel { border: 1px solid var(--border); background: linear-gradient(135deg, rgba(14,165,233,0.12), rgba(15,23,42,0.35)); }
@@ -66,8 +70,39 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
 });
 </script>
 
+<?php $alerts = $alerts ?? ['rooms' => [], 'fees' => [], 'fee_alerts_active' => false]; ?>
+<div class="card dashboard-alerts" style="margin-bottom:1.5rem;border:1px solid rgba(245,158,11,0.35);box-shadow:0 10px 24px rgba(15,23,42,0.18);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <div>
+            <h3 class="card-title" style="margin:0;"><i class="fas fa-exclamation-triangle" style="color:#fbbf24;"></i> Attention Required</h3>
+            <div style="color:var(--text-muted);font-size:0.85rem;margin-top:0.25rem;">Room capacity and fee items needing attention.</div>
+        </div>
+        <span class="badge" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);">Live</span>
+    </div>
+    <?php if (empty($alerts['rooms']) && empty($alerts['fees'])): ?>
+        <div style="color:var(--text-muted);">No room capacity or monthly fee alerts right now.</div>
+    <?php else: ?>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0.75rem;">
+            <?php foreach ($alerts['rooms'] as $roomAlert): ?>
+                <a href="<?php echo $config['base_url']; ?>/rooms/available-beds?search=<?php echo urlencode($roomAlert['room_number']); ?>" class="card" style="margin:0;text-decoration:none;border-color:rgba(245,158,11,0.35);">
+                    <strong><i class="fas fa-door-open" style="color:#fbbf24;"></i> Room <?php echo htmlspecialchars($roomAlert['room_number']); ?> almost full</strong>
+                    <div style="color:var(--text-muted);margin-top:0.4rem;">Occupied <?php echo (int)$roomAlert['occupied_beds']; ?> of <?php echo (int)$roomAlert['total_beds']; ?> beds · <?php echo (int)$roomAlert['available_beds']; ?> bed remaining.</div>
+                    <div style="color:var(--primary);font-size:0.82rem;margin-top:0.7rem;">View room <i class="fas fa-arrow-right"></i></div>
+                </a>
+            <?php endforeach; ?>
+            <?php foreach ($alerts['fees'] as $feeAlert): ?>
+                <a href="<?php echo $config['base_url']; ?>/students/account/<?php echo (int)$feeAlert['student_id']; ?>" class="card" style="margin:0;text-decoration:none;border-color:rgba(239,68,68,0.35);">
+                    <strong><i class="fas fa-file-invoice-dollar" style="color:#f87171;"></i> Fee pending: <?php echo htmlspecialchars($feeAlert['student_name']); ?></strong>
+                    <div style="color:var(--text-muted);margin-top:0.4rem;"><?php echo htmlspecialchars($feeAlert['student_id_str']); ?> · <?php echo date('F Y', mktime(0, 0, 0, (int)$feeAlert['billing_month'], 1, (int)$feeAlert['billing_year'])); ?> · Outstanding Rs. <?php echo number_format((float)$feeAlert['pending_amount'], 2); ?></div>
+                    <div style="color:var(--primary);font-size:0.82rem;margin-top:0.7rem;">View student account <i class="fas fa-arrow-right"></i></div>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
+
 <!-- ===== ROW 1: KEY STATS ===== -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem;" class="dashboard-card">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem;" class="dashboard-card dashboard-summary">
     <a href="<?php echo $config['base_url']; ?>/students/active"
        style="display:block;text-decoration:none;color:inherit;border-radius:8px;transition:transform 0.15s,box-shadow 0.15s;"
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(59,130,246,0.35)';"
@@ -108,14 +143,14 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
                 $reservationSummary = (new \App\Services\ReservationService())->getReservationSummary();
                 $pendingReservationTotal = 0;
                 foreach ($reservationSummary as $item) {
-                    if (in_array($item['status'], ['PENDING', 'CONFIRMED', 'ARRIVED'], true)) {
+                    if (in_array($item['status'], ['PENDING', 'CONFIRMED'], true)) {
                         $pendingReservationTotal += (int)$item['total'];
                     }
                 }
                 echo (int)$pendingReservationTotal;
             ?>
         </div>
-        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">pending & confirmed reservations</div>
+        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">active reservations</div>
     </div>
     </a>
     <a href="<?php echo $config['base_url']; ?>/fees/pending"
@@ -146,39 +181,9 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
     </a>
 </div>
 
-<!-- ===== ROW 2: ALERTS & QUICK ACTIONS ===== -->
-<div class="row">
-    <div class="col-md-7">
-        <!-- Alerts -->
-        <div class="card" style="height: 100%; margin-bottom: 0;">
-            <h3 class="card-title" style="margin-bottom:1rem;"><i class="fas fa-exclamation-triangle" style="color:#fbbf24;"></i> Alerts & Operational Summary</h3>
-            <?php $alertSummary = \App\Services\NotificationService::newInstance()->getDashboardAlertSummary(); ?>
-            <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;">
-                    <span style="font-size:0.9rem;">Overdue Fees</span>
-                    <span style="font-weight:700;color:#fca5a5;font-size:1.1rem;"><?php echo (int)$alertSummary['overdue_fees']; ?></span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:6px;">
-                    <span style="font-size:0.9rem;">Due Soon</span>
-                    <span style="font-weight:700;color:#fcd34d;font-size:1.1rem;"><?php echo (int)$alertSummary['due_soon']; ?></span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:6px;">
-                    <span style="font-size:0.9rem;">Rooms Nearly Full</span>
-                    <span style="font-weight:700;color:#93c5fd;font-size:1.1rem;"><?php echo (int)$alertSummary['rooms_nearly_full']; ?></span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:6px;">
-                    <span style="font-size:0.9rem;">Without Room</span>
-                    <span style="font-weight:700;color:#6ee7b7;font-size:1.1rem;"><?php echo (int)$alertSummary['students_without_allocation']; ?></span>
-                </div>
-            </div>
-            <div style="margin-top: 1.25rem;">
-                <a href="<?php echo $config['base_url']; ?>/notifications" class="btn btn-sm" style="background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); width: 100%; justify-content: center;">
-                    <i class="fas fa-bell"></i> View All Notifications & Alerts
-                </a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-5">
+<!-- ===== ROW 2: QUICK ACTIONS ===== -->
+<div class="row dashboard-quick-actions">
+    <div class="col-md-12">
         <!-- Quick Links -->
         <div class="card" style="height: 100%; margin-bottom: 0;">
             <h3 class="card-title" style="margin-bottom:1rem;"><i class="fas fa-bolt" style="color:var(--primary);"></i> Quick Actions</h3>

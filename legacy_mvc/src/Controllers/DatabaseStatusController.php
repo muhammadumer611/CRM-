@@ -21,8 +21,7 @@ class DatabaseStatusController {
             'fee_payments',
             'student_history',
             'alumni',
-            'system_logs',
-            'notifications'
+            'system_logs'
         ];
 
         $status = [
