@@ -1,6 +1,7 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
 <?php
-$remaining = (float)$fee['amount'] - (float)$fee['paid_amount'];
+$remaining = max(0, (float)$fee['amount'] + (float)($fee['additional_charges'] ?? 0) - (float)($fee['discount'] ?? 0) - (float)$fee['paid_amount']);
+$netPayable = max(0, (float)$fee['amount'] + (float)($fee['additional_charges'] ?? 0) - (float)($fee['discount'] ?? 0));
 $isPaid = $fee['status'] === 'Paid';
 $statusColors = ['Paid' => '#10b981', 'Partial' => '#f59e0b', 'Pending' => '#ef4444', 'Overdue' => '#991b1b'];
 $statusColor = $statusColors[$fee['status']] ?? '#94a3b8';
@@ -41,8 +42,8 @@ $statusColor = $statusColors[$fee['status']] ?? '#94a3b8';
                 </div>
             </div>
             <div>
-                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Total Amount</div>
-                <div style="font-weight:700;font-size:1.1rem;margin-top:0.25rem;">Rs. <?php echo number_format($fee['amount'], 2); ?></div>
+                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Net Payable</div>
+                <div style="font-weight:700;font-size:1.1rem;margin-top:0.25rem;">Rs. <?php echo number_format($netPayable, 2); ?></div>
             </div>
             <div>
                 <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Total Paid</div>
@@ -57,7 +58,7 @@ $statusColor = $statusColors[$fee['status']] ?? '#94a3b8';
         </div>
 
         <!-- Progress bar -->
-        <?php $pct = $fee['amount'] > 0 ? min(100, round(($fee['paid_amount']/$fee['amount'])*100)) : 0; ?>
+        <?php $pct = $netPayable > 0 ? min(100, round(((float)$fee['paid_amount'] / $netPayable) * 100)) : 0; ?>
         <div style="background:#1e293b;border-radius:999px;height:8px;overflow:hidden;">
             <div style="width:<?php echo $pct; ?>%;height:100%;background:<?php echo $isPaid ? '#10b981' : '#f59e0b'; ?>;border-radius:999px;transition:width 0.5s;"></div>
         </div>
@@ -106,8 +107,8 @@ $statusColor = $statusColors[$fee['status']] ?? '#94a3b8';
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-label">Remarks (Optional)</label>
-                        <input type="text" name="remarks" class="form-control" placeholder="Any notes...">
+                        <label class="form-label">Note (Optional)</label>
+                        <textarea name="remarks" class="form-control" rows="2" placeholder="e.g. Paid in cash"></textarea>
                     </div>
                 </div>
             </div>
@@ -140,6 +141,7 @@ $statusColor = $statusColors[$fee['status']] ?? '#94a3b8';
                         <th>Method</th>
                         <th>Reference</th>
                         <th>Received By</th>
+                        <th>Note</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -151,6 +153,7 @@ $statusColor = $statusColors[$fee['status']] ?? '#94a3b8';
                         <td><?php echo htmlspecialchars($p['payment_method']); ?></td>
                         <td><?php echo htmlspecialchars($p['transaction_ref'] ?? '—'); ?></td>
                         <td><?php echo htmlspecialchars($p['received_by_name'] ?? '—'); ?></td>
+                        <td><?php echo htmlspecialchars(trim((string)($p['remarks'] ?? '')) ?: '—'); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>

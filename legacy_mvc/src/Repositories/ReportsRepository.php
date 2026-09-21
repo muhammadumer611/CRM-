@@ -26,12 +26,12 @@ class ReportsRepository {
         );
 
         $totalOutstanding = $this->fetchScalar(
-            "SELECT COALESCE(SUM((f.amount + f.additional_charges - f.discount) - f.paid_amount), 0) FROM fee_records f WHERE 1=1 {$invoiceWhere['sql']} AND (f.status IN ('Pending', 'Partial', 'Overdue') OR ((f.amount + f.additional_charges - f.discount) > f.paid_amount))",
+            "SELECT COALESCE(SUM(GREATEST(0, (f.amount + f.additional_charges - f.discount) - f.paid_amount)), 0) FROM fee_records f WHERE 1=1 {$invoiceWhere['sql']} AND (f.status IN ('Pending', 'Partial', 'Overdue') OR ((f.amount + f.additional_charges - f.discount) > f.paid_amount))",
             $invoiceWhere['params']
         );
 
         $totalOverdue = $this->fetchScalar(
-            "SELECT COALESCE(SUM((f.amount + f.additional_charges - f.discount) - f.paid_amount), 0) FROM fee_records f WHERE 1=1 {$invoiceWhere['sql']} AND (f.status = 'Overdue' OR (f.due_date < CURDATE() AND (f.amount + f.additional_charges - f.discount) > f.paid_amount))",
+            "SELECT COALESCE(SUM(GREATEST(0, (f.amount + f.additional_charges - f.discount) - f.paid_amount)), 0) FROM fee_records f WHERE 1=1 {$invoiceWhere['sql']} AND (f.status = 'Overdue' OR (f.due_date < CURDATE() AND (f.amount + f.additional_charges - f.discount) > f.paid_amount))",
             $invoiceWhere['params']
         );
 
@@ -252,7 +252,7 @@ class ReportsRepository {
                        f.billing_month, f.due_date,
                        (f.amount + f.additional_charges - f.discount) AS total_amount,
                        f.paid_amount,
-                       ((f.amount + f.additional_charges - f.discount) - f.paid_amount) AS remaining_amount,
+                       GREATEST(0, (f.amount + f.additional_charges - f.discount) - f.paid_amount) AS remaining_amount,
                        GREATEST(0, DATEDIFF(CURDATE(), f.due_date)) AS days_overdue,
                        f.status
                 FROM fee_records f

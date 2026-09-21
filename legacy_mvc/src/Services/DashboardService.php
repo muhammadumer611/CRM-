@@ -29,6 +29,7 @@ class DashboardService {
             'pending_fee_students' => 0,
             'overdue_fees' => 0,
             'total_outstanding' => 0,
+            'security_held' => 0,
             'this_month_collected' => 0
         ];
 
@@ -41,6 +42,9 @@ class DashboardService {
 
         $stmt = $this->db->query("SELECT COUNT(*) FROM students");
         $stats['total_students'] = (int)$stmt->fetchColumn();
+
+        $stmt = $this->db->query("SELECT COALESCE(SUM(sd.remaining_amount), 0) FROM security_deposits sd JOIN students s ON s.id = sd.student_id WHERE s.status = 'Active' AND sd.remaining_amount > 0 AND sd.status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED')");
+        $stats['security_held'] = (float)$stmt->fetchColumn();
 
         // Use the same allocation/reservation-aware calculation as the Available Beds page.
         $roomRepo = new \App\Repositories\RoomRepository();
@@ -91,7 +95,7 @@ class DashboardService {
         $stats['overdue_fees'] = (int)$stmt->fetchColumn();
 
         $stmt = $this->db->query("
-            SELECT COALESCE(SUM((fr.amount + fr.additional_charges - fr.discount) - fr.paid_amount), 0)
+            SELECT COALESCE(SUM(GREATEST(0, (fr.amount + fr.additional_charges - fr.discount) - fr.paid_amount)), 0)
             FROM fee_records fr
             JOIN students s ON s.id = fr.student_id
             WHERE s.status = 'Active'

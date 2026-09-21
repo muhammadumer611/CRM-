@@ -75,7 +75,7 @@
                     <th>Invoice #</th>
                     <th>Student</th>
                     <th>Period</th>
-                    <th>Total</th>
+                    <th>Net Payable</th>
                     <th>Paid</th>
                     <th>Remaining</th>
                     <th>Due Date</th>
@@ -89,7 +89,7 @@
                 <?php else: ?>
                     <?php foreach ($fees as $fee): ?>
                     <?php
-                        $remaining = (float)$fee['amount'] - (float)$fee['paid_amount'];
+                        $remaining = max(0, (float)$fee['amount'] + (float)($fee['additional_charges'] ?? 0) - (float)($fee['discount'] ?? 0) - (float)$fee['paid_amount']);
                         $statusColors = [
                             'Paid'    => '#10b981',
                             'Partial' => '#f59e0b',
@@ -105,7 +105,7 @@
                             <small class="badge" style="background:#334155;"><?php echo htmlspecialchars($fee['student_id_str']); ?></small>
                         </td>
                         <td><?php echo date('M Y', mktime(0,0,0,$fee['billing_month'],1,$fee['billing_year'])); ?></td>
-                        <td>Rs. <?php echo number_format($fee['amount'], 0); ?></td>
+                        <td>Rs. <?php echo number_format(max(0, (float)$fee['amount'] + (float)($fee['additional_charges'] ?? 0) - (float)($fee['discount'] ?? 0)), 0); ?></td>
                         <td style="color:var(--success);">Rs. <?php echo number_format($fee['paid_amount'], 0); ?></td>
                         <td style="color:<?php echo $remaining > 0 ? 'var(--danger)' : 'var(--text-muted)'; ?>;">
                             Rs. <?php echo number_format($remaining, 0); ?>

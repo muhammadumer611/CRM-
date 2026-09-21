@@ -24,6 +24,7 @@ class FeeService {
 
     public function getAllFees($filters, $page, $perPage) {
         $offset = ($page - 1) * $perPage;
+        $this->generateRecurringMonthlyBillingForActiveResidents();
         // Mark overdue invoices before displaying
         $this->feeRepo->markOverdueInvoices();
         return [
@@ -212,6 +213,15 @@ class FeeService {
         $year = isset($data['billing_year']) ? (int)$data['billing_year'] : (int)date('Y');
         $billingMonth = max(1, min(12, $month));
         $billingYear = max(2026, $year);
+        $joiningDate = trim((string)($allocation['joining_date'] ?? $student['joining_date'] ?? ''));
+        if ($joiningDate !== '') {
+            $joiningPeriod = date('Y-m-01', strtotime($joiningDate));
+            $billingPeriod = sprintf('%04d-%02d-01', $billingYear, $billingMonth);
+            $joiningDay = (int)date('j', strtotime($joiningDate));
+            if ($billingPeriod < $joiningPeriod || ($billingPeriod === $joiningPeriod && $joiningDay > 1)) {
+                return ['success' => false, 'error' => 'Billing period is before the student joining date.'];
+            }
+        }
         $dueDate = !empty($data['due_date']) ? $data['due_date'] : self::getDueDateForBillingPeriod($billingMonth, $billingYear, $data['due_day'] ?? 5);
 
         if ($this->feeRepo->findByStudentAndMonthYear($studentId, $billingMonth, $billingYear)) {
@@ -253,17 +263,7 @@ class FeeService {
     }
 
     public function generateMonthlyInvoicesForActiveResidents($data = []) {
-        $db = \App\Core\Database::getInstance()->getConnection();
-        $stmt = $db->query("SELECT s.id FROM students s WHERE s.status = 'Active' AND EXISTS (SELECT 1 FROM room_allocations ra WHERE ra.student_id = s.id AND ra.status = 'Active') ORDER BY s.id ASC");
-        $students = $stmt->fetchAll();
-
-        $results = [];
-        foreach ($students as $student) {
-            $result = $this->generateMonthlyInvoiceForStudent((int)$student['id'], $data);
-            $results[] = ['student_id' => (int)$student['id'], 'result' => $result];
-        }
-
-        return ['success' => true, 'generated' => $results];
+        return $this->generateRecurringMonthlyBillingForActiveResidents($data);
     }
 
     public static function calculateInvoiceTotal(array $invoice): float {
@@ -303,17 +303,17 @@ class FeeService {
                 continue;
             }
 
-            $invoiceAmount = isset($data['amount']) ? (float)$data['amount'] : (float)($student['monthly_fee'] ?? 0);
-            $discount = isset($data['discount']) ? (float)$data['discount'] : 0.0;
-            $additionalCharges = isset($data['additional_charges']) ? (float)$data['additional_charges'] : 0.0;
+            $invoiceAmount = (float)($student['monthly_fee'] ?? 0);
+            $discount = 0.0;
+            $additionalCharges = 0.0;
             $dueDate = !empty($data['due_date']) ? $data['due_date'] : self::getBillingDueDate($month, $year, $data['due_day'] ?? 5);
 
             $result = $this->generateMonthlyInvoiceForStudent($studentId, [
                 'billing_month' => $month,
                 'billing_year' => $year,
                 'amount' => $invoiceAmount,
-                'discount' => $discount,
-                'additional_charges' => $additionalCharges,
+                'discount' => 0,
+                'additional_charges' => 0,
                 'due_date' => $dueDate,
                 'remarks' => trim((string)($data['remarks'] ?? 'Recurring monthly hostel fee')),
             ]);

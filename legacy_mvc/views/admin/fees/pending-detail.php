@@ -220,6 +220,7 @@
                         <th>Amount Received</th>
                         <th>Payment Method</th>
                         <th>Received By</th>
+                        <th>Note</th>
                         <th>Status</th>
                         <th>Action</th>
                     </tr>
@@ -255,6 +256,7 @@
                             </td>
                             <td><?php echo htmlspecialchars($p['payment_method'] ?? '—'); ?></td>
                             <td><?php echo htmlspecialchars($p['received_by_admin_username'] ?? 'Admin'); ?></td>
+                            <td><?php echo htmlspecialchars(trim((string)($p['remarks'] ?? '')) ?: '—'); ?></td>
                             <td>
                                 <span class="badge badge-success"><?php echo htmlspecialchars($p['status'] ?? 'Success'); ?></span>
                             </td>

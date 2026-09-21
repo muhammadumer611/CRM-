@@ -837,9 +837,10 @@ class FeeRepository {
         $invoice = $stmt->fetch();
 
         if (!$invoice) return ['success' => false, 'error' => 'Invoice not found.'];
-        if ($invoice['status'] === 'Paid') return ['success' => false, 'error' => 'Invoice is already fully paid.'];
 
-        $remaining = (float)$invoice['amount'] - (float)$invoice['paid_amount'];
+        $invoiceTotal = max(0.0, (float)$invoice['amount'] + (float)$invoice['additional_charges'] - (float)$invoice['discount']);
+        $remaining = max(0.0, $invoiceTotal - (float)$invoice['paid_amount']);
+        if ($remaining <= 0.01) return ['success' => false, 'error' => 'Invoice is already fully paid.'];
         if ($amount <= 0) return ['success' => false, 'error' => 'Payment amount must be greater than zero.'];
         if ($amount > $remaining + 0.01) return ['success' => false, 'error' => "Payment amount (Rs. {$amount}) exceeds remaining balance (Rs. " . number_format($remaining, 2) . ').'];
 
@@ -855,7 +856,15 @@ class FeeRepository {
 
         // Update invoice totals
         $newTotalPaid = (float)$invoice['paid_amount'] + $amount;
-        $newStatus = ($newTotalPaid >= (float)$invoice['amount']) ? 'Paid' : 'Partial';
+        if ($newTotalPaid >= $invoiceTotal && $invoiceTotal > 0) {
+            $newStatus = 'Paid';
+        } elseif ($invoice['due_date'] && date('Y-m-d') > $invoice['due_date']) {
+            $newStatus = 'Overdue';
+        } elseif ($newTotalPaid > 0) {
+            $newStatus = 'Partial';
+        } else {
+            $newStatus = 'Pending';
+        }
 
         $stmtU = $db->prepare("UPDATE fee_records SET paid_amount = ?, status = ?, payment_date = ?, payment_method = ? WHERE id = ?");
         $stmtU->execute([$newTotalPaid, $newStatus, $paymentDate, $paymentMethod, $invoiceId]);
@@ -1009,11 +1018,14 @@ class FeeRepository {
      */
     public function markOverdueInvoices() {
         $stmt = $this->db->prepare("
-            UPDATE fee_records 
-            SET status = 'Overdue' 
-            WHERE status IN ('Pending','Partial') 
-              AND due_date < CURDATE()
-              AND charge_type = 'MONTHLY_FEE'
+            UPDATE fee_records
+            SET status = CASE
+                WHEN (amount + additional_charges - discount) <= paid_amount THEN 'Paid'
+                WHEN due_date < CURDATE() THEN 'Overdue'
+                WHEN paid_amount > 0 THEN 'Partial'
+                ELSE 'Pending'
+            END
+            WHERE charge_type = 'MONTHLY_FEE'
         ");
         $stmt->execute();
         return $stmt->rowCount();
@@ -1022,10 +1034,10 @@ class FeeRepository {
     public function getFinancialSummary() {
         $stmt = $this->db->query("
             SELECT 
-                COALESCE(SUM(amount), 0) AS total_billed,
+                COALESCE(SUM(amount + additional_charges - discount), 0) AS total_billed,
                 COALESCE(SUM(paid_amount), 0) AS total_collected,
-                COALESCE(SUM(CASE WHEN status IN ('Pending','Partial','Overdue') THEN amount - paid_amount ELSE 0 END), 0) AS total_outstanding,
-                COALESCE(SUM(CASE WHEN status = 'Overdue' THEN amount - paid_amount ELSE 0 END), 0) AS total_overdue
+                COALESCE(SUM(CASE WHEN status IN ('Pending','Partial','Overdue') THEN GREATEST(0, amount + additional_charges - discount - paid_amount) ELSE 0 END), 0) AS total_outstanding,
+                COALESCE(SUM(CASE WHEN status = 'Overdue' THEN GREATEST(0, amount + additional_charges - discount - paid_amount) ELSE 0 END), 0) AS total_overdue
             FROM fee_records 
             WHERE charge_type = 'MONTHLY_FEE'
         ");
@@ -1072,7 +1084,7 @@ class FeeRepository {
             return false;
         }
 
-        $invoiceStmt = $db->prepare("UPDATE fee_records SET additional_charges = additional_charges + ?, status = CASE WHEN (amount + additional_charges - discount) <= paid_amount THEN 'Paid' ELSE CASE WHEN paid_amount > 0 THEN 'Partial' ELSE 'Overdue' END END WHERE id = ?");
+        $invoiceStmt = $db->prepare("UPDATE fee_records SET additional_charges = additional_charges + ?, status = CASE WHEN (amount + additional_charges - discount) <= paid_amount THEN 'Paid' WHEN due_date < CURDATE() THEN 'Overdue' WHEN paid_amount > 0 THEN 'Partial' ELSE 'Pending' END WHERE id = ?");
         $invoiceStmt->execute([(float)$amount, (int)$invoiceId]);
         return (int)$db->lastInsertId();
     }
@@ -1154,7 +1166,7 @@ class FeeRepository {
         ]);
 
         if ($ok) {
-            $db->prepare("UPDATE fee_records SET discount = discount + ?, status = CASE WHEN (amount + additional_charges - discount) <= paid_amount THEN 'Paid' ELSE CASE WHEN paid_amount > 0 THEN 'Partial' ELSE 'Pending' END END WHERE id = ?")->execute([$discountValue, $invoiceId]);
+            $db->prepare("UPDATE fee_records SET discount = discount + ?, status = CASE WHEN (amount + additional_charges - discount) <= paid_amount THEN 'Paid' WHEN due_date < CURDATE() THEN 'Overdue' WHEN paid_amount > 0 THEN 'Partial' ELSE 'Pending' END WHERE id = ?")->execute([$discountValue, $invoiceId]);
             return (int)$db->lastInsertId();
         }
 

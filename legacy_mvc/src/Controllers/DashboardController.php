@@ -9,6 +9,11 @@ class DashboardController {
     public function index() {
         Auth::check();
 
+        try {
+            (new \App\Services\FeeService())->generateRecurringMonthlyBillingForActiveResidents();
+        } catch (\Throwable $e) {
+            error_log('Monthly billing generation failed: ' . $e->getMessage());
+        }
         $dashboardService = new DashboardService();
         $stats = $dashboardService->getStats();
         $alerts = $dashboardService->getDashboardAlerts();

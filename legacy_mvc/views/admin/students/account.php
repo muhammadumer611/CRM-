@@ -132,7 +132,7 @@
                         <th>Status</th>
                     <th>Method</th>
                     <th>Reference</th>
-                    <th>Remarks</th>
+                    <th>Note</th>
                 </tr>
             </thead>
             <tbody>
@@ -146,7 +146,7 @@
                         <td><?php echo htmlspecialchars($payment['fee_status'] ?? 'Completed'); ?></td>
                         <td><?php echo htmlspecialchars($payment['payment_method'] ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($payment['transaction_ref'] ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($payment['remarks'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars(trim((string)($payment['remarks'] ?? '')) ?: '—'); ?></td>
                     </tr>
                 <?php endforeach; endif; ?>
             </tbody>

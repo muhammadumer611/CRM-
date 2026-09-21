@@ -220,6 +220,37 @@
                 </select>
             </div>
 
+            <?php $currentSecurityBalance = (float)($securityDeposit['remaining_amount'] ?? 0); ?>
+            <div class="checkout-security-grid">
+                <div class="form-group">
+                    <label class="form-label">Security Held</label>
+                    <input type="text" class="form-control" value="PKR <?php echo number_format($currentSecurityBalance, 2); ?>" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Security Cut / Deduction</label>
+                    <input type="number" name="security_deduction" id="securityDeduction" class="form-control" min="0" max="<?php echo htmlspecialchars((string)$currentSecurityBalance, ENT_QUOTES, 'UTF-8'); ?>" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Final Security Returned</label>
+                    <input type="text" id="securityReturned" class="form-control" value="PKR <?php echo number_format($currentSecurityBalance, 2); ?>" readonly>
+                </div>
+                <div class="form-group checkout-security-full">
+                    <label class="form-label">Reason / Remarks for Security Cut</label>
+                    <textarea name="security_refund_remarks" id="securityRefundRemarks" class="form-control" rows="2" placeholder="Required when a deduction is entered"></textarea>
+                </div>
+            </div>
+
+            <div class="checkout-security-grid">
+                <div class="form-group">
+                    <label class="form-label">Processed By *</label>
+                    <input type="text" name="processed_by_name" class="form-control" value="<?php echo htmlspecialchars((string)(\App\Core\Auth::user() ?: 'Admin'), ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Checked Out By *</label>
+                    <input type="text" name="checked_out_by_name" class="form-control" value="<?php echo htmlspecialchars((string)(\App\Core\Auth::user() ?: 'Admin'), ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
+            </div>
+
             <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
                 <button type="button" class="btn" style="background:#334155;color:white;" onclick="closeCheckoutModal()">Cancel</button>
                 <button type="submit" class="btn btn-danger"><i class="fas fa-check"></i> Confirm Checkout</button>
@@ -236,6 +267,17 @@ function openCheckoutModal() {
 function closeCheckoutModal() {
     const m = document.getElementById('checkoutModal');
     m.style.display = 'none';
+}
+const securityDeduction = document.getElementById('securityDeduction');
+const securityReturned = document.getElementById('securityReturned');
+const securityRefundRemarks = document.getElementById('securityRefundRemarks');
+if (securityDeduction) {
+    securityDeduction.addEventListener('input', () => {
+        const held = Number(securityDeduction.max || 0);
+        const deduction = Math.max(0, Number(securityDeduction.value || 0));
+        securityReturned.value = `PKR ${Math.max(0, held - deduction).toFixed(2)}`;
+        securityRefundRemarks.required = deduction > 0;
+    });
 }
 </script>
 <?php endif; ?>

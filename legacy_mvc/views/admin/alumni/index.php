@@ -1,23 +1,48 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
-<div class="card">
+<style>
+    .alumni-page .card-body { min-width: 0; }
+    .alumni-filter-form { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem; }
+    .alumni-filter-form > div { min-width: 0; }
+    .alumni-filter-form .search-field { flex: 1 1 280px; }
+    .alumni-filter-form .filter-action { flex: 0 1 140px; }
+    .alumni-table-wrap { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+    .alumni-table-wrap table { min-width: 900px; }
+    .alumni-table-wrap td { vertical-align: middle; }
+    .alumni-table-wrap td:last-child { white-space: nowrap; }
+    .alumni-pagination { gap: 0.75rem; flex-wrap: wrap; }
+    .alumni-pagination > div:last-child { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    #alumniDetailsModal { padding: 0.75rem; }
+    #alumniDetailsModal .modal-dialog { width: min(100%, 860px); max-height: 92vh; margin: auto; overflow: hidden; }
+    #alumniDetailsModal .modal-content { max-height: 92vh; display: flex; flex-direction: column; }
+    #alumniDetailsModal .modal-body { min-height: 0; overflow-y: auto; }
+    @media (max-width: 600px) {
+        .alumni-filter-form .filter-action { flex: 1 1 130px; }
+        .alumni-filter-form .btn { width: 100%; justify-content: center; }
+        .alumni-pagination { align-items: stretch !important; flex-direction: column; }
+        .alumni-pagination > div:last-child { justify-content: space-between; }
+        #alumniDetailsModal .modal-header { gap: 0.75rem; align-items: flex-start; }
+        #alumniDetailsModal .modal-title { line-height: 1.35; }
+    }
+</style>
+<div class="card alumni-page">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title m-0">Alumni Records</h3>
     </div>
     
     <div class="card-body">
-        <form id="alumniFilterForm" class="row g-3 mb-4">
-            <div class="col-md-4">
+        <form id="alumniFilterForm" class="alumni-filter-form mb-4">
+            <div class="search-field">
                 <input type="text" class="form-control" id="searchKeyword" placeholder="Search by Name, CNIC, or ID...">
             </div>
-            <div class="col-md-2">
+            <div class="filter-action">
                 <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Search</button>
             </div>
-            <div class="col-md-2">
+            <div class="filter-action">
                 <button type="button" class="btn btn-secondary w-100" id="resetFilters"><i class="fas fa-undo"></i> Reset</button>
             </div>
         </form>
 
-        <div class="table-responsive">
+        <div class="table-responsive alumni-table-wrap">
             <table class="table table-striped table-hover align-middle">
                 <thead>
                     <tr>
@@ -36,7 +61,7 @@
             </table>
         </div>
         
-        <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="d-flex justify-content-between align-items-center mt-3 alumni-pagination">
             <div id="paginationInfo">Showing 0 records</div>
             <div>
                 <button class="btn btn-sm btn-outline-primary me-2" id="prevPage" disabled>Previous</button>

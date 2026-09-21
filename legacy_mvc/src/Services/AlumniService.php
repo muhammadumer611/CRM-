@@ -28,6 +28,13 @@ class AlumniService {
     public function convertToAlumni($studentId, $leavingDate, $leavingReason, $remarks = '', $securityDeduction = 0.0, $securityRefundRemarks = '', $checkedOutByName = '', $processedByName = '') {
         $checkedOutByName = trim((string)$checkedOutByName);
         $processedByName = trim((string)$processedByName);
+        $securityDeduction = (float)$securityDeduction;
+        if ($securityDeduction < 0) {
+            return ['success' => false, 'error' => 'Security deduction cannot be negative.'];
+        }
+        if ($securityDeduction > 0 && trim((string)$securityRefundRemarks) === '') {
+            return ['success' => false, 'error' => 'Security deduction remarks are required when a cut is entered.'];
+        }
         if ($checkedOutByName === '' || $processedByName === '') {
             return ['success' => false, 'error' => 'Checked Out By and Processed By are required.'];
         }
@@ -96,14 +103,17 @@ class AlumniService {
             $stmtUpdateRoom = $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?");
             $stmtUpdateRoom->execute([$activeCountAfterRelease, $newStatus, $prevRoomId]);
 
-            $stmtSD = $this->db->prepare("SELECT * FROM security_deposits WHERE student_id = ? AND status IN ('HELD', 'PARTIALLY_REFUNDED') FOR UPDATE");
+            $stmtSD = $this->db->prepare("SELECT * FROM security_deposits WHERE student_id = ? AND remaining_amount > 0 AND status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED') ORDER BY id DESC LIMIT 1 FOR UPDATE");
             $stmtSD->execute([$studentId]);
             $securityDeposit = $stmtSD->fetch();
 
             $depositSettlement = null;
             if ($securityDeposit) {
                 $rem = (float)$securityDeposit['remaining_amount'];
-                $deduction = min($rem, max(0.0, (float)$securityDeduction));
+                if ($securityDeduction > $rem) {
+                    throw new Exception('Security deduction cannot exceed the current security balance.');
+                }
+                $deduction = $securityDeduction;
                 $refund = $rem - $deduction;
                 $adminId = Session::get('admin_id');
                 $processedStaffName = trim((string)($processedByName ?: $checkedOutByName));
@@ -129,6 +139,8 @@ class AlumniService {
                     'status' => $newDepositStatus,
                     'remarks' => $securityRefundRemarks
                 ];
+            } elseif ($securityDeduction > 0) {
+                throw new Exception('There is no current security balance available for deduction.');
             }
 
             $guardianInfo = json_encode([

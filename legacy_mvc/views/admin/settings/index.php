@@ -78,4 +78,23 @@
             <button type="submit" class="btn btn-primary" style="margin-top:1rem;"><i class="fas fa-save"></i> Save Billing Settings</button>
         </form>
     </div>
+
+    <div class="card" style="margin-top:1.5rem;">
+        <h4 style="color:var(--primary);margin-bottom:.4rem;"><i class="fas fa-palette"></i> Appearance / Theme</h4>
+        <p style="color:var(--text-muted);margin-top:0;">Choose how the admin interface should appear on this browser.</p>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;">
+            <?php foreach (['light' => 'Light', 'dark' => 'Dark', 'system' => 'System'] as $value => $label): ?>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;color:var(--text);">
+                    <input type="radio" name="theme_mode" value="<?php echo $value; ?>" onchange="setHmsTheme(this.value)">
+                    <span><?php echo $label; ?></span>
+                </label>
+            <?php endforeach; ?>
+        </div>
+    </div>
 </div>
+<script>
+    (function () {
+        var mode = localStorage.getItem('hms-theme') || 'system';
+        document.querySelectorAll('input[name="theme_mode"]').forEach(function (input) { input.checked = input.value === mode; });
+    }());
+</script>

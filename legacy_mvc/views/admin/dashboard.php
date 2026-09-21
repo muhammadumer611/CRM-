@@ -15,6 +15,21 @@
     .student-search-panel form { flex-wrap: wrap; }
     .student-search-panel form input { flex: 1 1 240px; }
     .student-search-panel .search-submit.is-loading { opacity: 0.75; cursor: wait; }
+    .dashboard-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .dashboard-summary > a { display:flex !important; min-width:0; }
+    .dashboard-summary .dashboard-stat-card { width:100%; min-height:172px; height:100% !important; margin:0 !important; padding:1.2rem !important; border:1px solid rgba(148,163,184,.28) !important; border-radius:12px !important; background:var(--card) !important; color:var(--text) !important; box-shadow:0 8px 20px rgba(15,23,42,.08) !important; display:flex; flex-direction:column; justify-content:space-between; gap:1rem; }
+    .dashboard-summary .dashboard-stat-card:hover { border-color:var(--primary) !important; box-shadow:0 12px 26px rgba(15,23,42,.14) !important; }
+    .dashboard-stat-heading { display:flex; align-items:center; justify-content:space-between; gap:.75rem; color:var(--text-muted); font-size:.78rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .dashboard-stat-icon { width:2.25rem; height:2.25rem; display:inline-flex; align-items:center; justify-content:center; flex:0 0 2.25rem; border-radius:9px; color:var(--primary); background:rgba(2,132,199,.12); font-size:1rem; }
+    .dashboard-stat-value { color:var(--text); font-size:clamp(1.55rem,2.4vw,2rem); line-height:1.1; font-weight:800; overflow-wrap:anywhere; }
+    .dashboard-stat-support { color:var(--text-muted); font-size:.78rem; line-height:1.4; }
+    .dashboard-summary .dashboard-stat-card:nth-child(2) .dashboard-stat-icon { color:var(--success); background:rgba(16,185,129,.14); }
+    .dashboard-summary .dashboard-stat-card:nth-child(3) .dashboard-stat-icon { color:#6366f1; background:rgba(99,102,241,.14); }
+    .dashboard-summary .dashboard-stat-card:nth-child(4) .dashboard-stat-icon { color:#d97706; background:rgba(217,119,6,.14); }
+    .dashboard-summary .dashboard-stat-card:nth-child(5) .dashboard-stat-icon { color:var(--success); background:rgba(16,185,129,.14); }
+    .dashboard-summary .dashboard-stat-card:nth-child(6) .dashboard-stat-icon { color:#7c3aed; background:rgba(124,58,237,.14); }
+    @media (max-width:1100px) { .dashboard-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:600px) { .dashboard-summary { grid-template-columns:1fr; } .dashboard-summary .dashboard-stat-card { min-height:148px; } }
     @keyframes dashboard-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes result-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     @media (prefers-reduced-motion: reduce) {
@@ -108,12 +123,11 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(59,130,246,0.35)';"
        onmouseout="this.style.transform='';this.style.boxShadow='';"
        title="Click to view all active students">
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;cursor:pointer;height:100%;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
-            Active Students <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+    <div class="card dashboard-stat-card" style="margin:0;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;cursor:pointer;height:100%;">
+        <div class="dashboard-stat-heading"><span class="dashboard-stat-icon"><i class="fas fa-user-graduate"></i></span><span>Active Students</span><i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
         </div>
-        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo $stats['active_students']; ?></div>
-        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;"><?php echo $stats['total_students']; ?> total (<?php echo $stats['alumni_count']; ?> alumni)</div>
+        <div class="dashboard-stat-value"><?php echo $stats['active_students']; ?></div>
+        <div class="dashboard-stat-support"><?php echo $stats['total_students']; ?> total (<?php echo $stats['alumni_count']; ?> alumni)</div>
     </div>
     </a>
     <a href="<?php echo $config['base_url']; ?>/rooms/available-beds"
@@ -121,12 +135,11 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(16,185,129,0.35)';"
        onmouseout="this.style.transform='';this.style.boxShadow='';"
        title="Click to view all available beds">
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;cursor:pointer;height:100%;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
-            Available Beds <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+    <div class="card dashboard-stat-card" style="margin:0;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;cursor:pointer;height:100%;">
+        <div class="dashboard-stat-heading"><span class="dashboard-stat-icon"><i class="fas fa-bed"></i></span><span>Available Beds</span><i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
         </div>
-        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo $stats['available_beds']; ?></div>
-        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;"><?php echo $stats['occupied_beds']; ?> occupied of <?php echo $stats['total_beds']; ?> total</div>
+        <div class="dashboard-stat-value"><?php echo $stats['available_beds']; ?></div>
+        <div class="dashboard-stat-support"><?php echo $stats['occupied_beds']; ?> occupied of <?php echo $stats['total_beds']; ?> total</div>
     </div>
     </a>
     <a href="<?php echo $config['base_url']; ?>/reservations"
@@ -177,6 +190,19 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
         </div>
         <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo (int)($stats['paid_fees'] ?? 0); ?></div>
         <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">Fully paid students</div>
+    </div>
+    </a>
+    <a href="<?php echo $config['base_url']; ?>/fees/security-deposits"
+       style="display:block;text-decoration:none;color:inherit;border-radius:8px;transition:transform 0.15s,box-shadow 0.15s;"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(168,85,247,0.35)';"
+       onmouseout="this.style.transform='';this.style.boxShadow='';"
+       title="Click to view security deposits">
+    <div class="card" style="margin:0;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;border:none;cursor:pointer;height:100%;">
+        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
+            Security Held <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;">PKR <?php echo number_format((float)($stats['security_held'] ?? 0), 0); ?></div>
+        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">Current active resident balance</div>
     </div>
     </a>
 </div>

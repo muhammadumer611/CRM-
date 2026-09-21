@@ -254,10 +254,10 @@ class StudentController {
         $leavingDate = !empty($_POST['leaving_date']) ? $_POST['leaving_date'] : date('Y-m-d');
         $leavingReason = !empty($_POST['leaving_reason']) ? trim($_POST['leaving_reason']) : 'Course Completed';
         $remarks = '';
-        $securityDeduction = 0.0;
-        $securityRefundRemarks = '';
-        $checkedOutByName = trim((string)(Auth::user() ?: 'Admin'));
-        $processedByName = $checkedOutByName;
+        $securityDeduction = isset($_POST['security_deduction']) && $_POST['security_deduction'] !== '' ? (float)$_POST['security_deduction'] : 0.0;
+        $securityRefundRemarks = trim((string)($_POST['security_refund_remarks'] ?? ''));
+        $checkedOutByName = trim((string)($_POST['checked_out_by_name'] ?? (Auth::user() ?: 'Admin')));
+        $processedByName = trim((string)($_POST['processed_by_name'] ?? $checkedOutByName));
 
         $alumniService = new \App\Services\AlumniService();
         $result = $alumniService->convertToAlumni(

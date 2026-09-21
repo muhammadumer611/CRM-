@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($title ?? 'Admin'); ?> - <?php echo htmlspecialchars($config['app_name']); ?></title>
+    <script>(function(){var m=localStorage.getItem('hms-theme')||'system';var t=m==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):m;document.documentElement.dataset.theme=t;document.documentElement.dataset.themeMode=m;}());</script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary: #38bdf8; --primary-dark: #0284c7; --bg: #0f172a; --sidebar: #1e293b; --card: #1e293b; --text: #f8fafc; --text-muted: #94a3b8; --border: #334155; --danger: #ef4444; --success: #10b981; }
+        :root { --primary: #38bdf8; --primary-dark: #0284c7; --bg: #0f172a; --sidebar: #1e293b; --card: #1e293b; --text: #f8fafc; --text-muted: #94a3b8; --border: #334155; --danger: #ef4444; --success: #10b981; --input-bg: #0f172a; --table-hover: rgba(255,255,255,0.03); }
+        html[data-theme="light"] { --primary: #0284c7; --primary-dark: #0369a1; --bg: #f1f5f9; --sidebar: #ffffff; --card: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #cbd5e1; --danger: #dc2626; --success: #059669; --input-bg: #ffffff; --table-hover: rgba(15,23,42,0.04); }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html { font-size: 16px; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow-x: hidden; }
@@ -88,7 +90,7 @@
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th { padding: 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.875rem; white-space: nowrap; }
         td { padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; white-space: normal; }
-        tr:hover td { background-color: rgba(255,255,255,0.02); }
+        tr:hover td { background-color: var(--table-hover); }
         .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease; display: inline-flex; align-items: center; gap: 0.5rem; }
         .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2,132,199,.18); }
         .btn:active { transform: translateY(0); box-shadow: none; }
@@ -99,7 +101,7 @@
         .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
         .form-group { margin-bottom: 1.25rem; }
         .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted); }
-        .form-control { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background-color: var(--bg); color: var(--text); font-family: inherit; }
+        .form-control { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background-color: var(--input-bg); color: var(--text); font-family: inherit; }
         .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(56,189,248,.12); }
         select.form-control { appearance: none; }
         textarea.form-control { resize: vertical; min-height: 100px; }
@@ -272,6 +274,18 @@ document.querySelectorAll('.sidebar .nav-item').forEach(function(el) {
     el.addEventListener('click', function() {
         if (window.innerWidth <= 900 && document.body.classList.contains('sidebar-open')) toggleSidebar();
     });
+});
+</script>
+<script>
+function setHmsTheme(mode) {
+    var resolved = mode === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
+    localStorage.setItem('hms-theme', mode);
+    document.documentElement.dataset.themeMode = mode;
+    document.documentElement.dataset.theme = resolved;
+    document.querySelectorAll('input[name="theme_mode"]').forEach(function (input) { input.checked = input.value === mode; });
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', function () {
+    if ((localStorage.getItem('hms-theme') || 'system') === 'system') setHmsTheme('system');
 });
 </script>
 <script>
