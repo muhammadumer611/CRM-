@@ -15,7 +15,7 @@
     .student-search-panel form { flex-wrap: wrap; }
     .student-search-panel form input { flex: 1 1 240px; }
     .student-search-panel .search-submit.is-loading { opacity: 0.75; cursor: wait; }
-    .dashboard-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .dashboard-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) !important; grid-auto-rows:172px; gap:1rem; margin-bottom:1.5rem; }
     .dashboard-summary > a { display:flex !important; min-width:0; }
     .dashboard-summary .dashboard-stat-card { width:100%; min-height:172px; height:100% !important; margin:0 !important; padding:1.2rem !important; border:1px solid rgba(148,163,184,.28) !important; border-radius:12px !important; background:var(--card) !important; color:var(--text) !important; box-shadow:0 8px 20px rgba(15,23,42,.08) !important; display:flex; flex-direction:column; justify-content:space-between; gap:1rem; }
     .dashboard-summary .dashboard-stat-card:hover { border-color:var(--primary) !important; box-shadow:0 12px 26px rgba(15,23,42,.14) !important; }
@@ -28,8 +28,8 @@
     .dashboard-summary .dashboard-stat-card:nth-child(4) .dashboard-stat-icon { color:#d97706; background:rgba(217,119,6,.14); }
     .dashboard-summary .dashboard-stat-card:nth-child(5) .dashboard-stat-icon { color:var(--success); background:rgba(16,185,129,.14); }
     .dashboard-summary .dashboard-stat-card:nth-child(6) .dashboard-stat-icon { color:#7c3aed; background:rgba(124,58,237,.14); }
-    @media (max-width:1100px) { .dashboard-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-    @media (max-width:600px) { .dashboard-summary { grid-template-columns:1fr; } .dashboard-summary .dashboard-stat-card { min-height:148px; } }
+    @media (max-width:1100px) { .dashboard-summary { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
+    @media (max-width:600px) { .dashboard-summary { grid-template-columns:1fr !important; grid-auto-rows:148px; } .dashboard-summary .dashboard-stat-card { min-height:0; } }
     @keyframes dashboard-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes result-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     @media (prefers-reduced-motion: reduce) {
@@ -147,11 +147,10 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(99,102,241,0.35)';"
        onmouseout="this.style.transform='';this.style.boxShadow='';"
        title="Click to view active reservations">
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;cursor:pointer;height:100%;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
-            Reservations <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+    <div class="card dashboard-stat-card" style="margin:0;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;cursor:pointer;height:100%;">
+        <div class="dashboard-stat-heading"><span class="dashboard-stat-icon"><i class="fas fa-calendar-check"></i></span><span>Reservations</span><i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
         </div>
-        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;">
+        <div class="dashboard-stat-value">
             <?php
                 $reservationSummary = (new \App\Services\ReservationService())->getReservationSummary();
                 $pendingReservationTotal = 0;
@@ -163,7 +162,7 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
                 echo (int)$pendingReservationTotal;
             ?>
         </div>
-        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">active reservations</div>
+        <div class="dashboard-stat-support">active reservations</div>
     </div>
     </a>
     <a href="<?php echo $config['base_url']; ?>/fees/pending"
@@ -171,12 +170,11 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(245,158,11,0.35)';"
        onmouseout="this.style.transform='';this.style.boxShadow='';"
        title="Click to view all pending fees">
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;cursor:pointer;height:100%;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
-            Pending Fee <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+    <div class="card dashboard-stat-card" style="margin:0;background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;cursor:pointer;height:100%;">
+        <div class="dashboard-stat-heading"><span class="dashboard-stat-icon"><i class="fas fa-file-invoice-dollar"></i></span><span>Pending Fee</span><i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
         </div>
-        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo $stats['pending_fees']; ?></div>
-        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;"><?php echo $stats['overdue_fees']; ?> overdue</div>
+        <div class="dashboard-stat-value"><?php echo $stats['pending_fees']; ?></div>
+        <div class="dashboard-stat-support"><?php echo $stats['overdue_fees']; ?> overdue</div>
     </div>
     </a>
     <a href="<?php echo $config['base_url']; ?>/fees/paid"
@@ -184,12 +182,11 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(16,185,129,0.35)';"
        onmouseout="this.style.transform='';this.style.boxShadow='';"
        title="Click to view all paid fees">
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#059669,#047857);color:white;border:none;cursor:pointer;height:100%;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
-            Paid Fee <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+    <div class="card dashboard-stat-card" style="margin:0;background:linear-gradient(135deg,#059669,#047857);color:white;border:none;cursor:pointer;height:100%;">
+        <div class="dashboard-stat-heading"><span class="dashboard-stat-icon"><i class="fas fa-circle-check"></i></span><span>Paid Fee</span><i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
         </div>
-        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;"><?php echo (int)($stats['paid_fees'] ?? 0); ?></div>
-        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">Fully paid students</div>
+        <div class="dashboard-stat-value"><?php echo (int)($stats['paid_fees'] ?? 0); ?></div>
+        <div class="dashboard-stat-support">Fully paid students</div>
     </div>
     </a>
     <a href="<?php echo $config['base_url']; ?>/fees/security-deposits"
@@ -197,12 +194,11 @@ document.getElementById('studentSearchForm')?.addEventListener('submit', functio
        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(168,85,247,0.35)';"
        onmouseout="this.style.transform='';this.style.boxShadow='';"
        title="Click to view security deposits">
-    <div class="card" style="margin:0;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;border:none;cursor:pointer;height:100%;">
-        <div style="font-size:0.8rem;opacity:0.85;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.4rem;">
-            Security Held <i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
+    <div class="card dashboard-stat-card" style="margin:0;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;border:none;cursor:pointer;height:100%;">
+        <div class="dashboard-stat-heading"><span class="dashboard-stat-icon"><i class="fas fa-shield-halved"></i></span><span>Security Held</span><i class="fas fa-arrow-right" style="font-size:0.7rem;opacity:0.8;"></i>
         </div>
-        <div style="font-size:2rem;font-weight:700;margin-top:0.25rem;">PKR <?php echo number_format((float)($stats['security_held'] ?? 0), 0); ?></div>
-        <div style="font-size:0.8rem;opacity:0.7;margin-top:0.25rem;">Current active resident balance</div>
+        <div class="dashboard-stat-value">PKR <?php echo number_format((float)($stats['security_held'] ?? 0), 0); ?></div>
+        <div class="dashboard-stat-support">Current active resident balance</div>
     </div>
     </a>
 </div>

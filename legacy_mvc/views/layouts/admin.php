@@ -37,7 +37,7 @@
 
         .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.7); z-index: 2000; padding: 1.5rem; }
         .modal.show { display: flex; }
-        .modal-dialog { width: min(100%, 960px); max-height: 90vh; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); background: #0f172a; box-shadow: 0 20px 40px rgba(2, 6, 23, 0.45); }
+        .modal-dialog { width: min(100%, 960px); max-height: 90vh; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); background: var(--card); box-shadow: 0 20px 40px rgba(2, 6, 23, 0.45); }
         .checkout-dialog { max-height: min(90vh, 900px); display: flex; flex-direction: column; min-height: 0; }
         .checkout-dialog > div:first-child { flex: 0 0 auto; }
         .checkout-form { min-height: 0; overflow-y: auto; padding: 0 0.25rem 0.25rem 0; overscroll-behavior: contain; }
@@ -49,6 +49,7 @@
 
         .alumni-details { width: 100%; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; }
         .alumni-section { width: 100%; box-sizing: border-box; background: rgba(15, 27, 45, 0.66); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 16px; padding: 20px; }
+        html[data-theme="light"] .alumni-section { background: #f8fafc; border-color: var(--border); }
         .section-header { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; }
         .section-header i { color: var(--primary); width: 18px; text-align: center; }
         .section-header h3 { margin: 0; font-size: 16px; line-height: 1.4; font-weight: 700; color: var(--text); }
