@@ -169,23 +169,6 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="Optional">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Blood Group</label>
-                        <select name="blood_group" class="form-control">
-                            <option value="">Select...</option>
-                            <?php foreach(['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg): ?>
-                                <option value="<?php echo $bg; ?>"><?php echo $bg; ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
                         <label class="form-label">Address *</label>
                         <input type="text" name="address" class="form-control" placeholder="Full address">
                     </div>
@@ -216,12 +199,6 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                         <div class="form-group">
                             <label class="form-label">Guardian Phone *</label>
                             <input type="text" name="guardian_phone" class="form-control" placeholder="e.g. 03001234567">
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-group">
-                            <label class="form-label">Guardian Address</label>
-                            <input type="text" name="guardian_address" class="form-control" placeholder="Optional">
                         </div>
                     </div>
                 </div>
