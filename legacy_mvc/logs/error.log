@@ -1,0 +1,109 @@
+[2026-09-01 12:39:59] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting end of file" in D:\CRM\legacy_mvc\src\routes.php on line 17
+Stack trace:
+#0 {main}
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:24:58 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[01-Sep-2026 13:25:26 Europe/Berlin] PHP Warning:  Undefined array key "effective_occupied_beds" in D:\CRM\legacy_mvc\views\admin\students\create.php on line 18
+[2026-09-01 13:25:27] Uncaught Exception Error: "Call to undefined method App\Services\FeeService::getSecurityDepositSummary()" in D:\CRM\legacy_mvc\src\Controllers\FeeController.php on line 144
+Stack trace:
+#0 [internal function]: App\Controllers\FeeController->securityDeposits()
+#1 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#2 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/fees/security-...')
+#3 {main}
+[01-Sep-2026 13:33:57 Europe/Berlin] PHP Warning:  Undefined array key "REQUEST_METHOD" in D:\CRM\legacy_mvc\src\Core\Router.php on line 25
+[2026-09-01 14:13:04] Uncaught Exception Error: "Unknown named parameter $room_id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/api/allocation...')
+#2 {main}
+[2026-09-01 14:13:08] Uncaught Exception Error: "Unknown named parameter $room_id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/api/allocation...')
+#2 {main}
+[01-Sep-2026 14:13:22 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[01-Sep-2026 14:21:35 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[2026-09-01 21:50:48] Uncaught Exception PDOException: "SQLSTATE[23000]: Integrity constraint violation: 1052 Column 'payment_date' in field list is ambiguous" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 602
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php(602): PDO->prepare('SELECT MAX(paym...')
+#1 D:\CRM\legacy_mvc\src\Services\StudentAccountService.php(66): App\Repositories\FeeRepository->getLastPaymentDate('2', Object(PDO))
+#2 D:\CRM\legacy_mvc\src\Controllers\StudentController.php(187): App\Services\StudentAccountService->getStudentAccount('2')
+#3 [internal function]: App\Controllers\StudentController->account('2')
+#4 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#5 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/students/accou...')
+#6 {main}
+[2026-09-01 21:56:51] Uncaught Exception Error: "Unknown named parameter $id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/api/allocation...')
+#2 {main}
+[01-Sep-2026 22:10:05 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[10-Sep-2026 09:06:23 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[2026-09-10 09:52:23] Uncaught Exception Error: "Unknown named parameter $id" in D:\CRM\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\CRM\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\CRM\legacy_mvc\public\index.php(105): App\Core\Router->dispatch('/fees/pending/1')
+#2 {main}
+[10-Sep-2026 09:53:22 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 44
+[10-Sep-2026 14:26:14 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 14:26:15 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[10-Sep-2026 14:27:53 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 14:27:54 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[10-Sep-2026 14:39:46 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 15:12:58 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[10-Sep-2026 15:22:15 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 15:22:23 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[10-Sep-2026 15:32:53 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[10-Sep-2026 16:41:03 Europe/Berlin] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[10-Sep-2026 16:41:14 Europe/Berlin] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[11-Sep-2026 08:25:25 Europe/Berlin] PHP Warning:  Undefined array key "REQUEST_METHOD" in D:\CRM\legacy_mvc\src\Core\Router.php on line 25
+[11-Sep-2026 11:24:45 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[11-Sep-2026 11:34:32 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[12-Sep-2026 08:10:34 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[14-Sep-2026 07:40:59 Europe/Berlin] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[14-Sep-2026 07:41:08 Europe/Berlin] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[14-Sep-2026 07:41:12 Europe/Berlin] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[14-Sep-2026 07:41:25 Europe/Berlin] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[14-Sep-2026 07:41:30 Europe/Berlin] Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[14-Sep-2026 07:43:04 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[14-Sep-2026 07:43:15 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[14-Sep-2026 15:17:01 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[14-Sep-2026 15:17:09 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[14-Sep-2026 15:17:19 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[14-Sep-2026 15:17:23 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[14-Sep-2026 15:19:25 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[15-Sep-2026 18:29:11 Europe/Berlin] PHP Warning:  Cannot modify header information - headers already sent by (output started at D:\CRM\legacy_mvc\public\index.php:2) in D:\CRM\legacy_mvc\public\index.php on line 80
+[15-Sep-2026 18:29:11 Europe/Berlin] PHP Warning:  Cannot modify header information - headers already sent by (output started at D:\CRM\legacy_mvc\public\index.php:2) in D:\CRM\legacy_mvc\public\index.php on line 81
+[15-Sep-2026 18:29:11 Europe/Berlin] PHP Warning:  Cannot modify header information - headers already sent by (output started at D:\CRM\legacy_mvc\public\index.php:2) in D:\CRM\legacy_mvc\public\index.php on line 82
+[15-Sep-2026 18:29:11 Europe/Berlin] PHP Warning:  Cannot modify header information - headers already sent by (output started at D:\CRM\legacy_mvc\public\index.php:2) in D:\CRM\legacy_mvc\src\Controllers\AllocationController.php on line 44
+[15-Sep-2026 18:37:40 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[15-Sep-2026 18:37:40 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[15-Sep-2026 18:41:15 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[15-Sep-2026 18:41:15 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[16-Sep-2026 13:30:40 UTC] Database connection failed: could not find driver
+[16-Sep-2026 15:32:39 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[16-Sep-2026 15:32:39 Europe/Berlin] PHP Warning:  Undefined array key "block" in D:\CRM\legacy_mvc\src\Repositories\FeeRepository.php on line 272
+[16-Sep-2026 15:32:40 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[16-Sep-2026 15:48:42 Europe/Berlin] PHP Warning:  Undefined array key "QUERY_STRING" in D:\CRM\legacy_mvc\views\admin\reports\index.php on line 43
+[20-Sep-2026 17:54:12 UTC] Database connection failed: could not find driver
+[20-Sep-2026 18:10:47 UTC] Database connection failed: could not find driver
+[20-Sep-2026 18:10:59 UTC] Database connection failed: could not find driver
+[20-Sep-2026 18:15:29 UTC] Database connection failed: could not find driver
+[21-Sep-2026 08:20:48 UTC] Database connection failed: could not find driver
+[21-Sep-2026 08:22:12 UTC] Database connection failed: could not find driver
+[21-Sep-2026 08:22:25 UTC] Database connection failed: could not find driver
+[21-Sep-2026 08:22:27 UTC] Database connection failed: could not find driver
+[21-Sep-2026 14:28:03 UTC] Database connection failed: could not find driver
+[21-Sep-2026 14:28:08 UTC] Database connection failed: could not find driver
+[21-Sep-2026 14:28:37 UTC] Database connection failed: could not find driver
+[21-Sep-2026 14:28:38 UTC] Database connection failed: could not find driver
+[21-Sep-2026 14:28:43 UTC] Database connection failed: could not find driver

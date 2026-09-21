@@ -1,0 +1,29 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # API routes still go to the JSON backend
+    RewriteRule ^api/(.*)$ public/index.php [QSA,L]
+
+    # All non-API browser requests go to the legacy MVC admin UI
+    RewriteCond %{REQUEST_URI} !^/legacy_mvc/ [NC]
+    RewriteRule ^(.*)$ legacy_mvc/public/index.php?url=$1 [QSA,L]
+
+    # Block access to internal directories
+    RewriteRule ^config/.*$ - [F]
+    RewriteRule ^core/.*$ - [F]
+    RewriteRule ^middleware/.*$ - [F]
+    RewriteRule ^models/.*$ - [F]
+    RewriteRule ^services/.*$ - [F]
+    RewriteRule ^logs/.*$ - [F]
+
+    # Prevent directory listing
+    Options -Indexes
+</IfModule>
+
+<FilesMatch "^\.">
+    # Prevent access to hidden files (.env, .git, etc.)
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+

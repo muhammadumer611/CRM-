@@ -1,0 +1,15 @@
+-- Optional Cleanup for Complaints Module Removal
+-- WARNING: This file is intentionally NOT executed automatically.
+-- Review and run this only in a staging/dev environment after confirming the
+-- complaints feature is no longer required by any module or external integration.
+--
+-- If the complaints table is still present and the team confirms complete removal,
+-- the safe cleanup would be:
+--
+-- DROP TABLE IF EXISTS complaints;
+--
+-- Also review and remove any complaint-related indexes or foreign keys before
+-- dropping the table if they were created independently.
+--
+-- This project intentionally leaves the table untouched unless a human confirms
+-- a destructive cleanup is required.

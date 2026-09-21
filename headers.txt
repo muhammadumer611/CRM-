@@ -1,0 +1,28 @@
+HTTP/1.1 302 Found
+Host: localhost:8765
+Date: Tue, 01 Sep 2026 19:02:35 GMT
+Connection: close
+X-Powered-By: PHP/8.2.12
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: strict-origin-when-cross-origin
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate
+Pragma: no-cache
+Set-Cookie: HMS_SECURE_SESSION=2dmt1e8i1iq615o4137tf0rngn; expires=Tue, 01 Sep 2026 21:02:35 GMT; Max-Age=7200; path=/; HttpOnly; SameSite=Lax
+Location: http://localhost:8765/legacy_mvc/public/dashboard
+Content-type: text/html; charset=UTF-8
+
+HTTP/1.1 404 Not Found
+Host: localhost:8765
+Date: Tue, 01 Sep 2026 19:02:35 GMT
+Connection: close
+X-Powered-By: PHP/8.2.12
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: strict-origin-when-cross-origin
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate
+Pragma: no-cache
+Content-type: text/html; charset=UTF-8
+

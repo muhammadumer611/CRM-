@@ -1,0 +1,554 @@
+<?php
+namespace Repositories;
+
+use Core\Database;
+use PDO;
+
+class FeeRepository {
+    private $db;
+
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
+    }
+
+    public function create($data) {
+        $stmt = $this->db->prepare("
+            INSERT INTO fee_records (
+                invoice_number, student_id, billing_month, billing_year, invoice_date,
+                amount, additional_charges, discount, due_date, paid_amount, status, remarks
+            ) VALUES (
+                :invoice_number, :student_id, :billing_month, :billing_year, :invoice_date,
+                :amount, :additional_charges, :discount, :due_date, :paid_amount, :status, :remarks
+            )
+        ");
+        $stmt->execute([
+            'invoice_number' => $data['invoice_number'],
+            'student_id' => $data['student_id'],
+            'billing_month' => $data['billing_month'],
+            'billing_year' => $data['billing_year'],
+            'invoice_date' => $data['invoice_date'] ?? date('Y-m-d'),
+            'amount' => $data['amount'],
+            'additional_charges' => $data['additional_charges'] ?? 0,
+            'discount' => $data['discount'] ?? 0,
+            'due_date' => $data['due_date'],
+            'paid_amount' => $data['paid_amount'] ?? 0,
+            'status' => $data['status'],
+            'remarks' => $data['remarks'] ?? null
+        ]);
+        return $this->db->lastInsertId();
+    }
+
+    public function findById($id) {
+        $stmt = $this->db->prepare("
+            SELECT f.*, s.full_name, s.student_id_str, r.room_number, r.block,
+                   (f.amount + f.additional_charges - f.discount) AS total_amount
+            FROM fee_records f
+            JOIN students s ON f.student_id = s.id
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN rooms r ON r.id = ra.room_id
+            WHERE f.id = :id
+        ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch();
+    }
+
+    public function findByStudentAndBillingPeriod($studentId, $month, $year) {
+        $stmt = $this->db->prepare("
+            SELECT * FROM fee_records 
+            WHERE student_id = :student_id AND billing_month = :month AND billing_year = :year
+        ");
+        $stmt->execute(['student_id' => $studentId, 'month' => $month, 'year' => $year]);
+        return $stmt->fetch();
+    }
+
+    public function findByInvoiceNumber($invoiceNumber) {
+        $stmt = $this->db->prepare("SELECT * FROM fee_records WHERE invoice_number = :invoice_number");
+        $stmt->execute(['invoice_number' => $invoiceNumber]);
+        return $stmt->fetch();
+    }
+
+    public function search($filters) {
+        $query = "SELECT f.*, s.full_name, s.student_id_str,
+                  (f.amount + f.additional_charges - f.discount) AS total_amount
+                  FROM fee_records f 
+                  JOIN students s ON f.student_id = s.id 
+                  WHERE 1=1";
+        $params = [];
+
+        if (!empty($filters['status'])) {
+            $query .= " AND f.status = :status";
+            $params['status'] = $filters['status'];
+        }
+        if (!empty($filters['student_id'])) {
+            $query .= " AND f.student_id = :student_id";
+            $params['student_id'] = $filters['student_id'];
+        }
+        if (!empty($filters['student'])) {
+            $query .= " AND (s.full_name LIKE :search_name OR s.student_id_str LIKE :search_student_id OR f.invoice_number LIKE :search_invoice)";
+            $searchTerm = '%' . trim($filters['student']) . '%';
+            $params['search_name'] = $searchTerm;
+            $params['search_student_id'] = $searchTerm;
+            $params['search_invoice'] = $searchTerm;
+        }
+        if (!empty($filters['month'])) {
+            $query .= " AND f.billing_month = :month";
+            $params['month'] = $filters['month'];
+        }
+        if (!empty($filters['year'])) {
+            $query .= " AND f.billing_year = :year";
+            $params['year'] = $filters['year'];
+        }
+        if (!empty($filters['invoice_number'])) {
+            $query .= " AND f.invoice_number = :invoice_number";
+            $params['invoice_number'] = $filters['invoice_number'];
+        }
+        if (!empty($filters['start_date'])) {
+            $query .= " AND f.invoice_date >= :start_date";
+            $params['start_date'] = $filters['start_date'];
+        }
+        if (!empty($filters['end_date'])) {
+            $query .= " AND f.invoice_date <= :end_date";
+            $params['end_date'] = $filters['end_date'];
+        }
+
+        $query .= " ORDER BY f.billing_year DESC, f.billing_month DESC, f.id DESC";
+
+        $stmt = $this->db->prepare($query);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function getStatistics() {
+        $stmt = $this->db->query("
+            SELECT 
+                COUNT(*) as total_fee_records,
+                COALESCE(SUM(amount + additional_charges - discount), 0) as total_invoiced,
+                COALESCE(SUM(paid_amount), 0) as total_paid,
+                COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) as total_pending,
+                SUM(CASE WHEN status = 'Paid' THEN 1 ELSE 0 END) as paid_records,
+                SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_records,
+                SUM(CASE WHEN status = 'Partial' THEN 1 ELSE 0 END) as partial_records,
+                SUM(CASE WHEN status = 'Overdue' THEN 1 ELSE 0 END) as overdue_records
+            FROM fee_records
+        ");
+        return $stmt->fetch();
+    }
+
+    public function getStudentFeeSummary($studentId) {
+        $stmt = $this->db->prepare("
+            SELECT 
+                s.id as student_id,
+                s.full_name as student_name,
+                COALESCE(SUM(f.amount + f.additional_charges - f.discount), 0) as total_fee_amount,
+                COALESCE(SUM(f.paid_amount), 0) as total_paid,
+                COALESCE(SUM((f.amount + f.additional_charges - f.discount) - f.paid_amount), 0) as total_outstanding,
+                SUM(CASE WHEN f.status = 'Paid' THEN 1 ELSE 0 END) as paid_records,
+                SUM(CASE WHEN f.status = 'Pending' THEN 1 ELSE 0 END) as pending_records,
+                SUM(CASE WHEN f.status = 'Partial' THEN 1 ELSE 0 END) as partial_records,
+                SUM(CASE WHEN f.status = 'Overdue' THEN 1 ELSE 0 END) as overdue_records,
+                MAX(f.payment_date) as latest_payment_date
+            FROM students s
+            LEFT JOIN fee_records f ON s.id = f.student_id
+            WHERE s.id = :id
+            GROUP BY s.id, s.full_name
+        ");
+        $stmt->execute(['id' => $studentId]);
+        return $stmt->fetch();
+    }
+
+    public function getPaymentHistory($invoiceId) {
+        $stmt = $this->db->prepare("
+            SELECT p.*, a.username as admin_username
+            FROM fee_payments p
+            LEFT JOIN admins a ON a.id = p.received_by_admin
+            WHERE p.invoice_id = :invoice_id
+            ORDER BY p.payment_date DESC, p.id DESC
+        ");
+        $stmt->execute(['invoice_id' => $invoiceId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getRecentPayments($limit = 5) {
+        $stmt = $this->db->prepare("
+            SELECT p.*, f.invoice_number, s.full_name, s.student_id_str, a.username AS admin_username
+            FROM fee_payments p
+            JOIN fee_records f ON f.id = p.invoice_id
+            JOIN students s ON s.id = f.student_id
+            LEFT JOIN admins a ON a.id = p.received_by_admin
+            ORDER BY p.payment_date DESC, p.id DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getRecentInvoices($limit = 5) {
+        $stmt = $this->db->prepare("
+            SELECT f.*, s.full_name, s.student_id_str,
+                   (f.amount + f.additional_charges - f.discount) AS total_amount
+            FROM fee_records f
+            JOIN students s ON s.id = f.student_id
+            ORDER BY f.invoice_date DESC, f.id DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getOverdueInvoices($limit = 10) {
+        $stmt = $this->db->prepare("
+            SELECT f.*, s.full_name, s.student_id_str,
+                   (f.amount + f.additional_charges - f.discount) AS total_amount
+            FROM fee_records f
+            JOIN students s ON s.id = f.student_id
+            WHERE f.status = 'Overdue' OR (f.status != 'Paid' AND f.due_date < CURDATE())
+            ORDER BY f.due_date ASC, f.id ASC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getDashboardSummary() {
+        $stmt = $this->db->query("
+            SELECT
+                COALESCE(SUM(amount + additional_charges - discount), 0) AS total_invoiced,
+                COALESCE(SUM(paid_amount), 0) AS total_collected,
+                COALESCE(SUM(CASE WHEN status IN ('Pending', 'Partial', 'Overdue') THEN (amount + additional_charges - discount) - paid_amount ELSE 0 END), 0) AS total_pending,
+                COALESCE(SUM(CASE WHEN status = 'Overdue' THEN (amount + additional_charges - discount) - paid_amount ELSE 0 END), 0) AS total_overdue
+            FROM fee_records
+        ");
+        return $stmt->fetch();
+    }
+
+    public function getCollectionSummary(array $filters = []) {
+        $where = $this->buildCollectionWhere($filters);
+        $sql = "
+            SELECT
+                COALESCE(SUM(fp.amount), 0) AS total_collection,
+                COUNT(fp.id) AS payment_count,
+                MAX(fp.payment_date) AS latest_payment_date
+            FROM fee_payments fp
+            JOIN fee_records fr ON fr.id = fp.invoice_id
+            JOIN students s ON s.id = fr.student_id
+            WHERE fp.status <> 'Reversed'
+              AND fp.amount > 0
+              {$where['sql']}
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($where['params']);
+        return $stmt->fetch();
+    }
+
+    public function getCollectionRows(array $filters = [], $limit = 50, $offset = 0) {
+        $where = $this->buildCollectionWhere($filters);
+        $sql = "
+            SELECT
+                fp.id,
+                s.full_name AS student_name,
+                s.student_id_str AS student_id,
+                fp.amount AS amount_received,
+                fp.payment_date,
+                fp.payment_method,
+                fp.receipt_number,
+                fr.billing_month,
+                fr.billing_year,
+                CONCAT(fr.billing_month, '/', fr.billing_year) AS billing_period,
+                fp.status,
+                fp.transaction_ref
+            FROM fee_payments fp
+            JOIN fee_records fr ON fr.id = fp.invoice_id
+            JOIN students s ON s.id = fr.student_id
+            WHERE fp.status <> 'Reversed'
+              AND fp.amount > 0
+              {$where['sql']}
+            ORDER BY fp.payment_date DESC, fp.id DESC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($where['params'] as $key => $value) {
+            $stmt->bindValue(':' . $key, $value);
+        }
+        $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getSecurityDepositSummary() {
+        $stmt = $this->db->query("SELECT
+            COALESCE(SUM(CASE WHEN status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED') THEN remaining_amount ELSE 0 END), 0) AS total_held,
+            COUNT(CASE WHEN status IN ('HELD', 'ADJUSTED', 'PARTIALLY_REFUNDED') THEN 1 END) AS held_students,
+            COALESCE(SUM(CASE WHEN transaction_type = 'REFUND' THEN amount ELSE 0 END), 0) AS total_refunded,
+            COALESCE(SUM(CASE WHEN transaction_type IN ('ADJUSTMENT','FORFEIT') THEN amount ELSE 0 END), 0) AS total_deducted
+            FROM security_deposits sd
+            LEFT JOIN security_deposit_transactions sdt ON sdt.security_deposit_id = sd.id");
+        $row = $stmt->fetch();
+        return [
+            'total_held' => (float)($row['total_held'] ?? 0),
+            'held_students' => (int)($row['held_students'] ?? 0),
+            'total_refunded' => (float)($row['total_refunded'] ?? 0),
+            'total_deducted' => (float)($row['total_deducted'] ?? 0),
+        ];
+    }
+
+    public function getSecurityDepositRows(array $filters = []) {
+        $sql = "SELECT
+                s.id AS student_id,
+                s.full_name AS student_name,
+                s.student_id_str,
+                s.cnic,
+                COALESCE(ra.joining_date, s.created_at) AS admission_date,
+                sd.original_amount AS security_amount,
+                COALESCE(SUM(CASE WHEN sdt.transaction_type IN ('ADJUSTMENT', 'FORFEIT') THEN sdt.amount ELSE 0 END), 0) AS amount_deducted,
+                COALESCE(SUM(CASE WHEN sdt.transaction_type = 'REFUND' THEN sdt.amount ELSE 0 END), 0) AS amount_refunded,
+                sd.remaining_amount AS current_balance,
+                CASE
+                    WHEN sd.status = 'REFUNDED' THEN 'Refunded'
+                    WHEN sd.status = 'FORFEITED' THEN 'Settled'
+                    WHEN sd.remaining_amount > 0 AND COALESCE(SUM(CASE WHEN sdt.transaction_type IN ('ADJUSTMENT', 'FORFEIT') THEN sdt.amount ELSE 0 END), 0) > 0 THEN 'Partially Deducted'
+                    WHEN sd.remaining_amount <= 0 THEN 'Settled'
+                    ELSE 'Held'
+                END AS deposit_status
+            FROM students s
+            LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
+            LEFT JOIN security_deposits sd ON sd.student_id = s.id
+            LEFT JOIN security_deposit_transactions sdt ON sdt.security_deposit_id = sd.id
+            WHERE 1=1";
+        $params = [];
+        if (!empty($filters['student_id'])) {
+            $sql .= ' AND s.id = :student_id';
+            $params['student_id'] = (int)$filters['student_id'];
+        }
+        if (!empty($filters['status'])) {
+            $sql .= ' AND sd.status = :status';
+            $params['status'] = strtoupper(trim((string)$filters['status']));
+        }
+        $sql .= ' GROUP BY s.id, s.full_name, s.student_id_str, s.cnic, ra.joining_date, s.created_at, sd.id, sd.original_amount, sd.remaining_amount, sd.status ORDER BY s.id DESC';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function getStudentSecurityDeposit($studentId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("SELECT * FROM security_deposits WHERE student_id = :student_id ORDER BY id DESC LIMIT 1 FOR UPDATE");
+        $stmt->execute(['student_id' => (int)$studentId]);
+        return $stmt->fetch();
+    }
+
+    public function createSecurityDeposit(int $studentId, float $originalAmount, float $remainingAmount, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO security_deposits (student_id, original_amount, remaining_amount, status) VALUES (:student_id, :original_amount, :remaining_amount, 'HELD')");
+        $stmt->execute([
+            'student_id' => (int)$studentId,
+            'original_amount' => (float)$originalAmount,
+            'remaining_amount' => (float)$remainingAmount,
+        ]);
+        return (int)$db->lastInsertId();
+    }
+
+    public function updateSecurityDepositTotals(int $depositId, float $originalAmount, float $remainingAmount, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("UPDATE security_deposits SET original_amount = :original_amount, remaining_amount = :remaining_amount WHERE id = :id");
+        $stmt->execute([
+            'original_amount' => (float)$originalAmount,
+            'remaining_amount' => (float)$remainingAmount,
+            'id' => (int)$depositId,
+        ]);
+        return $this->syncSecurityDepositStatus($depositId, $db);
+    }
+
+    public function syncSecurityDepositStatus(int $depositId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("SELECT sd.*, COALESCE(SUM(CASE WHEN sdt.transaction_type IN ('ADJUSTMENT','FORFEIT') THEN sdt.amount ELSE 0 END), 0) AS deducted, COALESCE(SUM(CASE WHEN sdt.transaction_type = 'REFUND' THEN sdt.amount ELSE 0 END), 0) AS refunded FROM security_deposits sd LEFT JOIN security_deposit_transactions sdt ON sdt.security_deposit_id = sd.id WHERE sd.id = :id GROUP BY sd.id");
+        $stmt->execute(['id' => (int)$depositId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return false;
+        }
+
+        $newStatus = 'HELD';
+        $remaining = (float)($row['remaining_amount'] ?? 0);
+        $deducted = (float)($row['deducted'] ?? 0);
+        $refunded = (float)($row['refunded'] ?? 0);
+        if ($remaining <= 0 && $refunded > 0) {
+            $newStatus = 'REFUNDED';
+        } elseif ($remaining <= 0 && $deducted > 0) {
+            $newStatus = 'SETTLED';
+        } elseif ($remaining > 0 && $deducted > 0) {
+            $newStatus = 'ADJUSTED';
+        }
+
+        $db->prepare("UPDATE security_deposits SET status = :status WHERE id = :id")->execute([
+            'status' => $newStatus,
+            'id' => (int)$depositId,
+        ]);
+        return $newStatus;
+    }
+
+    public function addSecurityDepositTransaction(int $depositId, string $transactionType, float $amount, string $reason, string $reference = null, int $adminId = null, string $date = null, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, reference_number, created_by_admin, created_at) VALUES (:security_deposit_id, :transaction_type, :amount, :reason, :reference_number, :created_by_admin, :created_at)");
+        $stmt->execute([
+            'security_deposit_id' => (int)$depositId,
+            'transaction_type' => strtoupper(trim((string)$transactionType)),
+            'amount' => (float)$amount,
+            'reason' => trim((string)$reason),
+            'reference_number' => $reference ?: null,
+            'created_by_admin' => $adminId ?: null,
+            'created_at' => $date ?: date('Y-m-d'),
+        ]);
+        return (int)$db->lastInsertId();
+    }
+
+    public function hasActiveSecurityRefund(int $depositId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("SELECT COUNT(*) FROM security_deposit_transactions WHERE security_deposit_id = :security_deposit_id AND transaction_type = 'REFUND'");
+        $stmt->execute(['security_deposit_id' => (int)$depositId]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    public function createRefundRecord(int $studentId, float $amount, string $reason, string $paymentMethod, string $reference, int $adminId, string $date, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO refunds (refund_number, student_id, amount, refund_date, reason, payment_method, reference_number, processed_by_admin, status) VALUES (:refund_number, :student_id, :amount, :refund_date, :reason, :payment_method, :reference_number, :processed_by_admin, 'Processed')");
+        $refundNumber = $reference ?: $this->generateSecurityRefundNumber($db);
+        $stmt->execute([
+            'refund_number' => $refundNumber,
+            'student_id' => (int)$studentId,
+            'amount' => (float)$amount,
+            'refund_date' => $date,
+            'reason' => trim((string)$reason),
+            'payment_method' => trim((string)$paymentMethod) ?: 'Cash',
+            'reference_number' => $reference ?: $refundNumber,
+            'processed_by_admin' => $adminId ?: null,
+        ]);
+        return (int)$db->lastInsertId();
+    }
+
+    public function generateSecurityRefundNumber($pdo = null) {
+        $db = $pdo ?? $this->db;
+        $prefix = 'SDR-' . date('Ymd') . '-';
+        for ($i = 0; $i < 50; $i++) {
+            $suffix = str_pad((string)random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+            $candidate = $prefix . $suffix;
+            $stmt = $db->prepare("SELECT id FROM refunds WHERE refund_number = :refund_number LIMIT 1");
+            $stmt->execute(['refund_number' => $candidate]);
+            if (!$stmt->fetch()) {
+                return $candidate;
+            }
+        }
+        throw new Exception('Unable to generate a unique security refund reference.');
+    }
+
+    public function logSystemAudit(int $studentId, string $action, string $description, array $payload, int $adminId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("INSERT INTO system_logs (admin_id, action, entity_type, entity_id, description, new_values, created_at) VALUES (:admin_id, :action, 'student', :entity_id, :description, :new_values, NOW())");
+        $stmt->execute([
+            'admin_id' => $adminId ?: null,
+            'action' => trim((string)$action),
+            'entity_id' => (int)$studentId,
+            'description' => trim((string)$description),
+            'new_values' => json_encode($payload, JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
+    private function buildCollectionWhere(array $filters = []) {
+        $sql = '';
+        $params = [];
+        $dateFilter = $filters['date_filter'] ?? 'this_month';
+
+        if (!empty($filters['student_id'])) {
+            $sql .= ' AND fr.student_id = :student_id';
+            $params['student_id'] = (int)$filters['student_id'];
+        }
+
+        if (!empty($filters['payment_method'])) {
+            $sql .= ' AND fp.payment_method = :payment_method';
+            $params['payment_method'] = trim((string)$filters['payment_method']);
+        }
+
+        if (!empty($filters['start_date'])) {
+            $sql .= ' AND fp.payment_date >= :start_date';
+            $params['start_date'] = $filters['start_date'];
+        }
+
+        if (!empty($filters['end_date'])) {
+            $sql .= ' AND fp.payment_date <= :end_date';
+            $params['end_date'] = $filters['end_date'];
+        }
+
+        if (empty($filters['start_date']) && empty($filters['end_date'])) {
+            switch ($dateFilter) {
+                case 'today':
+                    $sql .= ' AND fp.payment_date = CURDATE()';
+                    break;
+                case 'this_month':
+                    $sql .= ' AND fp.payment_date >= DATE_FORMAT(CURDATE(), "%Y-%m-01") AND fp.payment_date <= LAST_DAY(CURDATE())';
+                    break;
+                case 'this_year':
+                    $sql .= ' AND fp.payment_date >= DATE_FORMAT(CURDATE(), "%Y-01-01") AND fp.payment_date <= DATE_FORMAT(CURDATE(), "%Y-12-31")';
+                    break;
+                case 'custom':
+                    break;
+                default:
+                    $sql .= ' AND fp.payment_date >= DATE_FORMAT(CURDATE(), "%Y-%m-01") AND fp.payment_date <= LAST_DAY(CURDATE())';
+                    break;
+            }
+        }
+
+        return ['sql' => $sql, 'params' => $params];
+    }
+
+    public function createPayment($invoiceId, $data, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $receiptNumber = $data['receipt_number'] ?? $this->generateReceiptNumber($db);
+        $stmt = $db->prepare("
+            INSERT INTO fee_payments (invoice_id, receipt_number, amount, payment_date, payment_method, transaction_ref, remarks, received_by_admin, status)
+            VALUES (:invoice_id, :receipt_number, :amount, :payment_date, :payment_method, :transaction_ref, :remarks, :received_by_admin, :status)
+        ");
+        $ok = $stmt->execute([
+            'invoice_id' => $invoiceId,
+            'receipt_number' => $receiptNumber,
+            'amount' => $data['amount'],
+            'payment_date' => $data['payment_date'],
+            'payment_method' => $data['payment_method'],
+            'transaction_ref' => $data['transaction_ref'] ?? null,
+            'remarks' => $data['remarks'] ?? null,
+            'received_by_admin' => $data['received_by_admin'] ?? null,
+            'status' => $data['status'] ?? 'Completed'
+        ]);
+
+        if (!$ok) {
+            return false;
+        }
+
+        return (int)$db->lastInsertId();
+    }
+
+    public function updateInvoicePayment($invoiceId, $paidAmount, $status, $paymentMethod, $transactionRef, $paymentDate, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("
+            UPDATE fee_records
+            SET paid_amount = :paid_amount,
+                status = :status,
+                payment_date = :payment_date,
+                payment_method = :payment_method,
+                transaction_ref = :transaction_ref
+            WHERE id = :id
+        ");
+        return $stmt->execute([
+            'paid_amount' => $paidAmount,
+            'status' => $status,
+            'payment_date' => $paymentDate,
+            'payment_method' => $paymentMethod,
+            'transaction_ref' => $transactionRef,
+            'id' => $invoiceId
+        ]);
+    }
+}
