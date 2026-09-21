@@ -11,10 +11,13 @@
 
 <style>
     .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
-    .stat-box { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
-    .stat-box .label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
-    .stat-box .value { font-size: 1.5rem; margin-top: 0.5rem; font-weight: 700; }
-    .chart-wrap { background: #0f172a; border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .stat-box { min-height: 124px; display:flex; flex-direction:column; justify-content:space-between; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:1.1rem; box-shadow:0 8px 20px var(--shadow-color); }
+    .stat-box .label { color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; }
+    .stat-box .value { color:var(--text); font-size:1.5rem; line-height:1.15; margin-top:0.5rem; font-weight:800; overflow-wrap:anywhere; }
+    .chart-wrap { background:var(--surface-muted); border:1px solid var(--border); border-radius:10px; padding:1rem; }
+    .report-grid { grid-auto-rows:1fr; }
+    .report-grid .stat-box { height:100%; }
+    .report-filter-actions .btn[style*="background:#1e293b"] { background:var(--surface-muted) !important; color:var(--text) !important; border:1px solid var(--border); }
     .bar-row { display: flex; align-items: end; gap: 0.25rem; height: 220px; }
     .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
     .bar { width: 100%; max-width: 30px; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, #38bdf8, #2563eb); min-height: 10px; }

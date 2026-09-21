@@ -26,7 +26,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
 <div class="card">
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-user-plus"></i> Add New Student</h3>
-        <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:#334155;color:white;">
+        <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:var(--surface-muted);color:var(--text);border:1px solid var(--border);">
             <i class="fas fa-arrow-left"></i> Back
         </a>
     </div>
@@ -39,7 +39,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
             <input type="text" name="added_by_name" class="form-control" required>
         </div>
 
-        <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+        <div style="background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-house-user"></i> Accommodation Type</h4>
             <div class="row">
                 <div class="col-md-6">
@@ -58,7 +58,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
         </div>
 
         <div id="singleRoomSection" style="display:none;">
-            <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+            <div style="background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
                 <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-bed"></i> Room & Bed Allocation</h4>
                 <div class="row">
                     <div class="col-md-6">
@@ -82,7 +82,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     </div>
                 </div>
 
-                <div id="singleRoomSummary" style="display:none;background:#1e293b;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
+                <div id="singleRoomSummary" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
                     <div class="row">
                         <div class="col-md-3"><span class="small-label">Room</span><strong id="singleRoomNumber">—</strong></div>
                         <div class="col-md-3"><span class="small-label">Floor</span><strong id="singleRoomFloor">—</strong></div>
@@ -101,7 +101,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
         </div>
 
         <div id="fullRoomSection" style="display:none;">
-            <div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+            <div style="background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
                 <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-users"></i> Room Selection</h4>
                 <div class="row">
                     <div class="col-md-6">
@@ -124,7 +124,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                         </div>
                     </div>
                 </div>
-                <div id="fullRoomSummary" style="display:none;background:#1e293b;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
+                <div id="fullRoomSummary" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;">
                     <div class="row">
                         <div class="col-md-4"><span class="small-label">Room</span><strong id="fullRoomNumber">—</strong></div>
                         <div class="col-md-4"><span class="small-label">Floor</span><strong id="fullRoomFloor">—</strong></div>
@@ -146,7 +146,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
             </div>
         </div>
 
-        <div id="studentInfoSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+        <div id="studentInfoSection" style="display:none;background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-user"></i> Student Information</h4>
             <div class="row">
                 <div class="col-md-6">
@@ -205,7 +205,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
             </div>
         </div>
 
-        <div id="residentInfoSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+        <div id="residentInfoSection" style="display:none;background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-user-tie"></i> Resident Information</h4>
             <div class="row">
                 <div class="col-md-6">
@@ -232,7 +232,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
             </div>
         </div>
 
-        <div id="vehicleInfoSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+        <div id="vehicleInfoSection" style="display:none;background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-motorcycle"></i> Vehicle Information</h4>
             <div class="row">
                 <div class="col-md-6">
@@ -262,7 +262,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
             </div>
         </div>
 
-        <div id="noteSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+        <div id="noteSection" style="display:none;background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-sticky-note"></i> Note</h4>
             <div class="form-group">
                 <label class="form-label">Note</label>
@@ -270,7 +270,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
             </div>
         </div>
 
-        <div id="financialSection" style="display:none;background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
+        <div id="financialSection" style="display:none;background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-money-bill-wave"></i> Fee &amp; Billing</h4>
             <div class="row">
                 <div class="col-md-6">
@@ -301,25 +301,33 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="form-group"><label class="form-label">Reason</label><input type="text" name="first_month_discount_reason" id="firstMonthDiscountReason" class="form-control" placeholder="e.g. Late joining discount"></div>
                 </div>
             </div>
-            <div id="firstMonthPreview" style="margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:6px;background:#1e293b;display:none;"></div>
+            <div id="firstMonthPreview" style="margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);display:none;"></div>
         </div>
 
         <div style="display:flex;gap:1rem;justify-content:flex-end;">
-            <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:#334155;color:white;">Cancel</a>
+            <a href="<?php echo $config['base_url']; ?>/students" class="btn" style="background:var(--surface-muted);color:var(--text);border:1px solid var(--border);">Cancel</a>
             <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Onboard Student</button>
         </div>
     </form>
 </div>
 
 <style>
+/* Admission sections inherit the global theme instead of fixed dark surfaces. */
+#studentInfoSection, #residentInfoSection, #vehicleInfoSection, #noteSection, #financialSection { color:var(--text); }
+#singleRoomSummary, #fullRoomSummary, #firstMonthPreview, .occupant-card { color:var(--text); }
+.card-header .btn[style*="background:#334155"], .card-header .btn[style*="background: #334155"], form > div > a[style*="background:#334155"], form > div > a[style*="background: #334155"] { background:var(--surface-muted) !important; color:var(--text) !important; border:1px solid var(--border); }
+.choice-card { color:var(--text) !important; }
+.choice-card span { color:var(--text) !important; }
+.small-label { color:var(--text-muted) !important; }
+.form-label { color:var(--text-secondary) !important; }
 .choice-card {
-    display:flex; align-items:center; justify-content:center; min-height: 70px; border:1px solid var(--border); background:#0f172a; border-radius:10px; padding:1rem; cursor:pointer; transition:0.2s ease; font-weight:600;
+    display:flex; align-items:center; justify-content:center; min-height: 70px; border:1px solid var(--border); background:var(--surface-muted); border-radius:10px; padding:1rem; cursor:pointer; transition:0.2s ease; font-weight:600;
 }
 .choice-card input { margin-right:10px; }
 .choice-card:hover { border-color: var(--primary); background: rgba(56,189,248,0.08); }
 .choice-card.selected { border-color: var(--primary); background: rgba(56,189,248,0.12); }
 .small-label { display:block; color:var(--text-muted); font-size:0.75rem; margin-bottom:0.25rem; }
-.occupant-card { border:1px solid var(--border); border-radius:8px; padding:1rem; background:#1e293b; margin-bottom:1rem; }
+.occupant-card { border:1px solid var(--border); border-radius:8px; padding:1rem; background:var(--surface); margin-bottom:1rem; }
 .occupant-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
 .remove-occupant-btn { background: rgba(239,68,68,0.1); color: var(--danger); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:0.35rem 0.7rem; cursor:pointer; }
 </style>

@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary: #38bdf8; --primary-dark: #0284c7; --bg: #0f172a; --sidebar: #1e293b; --card: #1e293b; --text: #f8fafc; --text-muted: #94a3b8; --border: #334155; --danger: #ef4444; --success: #10b981; --input-bg: #0f172a; --table-hover: rgba(255,255,255,0.03); }
-        html[data-theme="light"] { --primary: #0284c7; --primary-dark: #0369a1; --bg: #f1f5f9; --sidebar: #ffffff; --card: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #cbd5e1; --danger: #dc2626; --success: #059669; --input-bg: #ffffff; --table-hover: rgba(15,23,42,0.04); }
+        :root { --primary: #38bdf8; --primary-dark: #0284c7; --bg: #0f172a; --sidebar: #1e293b; --card: #1e293b; --surface: #1e293b; --surface-muted: #0f172a; --text: #f8fafc; --text-secondary: #cbd5e1; --text-muted: #94a3b8; --border: #334155; --danger: #ef4444; --success: #10b981; --warning: #f59e0b; --input-bg: #0f172a; --table-hover: rgba(255,255,255,0.03); --shadow-color: rgba(0,0,0,.18); }
+        html[data-theme="light"] { --primary: #0284c7; --primary-dark: #0369a1; --bg: #f1f5f9; --sidebar: #ffffff; --card: #ffffff; --surface: #ffffff; --surface-muted: #f8fafc; --text: #0f172a; --text-secondary: #334155; --text-muted: #64748b; --border: #cbd5e1; --danger: #dc2626; --success: #059669; --warning: #b45309; --input-bg: #ffffff; --table-hover: rgba(15,23,42,0.04); --shadow-color: rgba(15,23,42,.12); }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html { font-size: 16px; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow-x: hidden; }
@@ -30,7 +30,7 @@
         .user-menu { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; }
         .logout-btn { color: var(--danger); font-weight: 500; font-size: 0.9rem; }
         .content { padding: 2rem; overflow-y: auto; flex: 1; }
-        .card { background-color: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 1.5rem; animation: pageRise .28s ease both; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .card { background-color: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; box-shadow: 0 4px 6px -1px var(--shadow-color); margin-bottom: 1.5rem; animation: pageRise .28s ease both; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.18); border-color: rgba(56,189,248,.35); }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .card-title { font-size: 1.1rem; font-weight: 600; }
@@ -101,8 +101,10 @@
         .btn-danger:hover { background-color: rgba(239, 68, 68, 0.2); }
         .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
         .form-group { margin-bottom: 1.25rem; }
-        .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted); }
+        .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); }
         .form-control { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background-color: var(--input-bg); color: var(--text); font-family: inherit; }
+        .form-control::placeholder { color: var(--text-muted); opacity: 1; }
+        option { background: var(--input-bg); color: var(--text); }
         .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(56,189,248,.12); }
         select.form-control { appearance: none; }
         textarea.form-control { resize: vertical; min-height: 100px; }
