@@ -16,7 +16,8 @@ class FeeRepository {
             SELECT f.*, s.full_name, s.student_id_str 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
-            WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
+                        WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
+                            AND (f.billing_year < YEAR(CURDATE()) OR (f.billing_year = YEAR(CURDATE()) AND f.billing_month <= MONTH(CURDATE())))
         ";
         $params = [];
 
@@ -61,7 +62,8 @@ class FeeRepository {
             SELECT COUNT(*) 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
-            WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
+                        WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
+                            AND (f.billing_year < YEAR(CURDATE()) OR (f.billing_year = YEAR(CURDATE()) AND f.billing_month <= MONTH(CURDATE())))
         ";
         $params = [];
 
@@ -173,6 +175,7 @@ class FeeRepository {
             LEFT JOIN rooms r ON r.id = ra.room_id
             WHERE s.status = 'Active'
               AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
         ";
         $params = [];
 
@@ -518,6 +521,7 @@ class FeeRepository {
             FROM fee_records fr
             WHERE fr.student_id = ?
               AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
             ORDER BY fr.billing_year ASC, fr.billing_month ASC, fr.id ASC
         ");
         $stmtInvoices->execute([$studentId]);
@@ -637,7 +641,7 @@ class FeeRepository {
     }
 
     private function buildPendingFeeWhere(array $filters = []) {
-        $sql = " WHERE (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount ";
+        $sql = " WHERE (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE()))) ";
         $params = [];
 
         if (!empty($filters['student_id'])) {
@@ -1008,7 +1012,7 @@ class FeeRepository {
 
     public function getOutstandingBalance($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) FROM fee_records WHERE student_id = ? AND status IN ('Pending', 'Partial', 'Overdue') AND charge_type = 'MONTHLY_FEE'");
+        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) FROM fee_records WHERE student_id = ? AND status IN ('Pending', 'Partial', 'Overdue') AND charge_type = 'MONTHLY_FEE' AND (billing_year < YEAR(CURDATE()) OR (billing_year = YEAR(CURDATE()) AND billing_month <= MONTH(CURDATE())))");
         $stmt->execute([$studentId]);
         return (float)$stmt->fetchColumn();
     }
@@ -1040,6 +1044,7 @@ class FeeRepository {
                 COALESCE(SUM(CASE WHEN status = 'Overdue' THEN GREATEST(0, amount + additional_charges - discount - paid_amount) ELSE 0 END), 0) AS total_overdue
             FROM fee_records 
             WHERE charge_type = 'MONTHLY_FEE'
+              AND (billing_year < YEAR(CURDATE()) OR (billing_year = YEAR(CURDATE()) AND billing_month <= MONTH(CURDATE())))
         ");
         return $stmt->fetch();
     }
@@ -1091,7 +1096,7 @@ class FeeRepository {
 
     public function getStudentArrearsSummary($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) AS outstanding_balance, COALESCE(SUM(CASE WHEN due_date < CURDATE() AND (amount + additional_charges - discount) > paid_amount THEN (amount + additional_charges - discount) - paid_amount ELSE 0 END), 0) AS overdue_balance FROM fee_records WHERE student_id = ? AND (amount + additional_charges - discount) > paid_amount");
+        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) AS outstanding_balance, COALESCE(SUM(CASE WHEN due_date < CURDATE() AND (amount + additional_charges - discount) > paid_amount THEN (amount + additional_charges - discount) - paid_amount ELSE 0 END), 0) AS overdue_balance FROM fee_records WHERE student_id = ? AND (amount + additional_charges - discount) > paid_amount AND (charge_type <> 'MONTHLY_FEE' OR billing_year < YEAR(CURDATE()) OR (billing_year = YEAR(CURDATE()) AND billing_month <= MONTH(CURDATE())))");
         $stmt->execute([(int)$studentId]);
         return $stmt->fetch();
     }

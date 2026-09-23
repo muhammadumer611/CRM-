@@ -55,7 +55,7 @@ class DashboardService {
         $stats['occupied_beds'] = max(0, $stats['total_beds'] - $stats['available_beds']);
 
         // Fees — Monthly invoices
-        $stmt = $this->db->query("SELECT COALESCE(SUM(fr.paid_amount), 0) FROM fee_records fr JOIN students s ON s.id = fr.student_id WHERE fr.charge_type = 'MONTHLY_FEE' AND s.status = 'Active' AND YEAR(fr.invoice_date) = YEAR(CURDATE()) AND MONTH(fr.invoice_date) = MONTH(CURDATE())");
+        $stmt = $this->db->query("SELECT COALESCE(SUM(fr.paid_amount), 0) FROM fee_records fr JOIN students s ON s.id = fr.student_id WHERE fr.charge_type = 'MONTHLY_FEE' AND s.status = 'Active' AND (fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE()))) AND YEAR(fr.invoice_date) = YEAR(CURDATE()) AND MONTH(fr.invoice_date) = MONTH(CURDATE())");
         $stats['this_month_collected'] = (float)$stmt->fetchColumn();
 
         $stmt = $this->db->query("
@@ -65,10 +65,12 @@ class DashboardService {
             WHERE s.status = 'Active'
               AND (fr.amount + fr.additional_charges - fr.discount) <= fr.paid_amount
               AND fr.paid_amount > 0
+              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
               AND NOT EXISTS (
                   SELECT 1 FROM fee_records fr2
                   WHERE fr2.student_id = s.id
                     AND (fr2.amount + fr2.additional_charges - fr2.discount) > fr2.paid_amount
+                    AND (fr2.charge_type <> 'MONTHLY_FEE' OR fr2.billing_year < YEAR(CURDATE()) OR (fr2.billing_year = YEAR(CURDATE()) AND fr2.billing_month <= MONTH(CURDATE())))
               )
         ");
         $stats['paid_fees'] = (int)$stmt->fetchColumn();
@@ -80,6 +82,7 @@ class DashboardService {
             JOIN students s ON s.id = fr.student_id
             WHERE s.status = 'Active'
               AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
         ");
         $stats['pending_fees'] = (int)$stmt->fetchColumn();
         $stats['pending_fee_students'] = $stats['pending_fees'];
@@ -90,6 +93,7 @@ class DashboardService {
             JOIN students s ON s.id = fr.student_id
             WHERE s.status = 'Active'
               AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
               AND fr.due_date < CURDATE()
         ");
         $stats['overdue_fees'] = (int)$stmt->fetchColumn();
@@ -100,6 +104,7 @@ class DashboardService {
             JOIN students s ON s.id = fr.student_id
             WHERE s.status = 'Active'
               AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
+              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
         ");
         $stats['total_outstanding'] = (float)$stmt->fetchColumn();
 

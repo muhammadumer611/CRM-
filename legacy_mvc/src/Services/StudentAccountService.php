@@ -35,6 +35,10 @@ class StudentAccountService {
 
         $invoiceRows = $this->feeRepo->findStudentInvoices($studentId, $this->db);
         $paymentRows = $this->feeRepo->findStudentPayments($studentId, $this->db);
+        $currentMonth = (int)date('n');
+        $currentYear = (int)date('Y');
+        $currentPeriod = ($currentYear * 12) + $currentMonth;
+        $operationalInvoiceRows = [];
 
         $totalCharges = 0.0;
         $totalPaid = 0.0;
@@ -42,6 +46,11 @@ class StudentAccountService {
         $totalOverdue = 0.0;
 
         foreach ($invoiceRows as $invoice) {
+            $invoicePeriod = ((int)$invoice['billing_year'] * 12) + (int)$invoice['billing_month'];
+            if (($invoice['charge_type'] ?? 'MONTHLY_FEE') === 'MONTHLY_FEE' && $invoicePeriod > $currentPeriod) {
+                continue;
+            }
+            $operationalInvoiceRows[] = $invoice;
             $total = (float)$invoice['amount'] + (float)$invoice['additional_charges'] - (float)$invoice['discount'];
             $paid = (float)$invoice['paid_amount'];
             $outstanding = max(0, $total - $paid);
@@ -57,7 +66,7 @@ class StudentAccountService {
             'student' => $student,
             'active_allocation' => $activeAllocation,
             'room' => $room,
-            'invoices' => $invoiceRows,
+            'invoices' => $operationalInvoiceRows,
             'payments' => $paymentRows,
             'total_charges' => $totalCharges,
             'total_paid' => $totalPaid,
@@ -66,11 +75,9 @@ class StudentAccountService {
             'last_payment_date' => $this->feeRepo->getLastPaymentDate($studentId, $this->db),
         ];
 
-        $currentMonth = (int)date('n');
-        $currentYear = (int)date('Y');
         $currentFee = null;
-        $latestFee = $invoiceRows[0] ?? null;
-        foreach ($invoiceRows as $invoice) {
+        $latestFee = $operationalInvoiceRows[0] ?? null;
+        foreach ($operationalInvoiceRows as $invoice) {
             if ((int)$invoice['billing_month'] === $currentMonth && (int)$invoice['billing_year'] === $currentYear && ($invoice['charge_type'] ?? 'MONTHLY_FEE') === 'MONTHLY_FEE') {
                 $currentFee = $invoice;
                 break;
@@ -89,19 +96,7 @@ class StudentAccountService {
     private function getNextBillingPeriod(array $invoiceRows) {
         $currentMonth = (int)date('n');
         $currentYear = (int)date('Y');
-        if (empty($invoiceRows)) {
-            return ['month' => $currentMonth, 'year' => $currentYear];
-        }
-
-        $latest = $invoiceRows[0];
-        $latestPeriod = ((int)$latest['billing_year'] * 12) + (int)$latest['billing_month'];
-        $currentPeriod = ($currentYear * 12) + $currentMonth;
-        if ($latestPeriod < $currentPeriod) {
-            return ['month' => $currentMonth, 'year' => $currentYear];
-        }
-
-        $next = mktime(0, 0, 0, (int)$latest['billing_month'] + 1, 1, (int)$latest['billing_year']);
-        return ['month' => (int)date('n', $next), 'year' => (int)date('Y', $next)];
+        return ['month' => $currentMonth, 'year' => $currentYear];
     }
 
     public function createNextMonthlyFee($studentId) {
@@ -126,6 +121,11 @@ class StudentAccountService {
             $stmtFees->execute([$studentId]);
             $invoiceRows = $stmtFees->fetchAll();
             $period = $this->getNextBillingPeriod($invoiceRows);
+            $eligibilityError = BillingPeriodEligibility::validate($period['month'], $period['year']);
+            if ($eligibilityError !== null) {
+                $this->db->rollBack();
+                return ['success' => false, 'error' => $eligibilityError];
+            }
             foreach ($invoiceRows as $invoice) {
                 if ((int)$invoice['billing_month'] === $period['month'] && (int)$invoice['billing_year'] === $period['year']) {
                     $this->db->commit();

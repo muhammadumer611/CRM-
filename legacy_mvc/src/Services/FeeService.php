@@ -213,6 +213,10 @@ class FeeService {
         $year = isset($data['billing_year']) ? (int)$data['billing_year'] : (int)date('Y');
         $billingMonth = max(1, min(12, $month));
         $billingYear = max(2026, $year);
+        $eligibilityError = BillingPeriodEligibility::validate($billingMonth, $billingYear);
+        if ($eligibilityError !== null) {
+            return ['success' => false, 'error' => $eligibilityError];
+        }
         $joiningDate = trim((string)($allocation['joining_date'] ?? $student['joining_date'] ?? ''));
         if ($joiningDate !== '') {
             $joiningPeriod = date('Y-m-01', strtotime($joiningDate));
@@ -228,7 +232,7 @@ class FeeService {
             return ['success' => false, 'error' => 'Monthly invoice already exists for this student for ' . date('F', mktime(0, 0, 0, $billingMonth, 1)) . ' ' . $billingYear . '.'];
         }
 
-        $invoiceAmount = isset($data['amount']) ? (float)$data['amount'] : (float)($allocation['monthly_fee'] ?? 0);
+        $invoiceAmount = isset($data['amount']) ? (float)$data['amount'] : (float)($student['monthly_fee'] ?? 0);
         $discount = isset($data['discount']) ? (float)$data['discount'] : 0.0;
         $additionalCharges = isset($data['additional_charges']) ? (float)$data['additional_charges'] : 0.0;
         $netAmount = max(0.0, $invoiceAmount + $additionalCharges - $discount);
@@ -280,8 +284,7 @@ class FeeService {
     }
 
     public static function getBillingDueDate(int $month, int $year, $dueDay = null): string {
-        $config = require APP_ROOT . '/config/app.php';
-        $day = $dueDay !== null ? (int)$dueDay : (int)($config['billing_due_day'] ?? 10);
+        $day = $dueDay !== null ? (int)$dueDay : self::getConfiguredBillingDueDay();
         $month = max(1, min(12, $month));
         $year = max(2025, (int)$year);
         $day = max(1, min(28, $day));
@@ -291,14 +294,20 @@ class FeeService {
     public function generateRecurringMonthlyBillingForActiveResidents($data = []) {
         $month = isset($data['billing_month']) ? (int)$data['billing_month'] : (int)date('n');
         $year = isset($data['billing_year']) ? (int)$data['billing_year'] : (int)date('Y');
+        $billingMonth = max(1, min(12, $month));
+        $billingYear = max(2026, $year);
+        $eligibilityError = BillingPeriodEligibility::validate($billingMonth, $billingYear);
+        if ($eligibilityError !== null) {
+            return ['success' => false, 'error' => $eligibilityError, 'generated' => []];
+        }
         $results = [];
         $db = \App\Core\Database::getInstance()->getConnection();
-        $stmt = $db->query("SELECT s.id, s.full_name, s.status, ra.room_id, ra.bed_number, ra.status AS allocation_status, r.monthly_fee, r.room_number, r.block, r.total_beds FROM students s JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active' JOIN rooms r ON r.id = ra.room_id WHERE s.status = 'Active' ORDER BY s.id ASC");
+        $stmt = $db->query("SELECT s.id, s.full_name, s.status, s.monthly_fee, ra.room_id, ra.bed_number, ra.status AS allocation_status, r.monthly_fee AS room_monthly_fee, r.room_number, r.block, r.total_beds FROM students s JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active' JOIN rooms r ON r.id = ra.room_id WHERE s.status = 'Active' ORDER BY s.id ASC");
         $students = $stmt->fetchAll();
 
         foreach ($students as $student) {
             $studentId = (int)$student['id'];
-            if ($this->feeRepo->findByStudentAndMonthYear($studentId, $month, $year)) {
+            if ($this->feeRepo->findByStudentAndMonthYear($studentId, $billingMonth, $billingYear)) {
                 $results[] = ['student_id' => $studentId, 'status' => 'skipped', 'reason' => 'invoice_exists'];
                 continue;
             }
@@ -306,11 +315,11 @@ class FeeService {
             $invoiceAmount = (float)($student['monthly_fee'] ?? 0);
             $discount = 0.0;
             $additionalCharges = 0.0;
-            $dueDate = !empty($data['due_date']) ? $data['due_date'] : self::getBillingDueDate($month, $year, $data['due_day'] ?? 5);
+            $dueDate = !empty($data['due_date']) ? $data['due_date'] : self::getBillingDueDate($billingMonth, $billingYear, $data['due_day'] ?? null);
 
             $result = $this->generateMonthlyInvoiceForStudent($studentId, [
-                'billing_month' => $month,
-                'billing_year' => $year,
+                'billing_month' => $billingMonth,
+                'billing_year' => $billingYear,
                 'amount' => $invoiceAmount,
                 'discount' => 0,
                 'additional_charges' => 0,
@@ -427,12 +436,22 @@ class FeeService {
     }
 
     public static function getDueDateForBillingPeriod($month, $year, $dueDay = null) {
-        $config = require APP_ROOT . '/config/app.php';
-        $dueDay = $dueDay !== null ? (int)$dueDay : (int)($config['billing_due_day'] ?? 10);
+        $dueDay = $dueDay !== null ? (int)$dueDay : self::getConfiguredBillingDueDay();
         $month = max(1, min(12, (int)$month));
         $year = (int)$year;
         $dueDay = max(1, min(28, $dueDay));
         return date('Y-m-d', mktime(0, 0, 0, $month, $dueDay, $year));
+    }
+
+    private static function getConfiguredBillingDueDay(): int {
+        try {
+            $db = \App\Core\Database::getInstance()->getConnection();
+            $stmt = $db->prepare("SELECT setting_value FROM hostel_settings WHERE setting_key = 'default_due_day' LIMIT 1");
+            $stmt->execute();
+            return max(1, min(28, (int)($stmt->fetchColumn() ?: 10)));
+        } catch (\Throwable $e) {
+            return 10;
+        }
     }
 
     public function getStudentArrearsSummary($studentId) {

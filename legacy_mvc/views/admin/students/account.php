@@ -12,7 +12,7 @@
         </div>
     </div>
 
-    <?php $currentFee = $account['active_fee'] ?? $account['current_fee'] ?? null; $nextPeriod = $account['next_billing_period'] ?? ['month' => date('n'), 'year' => date('Y')]; $currentTotal = $currentFee ? (float)$currentFee['amount'] + (float)$currentFee['additional_charges'] - (float)$currentFee['discount'] : 0; $currentPaid = $currentFee ? (float)$currentFee['paid_amount'] : 0; $currentPending = max(0, $currentTotal - $currentPaid); ?>
+    <?php $currentCycleFee = $account['current_fee'] ?? null; $currentFee = $account['active_fee'] ?? $currentCycleFee; $nextPeriod = $account['next_billing_period'] ?? ['month' => date('n'), 'year' => date('Y')]; $currentTotal = $currentFee ? (float)$currentFee['amount'] + (float)$currentFee['additional_charges'] - (float)$currentFee['discount'] : 0; $currentPaid = $currentFee ? (float)$currentFee['paid_amount'] : 0; $currentPending = max(0, $currentTotal - $currentPaid); ?>
     <div class="card" style="margin: 0 0 1.5rem; border: 1px solid rgba(56,189,248,0.35);">
         <div class="card-header" style="margin-bottom: 0.5rem;">
             <div>
@@ -43,7 +43,7 @@
         <?php else: ?>
             <div style="color:var(--text-muted);margin-bottom:1rem;">No fee has been created for the current billing cycle.</div>
         <?php endif; ?>
-        <?php if (!$currentFee || $currentFee['status'] === 'Paid'): ?>
+        <?php if (!$currentCycleFee): ?>
         <form action="<?php echo $config['base_url']; ?>/students/account/invoice/<?php echo (int)$student['id']; ?>" method="POST" style="margin-top:1rem;">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token ?? ''); ?>">
             <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Add Monthly Fee — <?php echo date('F Y', mktime(0, 0, 0, (int)$nextPeriod['month'], 1, (int)$nextPeriod['year'])); ?></button>
