@@ -45,11 +45,17 @@ class StudentController {
     public function create() {
         $roomService = new RoomService();
         $rooms = $roomService->getAllAvailableRooms();
+        $oldInput = Session::get('student_onboard_old', []);
+        $formErrors = Session::get('student_onboard_errors', []);
+        Session::remove('student_onboard_old');
+        Session::remove('student_onboard_errors');
 
         View::render('admin/students/create', [
             'title'      => 'New Student Onboarding',
             'csrf_token' => CSRF::generateToken(),
-            'rooms'      => $rooms
+            'rooms'      => $rooms,
+            'oldInput'   => is_array($oldInput) ? $oldInput : [],
+            'formErrors' => is_array($formErrors) ? $formErrors : [],
         ], 'admin');
     }
 
@@ -62,77 +68,219 @@ class StudentController {
         $config = require APP_ROOT . '/config/app.php';
 
         $accommodationType = strtolower(trim((string)($_POST['accommodation_type'] ?? '')));
+        $errors = [];
         if ($accommodationType === '') {
-            Session::set('error', 'Please select accommodation type.');
-            header('Location: ' . $config['base_url'] . '/students/create');
-            exit;
+            $errors['accommodation_type'] = 'Please select accommodation type.';
         }
 
         if ($accommodationType === 'single') {
-            $required = ['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'relation', 'resident_type', 'room_id', 'bed_number', 'joining_date', 'monthly_fee', 'added_by_name'];
-            foreach ($required as $field) {
+            $required = [
+                'full_name' => 'Full Name',
+                'cnic' => 'CNIC',
+                'phone' => 'Phone Number',
+                'address' => 'Address',
+                'guardian_name' => 'Guardian Name',
+                'guardian_phone' => 'Guardian Phone',
+                'relation' => 'Relation',
+                'resident_type' => 'Resident Type',
+                'room_id' => 'Room',
+                'bed_number' => 'Bed',
+                'joining_date' => 'Joining Date',
+                'monthly_fee' => 'Monthly Fee',
+            ];
+            foreach ($required as $field => $label) {
                 if (!isset($_POST[$field]) || trim((string)$_POST[$field]) === '') {
-                    Session::set('error', 'Please fill all required fields: ' . str_replace('_', ' ', $field) . '.');
-                    header('Location: ' . $config['base_url'] . '/students/create');
-                    exit;
+                    $errors[$field] = 'Please enter ' . $label . '.';
                 }
             }
             if (($_POST['resident_type'] ?? '') === 'Student' && trim((string)($_POST['college_university'] ?? '')) === '') {
-                Session::set('error', 'College / University is required when Resident Type is Student.');
-                header('Location: ' . $config['base_url'] . '/students/create');
-                exit;
+                $errors['college_university'] = 'Please enter College / University.';
             }
             if (($_POST['resident_type'] ?? '') === 'Job / Working' && trim((string)($_POST['job_workplace'] ?? '')) === '') {
-                Session::set('error', 'Job / Workplace is required when Resident Type is Job / Working.');
-                header('Location: ' . $config['base_url'] . '/students/create');
-                exit;
+                $errors['job_workplace'] = 'Please enter Job / Workplace.';
+            }
+            if (!empty($_POST['cnic']) && !StudentService::validateCnic($_POST['cnic'])) {
+                $errors['cnic'] = 'Please enter a valid 13-digit CNIC.';
+            }
+            if (!empty($_POST['phone']) && !StudentService::validatePhone($_POST['phone'])) {
+                $errors['phone'] = 'Please enter a valid 11-digit phone number.';
+            }
+            if (!empty($_POST['guardian_phone']) && !StudentService::validatePhone($_POST['guardian_phone'])) {
+                $errors['guardian_phone'] = 'Please enter a valid 11-digit guardian phone number.';
+            }
+            if (!empty($_POST['blood_group']) && !in_array($_POST['blood_group'], ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], true)) {
+                $errors['blood_group'] = 'Please select a valid blood group.';
             }
         } elseif ($accommodationType === 'full_room' || $accommodationType === 'full') {
             if (!isset($_POST['room_id']) || trim((string)$_POST['room_id']) === '') {
-                Session::set('error', 'Please select a room.');
-                header('Location: ' . $config['base_url'] . '/students/create');
-                exit;
-            }
-            if (!isset($_POST['added_by_name']) || trim((string)$_POST['added_by_name']) === '') {
-                Session::set('error', 'Added By is required. Please enter the staff member name.');
-                header('Location: ' . $config['base_url'] . '/students/create');
-                exit;
+                $errors['room_id'] = 'Please select a room.';
             }
             $occupants = $_POST['occupants'] ?? [];
             if (empty($occupants) || !is_array($occupants)) {
-                Session::set('error', 'Please add at least one occupant.');
-                header('Location: ' . $config['base_url'] . '/students/create');
-                exit;
+                $errors['occupants'] = 'Please add at least one occupant.';
+            }
+            if (!is_array($occupants)) {
+                $occupants = [];
             }
             foreach ($occupants as $index => $occupant) {
-                if (empty($occupant['full_name'] ?? '') || empty($occupant['cnic'] ?? '')) {
-                    Session::set('error', 'Please enter a valid name and CNIC for each person.');
-                    header('Location: ' . $config['base_url'] . '/students/create');
-                    exit;
+                if (!is_array($occupant)) {
+                    continue;
+                }
+                foreach (['full_name' => 'Full Name', 'cnic' => 'CNIC', 'phone' => 'Phone', 'guardian_phone' => 'Guardian Phone'] as $field => $label) {
+                    if (trim((string)($occupant[$field] ?? '')) === '') {
+                        $errors["occupants[{$index}][{$field}]"] = "Please enter {$label} for person " . ((int)$index + 1) . '.';
+                    }
+                }
+                if (!empty($occupant['cnic']) && !StudentService::validateCnic($occupant['cnic'])) {
+                    $errors["occupants[{$index}][cnic]"] = 'Please enter a valid 13-digit CNIC.';
+                }
+                if (!empty($occupant['phone']) && !StudentService::validatePhone($occupant['phone'])) {
+                    $errors["occupants[{$index}][phone]"] = 'Please enter a valid 11-digit phone number.';
+                }
+                if (!empty($occupant['guardian_phone']) && !StudentService::validatePhone($occupant['guardian_phone'])) {
+                    $errors["occupants[{$index}][guardian_phone]"] = 'Please enter a valid 11-digit guardian phone number.';
                 }
             }
             if (!isset($_POST['monthly_room_fee']) || trim((string)$_POST['monthly_room_fee']) === '') {
-                Session::set('error', 'Please enter a monthly room fee.');
-                header('Location: ' . $config['base_url'] . '/students/create');
-                exit;
+                $errors['monthly_room_fee'] = 'Please enter a monthly room fee.';
             }
         } else {
-            Session::set('error', 'Please select accommodation type.');
-            header('Location: ' . $config['base_url'] . '/students/create');
-            exit;
+            if ($accommodationType !== '') {
+                $errors['accommodation_type'] = 'Please select a valid accommodation type.';
+            }
         }
 
-        $result = $this->studentService->onboardStudent($_POST);
+        if (!empty($errors)) {
+            $this->redirectToOnboardingForm($config, $_POST, $errors);
+        }
+
+        try {
+            $result = $this->studentService->onboardStudent($_POST);
+        } catch (\Throwable $e) {
+            $message = $this->safeOnboardingError($e->getMessage());
+            $errors = [$this->fieldForOnboardingError($message, $_POST) => $message];
+            $this->redirectToOnboardingForm($config, $_POST, $errors);
+        }
 
         if ($result['success']) {
+            Session::remove('student_onboard_old');
+            Session::remove('student_onboard_errors');
             $studentStr = !empty($result['student_id_str']) ? ' (' . htmlspecialchars($result['student_id_str']) . ')' : '';
             Session::set('success', 'Student onboarded successfully' . $studentStr . '.');
             header('Location: ' . $config['base_url'] . '/students');
         } else {
-            Session::set('error', $result['error']);
-            header('Location: ' . $config['base_url'] . '/students/create');
+            $message = $this->safeOnboardingError((string)($result['error'] ?? ''));
+            $errors = [$this->fieldForOnboardingError($message, $_POST) => $message];
+            $this->redirectToOnboardingForm($config, $_POST, $errors);
         }
         exit;
+    }
+
+    private function redirectToOnboardingForm(array $config, array $input, array $errors): void {
+        Session::set('student_onboard_old', $this->preservableOnboardingInput($input));
+        Session::set('student_onboard_errors', $this->normalizeOnboardingErrors($errors, $input));
+        Session::set('error', 'Please correct the highlighted onboarding fields and try again.');
+        header('Location: ' . $config['base_url'] . '/students/create');
+        exit;
+    }
+
+    private function preservableOnboardingInput(array $input): array {
+        $allowedFields = [
+            'accommodation_type', 'room_id', 'bed_number', 'joining_date', 'full_name', 'cnic', 'phone', 'address',
+            'blood_group', 'guardian_name', 'guardian_phone', 'relation', 'resident_type', 'college_university',
+            'job_workplace', 'vehicle_number', 'vehicle_type', 'vehicle_type_other', 'note', 'monthly_fee',
+            'monthly_room_fee', 'security_deposit', 'first_month_billing_mode', 'first_month_discount',
+            'first_month_discount_reason',
+        ];
+        $preserved = [];
+        foreach ($allowedFields as $field) {
+            if (isset($input[$field]) && is_scalar($input[$field])) {
+                $preserved[$field] = substr((string)$input[$field], 0, 2048);
+            }
+        }
+
+        $occupantFields = ['full_name', 'cnic', 'phone', 'guardian_phone', 'blood_group'];
+        if (isset($input['occupants']) && is_array($input['occupants'])) {
+            $position = 0;
+            foreach (array_slice($input['occupants'], 0, 20, true) as $index => $occupant) {
+                if (!is_array($occupant)) {
+                    continue;
+                }
+                foreach ($occupantFields as $field) {
+                    if (isset($occupant[$field]) && is_scalar($occupant[$field])) {
+                        $preserved['occupants'][$position][$field] = substr((string)$occupant[$field], 0, 2048);
+                    }
+                }
+                $position++;
+            }
+        }
+
+        return $preserved;
+    }
+
+    private function normalizeOnboardingErrors(array $errors, array $input): array {
+        if (!isset($input['occupants']) || !is_array($input['occupants'])) {
+            return $errors;
+        }
+
+        $indexMap = [];
+        foreach (array_keys(array_slice($input['occupants'], 0, 20, true)) as $position => $originalIndex) {
+            $indexMap[(string)$originalIndex] = $position;
+        }
+
+        $normalized = [];
+        foreach ($errors as $field => $message) {
+            if (preg_match('/^occupants\[([^\]]+)\](.*)$/', (string)$field, $matches)
+                && isset($indexMap[$matches[1]])) {
+                $field = 'occupants[' . $indexMap[$matches[1]] . ']' . $matches[2];
+            }
+            $normalized[$field] = $message;
+        }
+        return $normalized;
+    }
+
+    private function fieldForOnboardingError(string $message, array $input): string {
+        $message = strtolower($message);
+        $isFullRoom = in_array($input['accommodation_type'] ?? '', ['full_room', 'full'], true);
+        $occupantKeys = isset($input['occupants']) && is_array($input['occupants']) ? array_keys($input['occupants']) : [];
+        $occupantIndex = 0;
+        if ($isFullRoom && preg_match('/person\s+(\d+)/', $message, $matches)) {
+            $position = max(0, (int)$matches[1] - 1);
+            $occupantIndex = $occupantKeys[$position] ?? $position;
+        }
+        if ($isFullRoom && strpos($message, 'blood group') !== false) return "occupants[{$occupantIndex}][blood_group]";
+        if ($isFullRoom && strpos($message, 'cnic') !== false) return "occupants[{$occupantIndex}][cnic]";
+        if ($isFullRoom && strpos($message, 'guardian phone') !== false) return "occupants[{$occupantIndex}][guardian_phone]";
+        if ($isFullRoom && strpos($message, 'phone') !== false) return "occupants[{$occupantIndex}][phone]";
+        if (strpos($message, 'cnic') !== false) return 'cnic';
+        if (strpos($message, 'guardian phone') !== false) return 'guardian_phone';
+        if (strpos($message, 'phone') !== false) return 'phone';
+        if (strpos($message, 'blood group') !== false) return 'blood_group';
+        if (strpos($message, 'college') !== false || strpos($message, 'university') !== false) return 'college_university';
+        if (strpos($message, 'workplace') !== false) return 'job_workplace';
+        if (strpos($message, 'joining date') !== false) return 'joining_date';
+        if (strpos($message, 'security') !== false) return 'security_deposit';
+        if (strpos($message, 'first month') !== false || strpos($message, 'adjustment') !== false || strpos($message, 'discount') !== false) return 'first_month_discount';
+        if (strpos($message, 'fee') !== false || strpos($message, 'billing') !== false) {
+            return in_array($input['accommodation_type'] ?? '', ['full_room', 'full'], true) ? 'monthly_room_fee' : 'monthly_fee';
+        }
+        if (strpos($message, 'bed') !== false || strpos($message, 'reserved') !== false || strpos($message, 'occupied') !== false || strpos($message, 'capacity') !== false) {
+            return in_array($input['accommodation_type'] ?? '', ['full_room', 'full'], true) ? 'room_id' : 'bed_number';
+        }
+        if (strpos($message, 'room') !== false) return 'room_id';
+        if (strpos($message, 'relation') !== false) return 'relation';
+        if (strpos($message, 'guardian name') !== false) return 'guardian_name';
+        if (strpos($message, 'address') !== false) return 'address';
+        if (strpos($message, 'name') !== false) return 'full_name';
+        return 'form';
+    }
+
+    private function safeOnboardingError(string $message): string {
+        $message = trim($message);
+        if ($message === '' || preg_match('/SQLSTATE|PDOException|database connection|integrity constraint|foreign key constraint/i', $message)) {
+            return 'Unable to complete onboarding. No student, allocation, fee, or deposit was saved. Please review the form or contact an administrator.';
+        }
+        return $message;
     }
 
     public function edit($id) {

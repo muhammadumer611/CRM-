@@ -96,6 +96,11 @@ class StudentService {
     // ATOMIC STUDENT ONBOARDING (Phase 13)
     // Single transaction: student + allocation + fee + security deposit + history + audit
     // ============================================================
+    private function hasSupportedFirstMonthBillingMode($data) {
+        $billingMode = strtolower(trim((string)($data['first_month_billing_mode'] ?? 'full')));
+        return in_array($billingMode, ['full', 'manual'], true);
+    }
+
     public function onboardStudent($data) {
         $accommodationType = strtolower(trim((string)($data['accommodation_type'] ?? '')));
 
@@ -111,10 +116,10 @@ class StudentService {
     }
 
     public function onboardSinglePerson($data) {
-        $addedByName = trim((string)($data['added_by_name'] ?? ''));
-        if ($addedByName === '') {
-            return ['success' => false, 'error' => 'Added By is required. Please enter the staff member name who added this student.'];
+        if (!$this->hasSupportedFirstMonthBillingMode($data)) {
+            return ['success' => false, 'error' => 'Please select Full Monthly Fee or Manual Adjustment.'];
         }
+        $addedByName = trim((string)($data['added_by_name'] ?? ''));
 
         $residentType = self::normalizeResidentType($data['resident_type'] ?? 'Student');
         $collegeUniversity = trim((string)($data['college_university'] ?? ''));
@@ -122,6 +127,11 @@ class StudentService {
         $vehicleNumber = trim((string)($data['vehicle_number'] ?? ''));
         $vehicleType = self::normalizeVehicleType($data['vehicle_type'] ?? '', $data['vehicle_type_other'] ?? '');
         $note = trim((string)($data['note'] ?? ''));
+        $bloodGroup = trim((string)($data['blood_group'] ?? ''));
+
+        if ($bloodGroup !== '' && !in_array($bloodGroup, ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], true)) {
+            return ['success' => false, 'error' => 'Please select a valid blood group.'];
+        }
 
         if ($residentType === 'Student' && $collegeUniversity === '') {
             return ['success' => false, 'error' => 'College / University is required for Student residents.'];
@@ -171,7 +181,13 @@ class StudentService {
             $stmtCnic = $this->db->prepare("SELECT id FROM students WHERE cnic = ? FOR UPDATE");
             $stmtCnic->execute([$cleanCnic]);
             if ($stmtCnic->fetch()) {
-                throw new Exception('This CNIC is already associated with an active student.');
+                throw new Exception('CNIC already exists. Please check the existing student record.');
+            }
+
+            $stmtPhone = $this->db->prepare("SELECT id FROM students WHERE phone = ? OR REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = ? FOR UPDATE");
+            $stmtPhone->execute([$phone, $phone]);
+            if ($stmtPhone->fetch()) {
+                throw new Exception('A student with this phone number already exists. Please check the existing student record.');
             }
 
             $stmtRoom = $this->db->prepare("SELECT * FROM rooms WHERE id = ? FOR UPDATE");
@@ -223,7 +239,7 @@ class StudentService {
                 'cnic' => $cleanCnic,
                 'phone' => $phone,
                 'email' => empty($data['email']) ? null : trim($data['email']),
-                'blood_group' => empty($data['blood_group']) ? null : trim($data['blood_group']),
+                'blood_group' => $bloodGroup !== '' ? $bloodGroup : null,
                 'address' => trim($data['address']),
                 'guardian_name' => trim($data['guardian_name']),
                 'guardian_phone' => $guardianPhone,
@@ -237,7 +253,7 @@ class StudentService {
                 'note' => $note !== '' ? $note : null,
                 'status' => 'Active',
                 'monthly_fee' => $monthlyFee,
-                'added_by_name' => $addedByName,
+                'added_by_name' => $addedByName !== '' ? $addedByName : null,
                 'added_at' => date('Y-m-d H:i:s'),
             ];
 
@@ -260,7 +276,7 @@ class StudentService {
             }
 
             $invoice = $this->billingService->createFirstMonthInvoice($studentId, $monthlyFee, $joiningDate, [
-                'first_month_billing_mode' => $data['first_month_billing_mode'] ?? 'automatic',
+                'first_month_billing_mode' => $data['first_month_billing_mode'] ?? 'full',
                 'first_month_discount' => $data['first_month_discount'] ?? 0,
                 'first_month_discount_reason' => $data['first_month_discount_reason'] ?? '',
                 'created_by_admin' => Session::get('admin_id'),
@@ -273,7 +289,7 @@ class StudentService {
             }
 
             return ['success' => true, 'id' => $studentId, 'student_id_str' => $studentIdStr];
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             if ($shouldCommit && $this->db->inTransaction()) {
                 $this->db->rollBack();
             }
@@ -282,10 +298,10 @@ class StudentService {
     }
 
     public function onboardFullRoom($data) {
-        $addedByName = trim((string)($data['added_by_name'] ?? ''));
-        if ($addedByName === '') {
-            return ['success' => false, 'error' => 'Added By is required. Please enter the staff member name who added this student.'];
+        if (!$this->hasSupportedFirstMonthBillingMode($data)) {
+            return ['success' => false, 'error' => 'Please select Full Monthly Fee or Manual Adjustment.'];
         }
+        $addedByName = trim((string)($data['added_by_name'] ?? ''));
 
         $roomId = !empty($data['room_id']) ? (int)$data['room_id'] : 0;
         $monthlyRoomFee = isset($data['monthly_room_fee']) && $data['monthly_room_fee'] !== '' ? (float)$data['monthly_room_fee'] : 0.0;
@@ -357,9 +373,10 @@ class StudentService {
             }
 
             $createdStudentIds = [];
+            $seenPhoneNumbers = [];
             $joiningDate = !empty($data['joining_date']) ? $data['joining_date'] : date('Y-m-d');
 
-            foreach ($occupants as $index => $occupant) {
+            foreach (array_values($occupants) as $index => $occupant) {
                 $fullName = trim((string)($occupant['full_name'] ?? ''));
                 $cnic = self::sanitizeCnic($occupant['cnic'] ?? '');
                 if ($fullName === '' || !self::validateCnic($cnic)) {
@@ -369,7 +386,7 @@ class StudentService {
                 $stmtCnic = $this->db->prepare("SELECT id FROM students WHERE cnic = ? FOR UPDATE");
                 $stmtCnic->execute([$cnic]);
                 if ($stmtCnic->fetch()) {
-                    throw new Exception('This CNIC is already associated with an active student.');
+                    throw new Exception('CNIC already exists for person ' . ((int)$index + 1) . '. Please check the existing student record.');
                 }
 
                 $studentIdStr = $this->studentRepo->generateStudentId($this->db);
@@ -379,12 +396,22 @@ class StudentService {
                 if (!self::validatePhone($phone) || !self::validatePhone($guardianPhone)) {
                     throw new Exception('Each full-room occupant needs valid student and guardian phone numbers.');
                 }
+                $stmtPhone = $this->db->prepare("SELECT id FROM students WHERE phone = ? OR REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = ? FOR UPDATE");
+                $stmtPhone->execute([$phone, $phone]);
+                if ($stmtPhone->fetch() || isset($seenPhoneNumbers[$phone])) {
+                    throw new Exception('A student phone number already exists for person ' . ((int)$index + 1) . '. Please check the existing student record.');
+                }
+                $seenPhoneNumbers[$phone] = true;
                 $residentType = self::normalizeResidentType($occupant['resident_type'] ?? 'Student');
                 $collegeUniversity = trim((string)($occupant['college_university'] ?? ''));
                 $jobWorkplace = trim((string)($occupant['job_workplace'] ?? ''));
                 $vehicleNumber = trim((string)($occupant['vehicle_number'] ?? ''));
                 $vehicleType = self::normalizeVehicleType($occupant['vehicle_type'] ?? '', $occupant['vehicle_type_other'] ?? '');
                 $note = trim((string)($occupant['note'] ?? ''));
+                $bloodGroup = trim((string)($occupant['blood_group'] ?? ''));
+                if ($bloodGroup !== '' && !in_array($bloodGroup, ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], true)) {
+                    throw new Exception('Please select a valid blood group for each person.');
+                }
 
                 $dbData = [
                     'student_id_str' => $studentIdStr,
@@ -392,7 +419,7 @@ class StudentService {
                     'cnic' => $cnic,
                     'phone' => $phone,
                     'email' => empty($occupant['email'] ?? '') ? null : trim((string)$occupant['email']),
-                    'blood_group' => empty($occupant['blood_group'] ?? '') ? null : trim((string)$occupant['blood_group']),
+                    'blood_group' => $bloodGroup !== '' ? $bloodGroup : null,
                     'address' => trim((string)($occupant['address'] ?? '')) ?: 'Full room occupant',
                     'guardian_name' => $guardianName,
                     'guardian_phone' => $guardianPhone,
@@ -406,7 +433,7 @@ class StudentService {
                     'note' => $note !== '' ? $note : null,
                     'status' => 'Active',
                     'monthly_fee' => $monthlyRoomFee,
-                    'added_by_name' => $addedByName,
+                    'added_by_name' => $addedByName !== '' ? $addedByName : null,
                     'added_at' => date('Y-m-d H:i:s'),
                 ];
 
@@ -431,7 +458,7 @@ class StudentService {
                 }
 
                 $invoice = $this->billingService->createFirstMonthInvoice($studentId, $monthlyRoomFee, $joiningDate, [
-                    'first_month_billing_mode' => $data['first_month_billing_mode'] ?? 'automatic',
+                    'first_month_billing_mode' => $data['first_month_billing_mode'] ?? 'full',
                     'first_month_discount' => $data['first_month_discount'] ?? 0,
                     'first_month_discount_reason' => $data['first_month_discount_reason'] ?? '',
                     'created_by_admin' => Session::get('admin_id'),
@@ -443,10 +470,14 @@ class StudentService {
             $newStatus = ($newOccupied >= $totalBeds) ? 'Occupied' : 'Partially Occupied';
             $this->db->prepare("UPDATE rooms SET occupied_beds = ?, status = ? WHERE id = ?")->execute([$newOccupied, $newStatus, $roomId]);
 
-            $this->db->commit();
+            if ($shouldCommit) {
+                $this->db->commit();
+            }
             return ['success' => true, 'count' => count($createdStudentIds), 'student_id_str' => $createdStudentIds[0]['student_id_str'] ?? null];
-        } catch (Exception $e) {
-            $this->db->rollBack();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }

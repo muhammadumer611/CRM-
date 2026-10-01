@@ -135,9 +135,9 @@ DROP TABLE IF EXISTS `reservations`;
 CREATE TABLE `reservations` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `full_name` varchar(100) NOT NULL,
-  `cnic` varchar(15) NOT NULL,
+  `cnic` varchar(15) DEFAULT NULL,
   `phone` varchar(20) NOT NULL,
-  `district` varchar(80) NOT NULL,
+  `district` varchar(80) DEFAULT NULL,
   `room_id` int(11) NOT NULL,
   `bed_number` int(11) NOT NULL,
   `reservation_amount` decimal(10,2) NOT NULL DEFAULT 0.00,

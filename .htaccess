@@ -1,0 +1,14 @@
+Options -Indexes
+RewriteEngine On
+
+RewriteRule (^|/)\. - [F,L]
+RewriteRule ^(?:config|core|controllers|db|helpers|repositories|routes|services|utils|logs|legacy_mvc|screenshort)(?:/|$) - [F,L,NC]
+
+RewriteRule ^$ public/index.php [QSA,L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ public/index.php [QSA,L]
+
+<FilesMatch "(?i)(^\.|.*\.(?:sql(?:\.err)?|log|err|bak|backup|pem|key|md|txt|out|html?))$">
+    Require all denied
+</FilesMatch>

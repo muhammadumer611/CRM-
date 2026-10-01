@@ -107,3 +107,27 @@ Stack trace:
 [21-Sep-2026 14:28:37 UTC] Database connection failed: could not find driver
 [21-Sep-2026 14:28:38 UTC] Database connection failed: could not find driver
 [21-Sep-2026 14:28:43 UTC] Database connection failed: could not find driver
+[2026-10-01 14:20:57] Uncaught Exception RuntimeException: "Production database credentials must be provided through HMS_DB_HOST, HMS_DB_NAME, HMS_DB_USER, and HMS_DB_PASSWORD." in D:\CRM--main (4)\CRM--main\legacy_mvc\config\database.php on line 10
+Stack trace:
+#0 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Core\Database.php(12): require()
+#1 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Core\Database.php(32): App\Core\Database->__construct()
+#2 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Repositories\AdminRepository.php(11): App\Core\Database::getInstance()
+#3 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Services\AuthService.php(11): App\Repositories\AdminRepository->__construct()
+#4 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Controllers\AuthController.php(13): App\Services\AuthService->__construct()
+#5 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Core\Router.php(44): App\Controllers\AuthController->__construct()
+#6 D:\CRM--main (4)\CRM--main\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/')
+#7 D:\CRM--main (4)\CRM--main\public\index.php(62): require_once('D:\\CRM--main (4...')
+#8 D:\CRM--main (4)\CRM--main\router.php(18): require('D:\\CRM--main (4...')
+#9 {main}
+[2026-10-01 14:21:06] Uncaught Exception RuntimeException: "Production database credentials must be provided through HMS_DB_HOST, HMS_DB_NAME, HMS_DB_USER, and HMS_DB_PASSWORD." in D:\CRM--main (4)\CRM--main\legacy_mvc\config\database.php on line 10
+Stack trace:
+#0 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Core\Database.php(12): require()
+#1 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Core\Database.php(32): App\Core\Database->__construct()
+#2 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Repositories\AdminRepository.php(11): App\Core\Database::getInstance()
+#3 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Services\AuthService.php(11): App\Repositories\AdminRepository->__construct()
+#4 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Controllers\AuthController.php(13): App\Services\AuthService->__construct()
+#5 D:\CRM--main (4)\CRM--main\legacy_mvc\src\Core\Router.php(44): App\Controllers\AuthController->__construct()
+#6 D:\CRM--main (4)\CRM--main\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/')
+#7 D:\CRM--main (4)\CRM--main\public\index.php(62): require_once('D:\\CRM--main (4...')
+#8 D:\CRM--main (4)\CRM--main\router.php(18): require('D:\\CRM--main (4...')
+#9 {main}

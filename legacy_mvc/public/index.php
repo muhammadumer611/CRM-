@@ -2,7 +2,7 @@
 define('APP_ROOT', dirname(__DIR__));
 
 $appConfig = file_exists(APP_ROOT . '/config/app.php') ? require APP_ROOT . '/config/app.php' : ['environment' => 'development'];
-$isProduction = ($appConfig['environment'] ?? 'development') === 'production';
+$isProduction = ($appConfig['environment'] ?? 'production') !== 'development';
 
 // Ensure logs directory exists
 $logsDir = APP_ROOT . '/logs';

@@ -71,6 +71,13 @@ class RoomAllocationRepository {
         return $stmt->fetchAll();
     }
 
+    public function getActiveReservedBedsForRoom($roomId, $pdo = null) {
+        $db = $pdo ?? $this->db;
+        $stmt = $db->prepare("SELECT DISTINCT bed_number FROM reservations WHERE room_id = :room_id AND status IN ('PENDING', 'CONFIRMED')");
+        $stmt->execute(['room_id' => $roomId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     public function getHistoryByStudent($studentId) {
         $stmt = $this->db->prepare("
             SELECT a.*, r.room_number, r.block 

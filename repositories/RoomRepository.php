@@ -29,9 +29,10 @@ class RoomRepository {
     }
 
     public function findById($id) {
-        $stmt = $this->db->prepare("SELECT * FROM rooms WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT r.*, COALESCE(occupancy.occupied_beds, 0) AS allocation_occupied_beds, COALESCE(reservations.reserved_beds, 0) AS active_reserved_beds FROM rooms r {$this->availabilityJoins()} WHERE r.id = :id");
         $stmt->execute(['id' => $id]);
-        return $stmt->fetch();
+        $room = $stmt->fetch();
+        return $room ? $this->normalizeAvailability($room) : false;
     }
 
     public function findByRoomNumberAndBlock($roomNumber, $block) {
@@ -41,27 +42,29 @@ class RoomRepository {
     }
 
     public function search($filters) {
-        $query = "SELECT * FROM rooms WHERE 1=1";
+        $query = "SELECT r.*, COALESCE(occupancy.occupied_beds, 0) AS allocation_occupied_beds, COALESCE(reservations.reserved_beds, 0) AS active_reserved_beds FROM rooms r {$this->availabilityJoins()} WHERE 1=1";
         $params = [];
 
-        if (!empty($filters['status'])) {
-            $query .= " AND status = :status";
-            $params['status'] = $filters['status'];
-        }
         if (!empty($filters['room_number'])) {
-            $query .= " AND room_number LIKE :room_number";
+            $query .= " AND r.room_number LIKE :room_number";
             $params['room_number'] = '%' . $filters['room_number'] . '%';
         }
         if (!empty($filters['block'])) {
-            $query .= " AND block = :block";
+            $query .= " AND r.block = :block";
             $params['block'] = $filters['block'];
         }
 
-        $query .= " ORDER BY block ASC, room_number ASC";
+        $query .= " ORDER BY r.block ASC, r.room_number ASC";
 
         $stmt = $this->db->prepare($query);
         $stmt->execute($params);
-        return $stmt->fetchAll();
+        $rooms = array_map([$this, 'normalizeAvailability'], $stmt->fetchAll());
+        if (!empty($filters['status'])) {
+            $rooms = array_values(array_filter($rooms, static function ($room) use ($filters) {
+                return $room['status'] === $filters['status'];
+            }));
+        }
+        return $rooms;
     }
 
     public function update($id, $data) {
@@ -95,16 +98,52 @@ class RoomRepository {
         $stmt = $this->db->query("
             SELECT 
                 COUNT(*) as total_rooms,
-                SUM(CASE WHEN status != 'Disabled' THEN 1 ELSE 0 END) as active_rooms,
-                SUM(CASE WHEN status = 'Disabled' THEN 1 ELSE 0 END) as disabled_rooms,
-                SUM(CASE WHEN status = 'Available' THEN 1 ELSE 0 END) as available_rooms,
-                SUM(CASE WHEN status = 'Partially Occupied' THEN 1 ELSE 0 END) as partially_occupied_rooms,
-                SUM(CASE WHEN status = 'Occupied' THEN 1 ELSE 0 END) as occupied_rooms,
-                COALESCE(SUM(total_beds), 0) as total_beds,
-                COALESCE(SUM(occupied_beds), 0) as occupied_beds,
-                COALESCE(SUM(total_beds - occupied_beds), 0) as available_beds
-            FROM rooms
+                SUM(CASE WHEN r.status != 'Disabled' THEN 1 ELSE 0 END) as active_rooms,
+                SUM(CASE WHEN r.status = 'Disabled' THEN 1 ELSE 0 END) as disabled_rooms,
+                SUM(CASE WHEN r.status != 'Disabled' AND COALESCE(occupancy.occupied_beds, 0) + COALESCE(reservations.reserved_beds, 0) = 0 THEN 1 ELSE 0 END) as available_rooms,
+                SUM(CASE WHEN r.status != 'Disabled' AND COALESCE(occupancy.occupied_beds, 0) + COALESCE(reservations.reserved_beds, 0) > 0 AND COALESCE(occupancy.occupied_beds, 0) + COALESCE(reservations.reserved_beds, 0) < r.total_beds THEN 1 ELSE 0 END) as partially_occupied_rooms,
+                SUM(CASE WHEN r.status != 'Disabled' AND COALESCE(occupancy.occupied_beds, 0) + COALESCE(reservations.reserved_beds, 0) >= r.total_beds THEN 1 ELSE 0 END) as occupied_rooms,
+                COALESCE(SUM(r.total_beds), 0) as total_beds,
+                COALESCE(SUM(COALESCE(occupancy.occupied_beds, 0)), 0) as occupied_beds,
+                COALESCE(SUM(CASE WHEN r.status = 'Disabled' THEN 0 ELSE GREATEST(0, r.total_beds - COALESCE(occupancy.occupied_beds, 0) - COALESCE(reservations.reserved_beds, 0)) END), 0) as available_beds
+            FROM rooms r
+            {$this->availabilityJoins()}
         ");
         return $stmt->fetch();
+    }
+
+    private function availabilityJoins() {
+        return "
+            LEFT JOIN (
+                SELECT ra.room_id, SUM(CASE WHEN ra.bed_number = 0 THEN r.total_beds ELSE 1 END) AS occupied_beds
+                FROM room_allocations ra
+                JOIN rooms r ON r.id = ra.room_id
+                WHERE ra.status = 'Active'
+                GROUP BY ra.room_id
+            ) occupancy ON occupancy.room_id = r.id
+            LEFT JOIN (
+                SELECT room_id, COUNT(DISTINCT bed_number) AS reserved_beds
+                FROM reservations
+                WHERE status IN ('PENDING', 'CONFIRMED')
+                GROUP BY room_id
+            ) reservations ON reservations.room_id = r.id
+        ";
+    }
+
+    private function normalizeAvailability(array $room) {
+        $occupiedBeds = (int)($room['allocation_occupied_beds'] ?? 0);
+        $reservedBeds = (int)($room['active_reserved_beds'] ?? 0);
+        $totalBeds = (int)$room['total_beds'];
+        $room['occupied_beds'] = $occupiedBeds;
+        $room['active_reserved_beds'] = $reservedBeds;
+        $room['available_beds'] = max(0, $totalBeds - $occupiedBeds - $reservedBeds);
+
+        if ($room['status'] !== 'Disabled') {
+            $heldBeds = $occupiedBeds + $reservedBeds;
+            $room['status'] = $heldBeds === 0 ? 'Available' : ($heldBeds >= $totalBeds ? 'Occupied' : 'Partially Occupied');
+        }
+
+        unset($room['allocation_occupied_beds']);
+        return $room;
     }
 }

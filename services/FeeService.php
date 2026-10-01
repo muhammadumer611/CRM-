@@ -2,6 +2,7 @@
 namespace Services;
 
 use Repositories\FeeRepository;
+use Helpers\BillingPeriodEligibility;
 use Utils\TransactionHelper;
 use Core\Logger;
 use Services\StudentHistoryService;
@@ -22,6 +23,11 @@ class FeeService {
 
         if ($studentId <= 0 || $month < 1 || $month > 12 || $year <= 0) {
             throw new Exception("Invalid invoice information.");
+        }
+
+        $eligibilityError = BillingPeriodEligibility::validate($month, $year);
+        if ($eligibilityError !== null) {
+            throw new Exception($eligibilityError);
         }
 
         $existing = $this->repository->findByStudentAndBillingPeriod($studentId, $month, $year);
@@ -103,6 +109,13 @@ class FeeService {
 
             if (!$invoice) {
                 throw new Exception("Invoice not found.");
+            }
+
+            if ($invoice['charge_type'] === 'MONTHLY_FEE') {
+                $eligibilityError = BillingPeriodEligibility::validate((int)$invoice['billing_month'], (int)$invoice['billing_year']);
+                if ($eligibilityError !== null) {
+                    throw new Exception($eligibilityError);
+                }
             }
 
             $paymentAmount = (float)$paymentAmount;

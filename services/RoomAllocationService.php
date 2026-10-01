@@ -43,6 +43,12 @@ class RoomAllocationService {
                 throw new Exception("Cannot allocate to a disabled room.");
             }
 
+            $reservationStmt = $db->prepare("SELECT id FROM reservations WHERE room_id = :room_id AND status IN ('PENDING', 'CONFIRMED') AND (:is_full_room = 1 OR bed_number = :bed_number) FOR UPDATE");
+            $reservationStmt->execute(['room_id' => $room['id'], 'is_full_room' => $bedNumber === 0 ? 1 : 0, 'bed_number' => $bedNumber]);
+            if ($reservationStmt->fetch()) {
+                throw new Exception('The selected bed or room is reserved.');
+            }
+
             $summaryStmt = $db->prepare("SELECT
                     COUNT(*) AS active_allocations,
                     COALESCE(SUM(CASE
@@ -141,14 +147,26 @@ class RoomAllocationService {
                 throw new Exception("Invalid new bed number.");
             }
 
+            $reservationStmt = $db->prepare("SELECT id FROM reservations WHERE room_id = :room_id AND bed_number = :bed_number AND status IN ('PENDING', 'CONFIRMED') FOR UPDATE");
+            $reservationStmt->execute(['room_id' => $newRoom['id'], 'bed_number' => $data['new_bed_number']]);
+            if ($reservationStmt->fetch()) {
+                throw new Exception('The selected bed is reserved.');
+            }
+
             if ($this->repository->isBedOccupied($newRoom['id'], $data['new_bed_number'], $db)) {
                 throw new Exception("Selected new bed is already occupied.");
             }
 
+            $fullRoomStmt = $db->prepare("SELECT id FROM room_allocations WHERE room_id = :room_id AND bed_number = 0 AND status = 'Active' FOR UPDATE");
+            $fullRoomStmt->execute(['room_id' => $newRoom['id']]);
+            if ($fullRoomStmt->fetch() || $this->getEffectiveOccupiedBeds($db, $newRoom['id'], (int)$newRoom['total_beds']) >= (int)$newRoom['total_beds']) {
+                throw new Exception("The selected room is fully occupied.");
+            }
+
             $this->repository->closeAllocation($allocationId, $data['transfer_date'], "Transferred to another room", $db);
 
-            $oldOccupied = max(0, $oldRoom['occupied_beds'] - 1);
-            $oldStatus = $this->calculateRoomStatus($oldRoom['total_beds'], $oldOccupied);
+            $oldOccupied = $this->getEffectiveOccupiedBeds($db, $oldRoom['id'], (int)$oldRoom['total_beds']);
+            $oldStatus = $oldRoom['status'] === 'Disabled' ? 'Disabled' : $this->calculateRoomStatus($oldRoom['total_beds'], $oldOccupied);
             $updateOld = $db->prepare("UPDATE rooms SET occupied_beds = :occ, status = :status WHERE id = :id");
             $updateOld->execute(['occ' => $oldOccupied, 'status' => $oldStatus, 'id' => $oldRoom['id']]);
 
@@ -160,7 +178,7 @@ class RoomAllocationService {
                 'remarks' => $data['remarks'] ?? 'Transferred'
             ], $db);
 
-            $newOccupied = $newRoom['occupied_beds'] + 1;
+            $newOccupied = $this->getEffectiveOccupiedBeds($db, $newRoom['id'], (int)$newRoom['total_beds']);
             $newStatus = $this->calculateRoomStatus($newRoom['total_beds'], $newOccupied);
             $updateNew = $db->prepare("UPDATE rooms SET occupied_beds = :occ, status = :status WHERE id = :id");
             $updateNew->execute(['occ' => $newOccupied, 'status' => $newStatus, 'id' => $newRoom['id']]);
@@ -198,6 +216,12 @@ class RoomAllocationService {
 
             if ($newBedNumber < 1 || $newBedNumber > $room['total_beds']) {
                 throw new Exception("Invalid bed number.");
+            }
+
+            $reservationStmt = $db->prepare("SELECT id FROM reservations WHERE room_id = :room_id AND bed_number = :bed_number AND status IN ('PENDING', 'CONFIRMED') FOR UPDATE");
+            $reservationStmt->execute(['room_id' => $room['id'], 'bed_number' => $newBedNumber]);
+            if ($reservationStmt->fetch()) {
+                throw new Exception('The selected bed is reserved.');
             }
 
             if ($this->repository->isBedOccupied($room['id'], $newBedNumber, $db)) {
@@ -248,7 +272,7 @@ class RoomAllocationService {
             ]);
             $remainingOccupied = (int)($summaryStmt->fetchColumn() ?: 0);
             $newOccupied = max(0, $remainingOccupied);
-            $newStatus = $this->calculateRoomStatus($room['total_beds'], $newOccupied);
+            $newStatus = $room['status'] === 'Disabled' ? 'Disabled' : $this->calculateRoomStatus($room['total_beds'], $newOccupied);
 
             $updateRoom = $db->prepare("UPDATE rooms SET occupied_beds = :occ, status = :status WHERE id = :id");
             $updateRoom->execute(['occ' => $newOccupied, 'status' => $newStatus, 'id' => $room['id']]);
@@ -279,8 +303,17 @@ class RoomAllocationService {
             $bedNumber = (int)($allocation['bed_number'] ?? 0);
             if ($bedNumber > 0) {
                 $occupiedBeds[] = $bedNumber;
+            } elseif ($bedNumber === 0) {
+                return [
+                    'room_id' => $room['id'],
+                    'room_number' => $room['room_number'],
+                    'total_beds' => $room['total_beds'],
+                    'available_beds' => []
+                ];
             }
         }
+
+        $occupiedBeds = array_merge($occupiedBeds, $this->repository->getActiveReservedBedsForRoom($roomId));
         if (count($activeAllocations) > 0 && !empty(array_filter($activeAllocations, fn($allocation) => (int)($allocation['bed_number'] ?? 0) === 0))) {
             return [
                 'room_id' => $room['id'],
@@ -322,5 +355,11 @@ class RoomAllocationService {
         $alloc = $this->repository->findById($id);
         if (!$alloc) throw new Exception("Allocation not found");
         return $alloc;
+    }
+
+    private function getEffectiveOccupiedBeds(PDO $db, $roomId, int $totalBeds): int {
+        $stmt = $db->prepare("SELECT COALESCE(SUM(CASE WHEN bed_number = 0 THEN :total_beds ELSE 1 END), 0) FROM room_allocations WHERE room_id = :room_id AND status = 'Active'");
+        $stmt->execute(['total_beds' => $totalBeds, 'room_id' => $roomId]);
+        return (int)$stmt->fetchColumn();
     }
 }

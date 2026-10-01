@@ -2,6 +2,7 @@
 namespace App\Repositories;
 
 use App\Core\Database;
+use App\Services\BillingPeriodEligibility;
 use PDO;
 
 class FeeRepository {
@@ -12,12 +13,13 @@ class FeeRepository {
     }
 
     public function findAll($filters = [], $limit = 50, $offset = 0) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $query = "
             SELECT f.*, s.full_name, s.student_id_str 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
                         WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
-                            AND (f.billing_year < YEAR(CURDATE()) OR (f.billing_year = YEAR(CURDATE()) AND f.billing_month <= MONTH(CURDATE())))
+                            AND {$eligiblePeriod}
         ";
         $params = [];
 
@@ -58,12 +60,13 @@ class FeeRepository {
     }
     
     public function count($filters = []) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $query = "
             SELECT COUNT(*) 
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
                         WHERE f.charge_type = 'MONTHLY_FEE' AND s.status = 'Active'
-                            AND (f.billing_year < YEAR(CURDATE()) OR (f.billing_year = YEAR(CURDATE()) AND f.billing_month <= MONTH(CURDATE())))
+                            AND {$eligiblePeriod}
         ";
         $params = [];
 
@@ -141,6 +144,7 @@ class FeeRepository {
     }
 
     public function getPendingFeeStudentsOverview(array $filters = []) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
         $sql = "
             SELECT
                 fr.id AS invoice_id,
@@ -175,7 +179,7 @@ class FeeRepository {
             LEFT JOIN rooms r ON r.id = ra.room_id
             WHERE s.status = 'Active'
               AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
-              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
+              AND {$eligiblePeriod}
         ";
         $params = [];
 
@@ -336,6 +340,8 @@ class FeeRepository {
     }
 
     public function getPaidFeeStudentsOverview(array $filters = []) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
+        $eligibleRelatedPeriod = BillingPeriodEligibility::sqlPredicate('fr2');
         $sql = "
             SELECT
                 fr.id AS invoice_id,
@@ -374,10 +380,12 @@ class FeeRepository {
             WHERE s.status = 'Active'
               AND (fr.amount + fr.additional_charges - fr.discount) <= fr.paid_amount
               AND fr.paid_amount > 0
+              AND {$eligiblePeriod}
               AND NOT EXISTS (
                   SELECT 1 FROM fee_records fr2
                   WHERE fr2.student_id = s.id
                     AND (fr2.amount + fr2.additional_charges - fr2.discount) > fr2.paid_amount
+                  AND {$eligibleRelatedPeriod}
               )
         ";
         $params = [];
@@ -498,6 +506,7 @@ class FeeRepository {
     }
 
     public function getStudentPendingFeeDetails($studentId) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
         $stmtStudent = $this->db->prepare("
             SELECT s.*, 
                    ra.id AS allocation_id, ra.room_id, ra.bed_number, ra.joining_date AS allocation_date,
@@ -521,7 +530,7 @@ class FeeRepository {
             FROM fee_records fr
             WHERE fr.student_id = ?
               AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount
-              AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE())))
+              AND {$eligiblePeriod}
             ORDER BY fr.billing_year ASC, fr.billing_month ASC, fr.id ASC
         ");
         $stmtInvoices->execute([$studentId]);
@@ -641,7 +650,8 @@ class FeeRepository {
     }
 
     private function buildPendingFeeWhere(array $filters = []) {
-        $sql = " WHERE (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount AND (fr.charge_type <> 'MONTHLY_FEE' OR fr.billing_year < YEAR(CURDATE()) OR (fr.billing_year = YEAR(CURDATE()) AND fr.billing_month <= MONTH(CURDATE()))) ";
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
+        $sql = " WHERE (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount AND {$eligiblePeriod} ";
         $params = [];
 
         if (!empty($filters['student_id'])) {
@@ -796,11 +806,12 @@ class FeeRepository {
     }
 
     public function findById($id) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->prepare("
             SELECT f.*, s.full_name, s.student_id_str, s.phone, s.monthly_fee AS student_monthly_fee
             FROM fee_records f 
             JOIN students s ON f.student_id = s.id 
-            WHERE f.id = ?
+            WHERE f.id = ? AND {$eligiblePeriod}
         ");
         $stmt->execute([$id]);
         return $stmt->fetch();
@@ -1012,7 +1023,8 @@ class FeeRepository {
 
     public function getOutstandingBalance($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) FROM fee_records WHERE student_id = ? AND status IN ('Pending', 'Partial', 'Overdue') AND charge_type = 'MONTHLY_FEE' AND (billing_year < YEAR(CURDATE()) OR (billing_year = YEAR(CURDATE()) AND billing_month <= MONTH(CURDATE())))");
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
+        $stmt = $db->prepare("SELECT COALESCE(SUM((fr.amount + fr.additional_charges - fr.discount) - fr.paid_amount), 0) FROM fee_records fr WHERE fr.student_id = ? AND fr.status IN ('Pending', 'Partial', 'Overdue') AND fr.charge_type = 'MONTHLY_FEE' AND {$eligiblePeriod}");
         $stmt->execute([$studentId]);
         return (float)$stmt->fetchColumn();
     }
@@ -1021,40 +1033,42 @@ class FeeRepository {
      * Mark overdue invoices (past due date, not fully paid) as Overdue
      */
     public function markOverdueInvoices() {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
         $stmt = $this->db->prepare("
-            UPDATE fee_records
+            UPDATE fee_records fr
             SET status = CASE
-                WHEN (amount + additional_charges - discount) <= paid_amount THEN 'Paid'
-                WHEN due_date < CURDATE() THEN 'Overdue'
-                WHEN paid_amount > 0 THEN 'Partial'
+                WHEN (fr.amount + fr.additional_charges - fr.discount) <= fr.paid_amount THEN 'Paid'
+                WHEN fr.due_date < CURDATE() THEN 'Overdue'
+                WHEN fr.paid_amount > 0 THEN 'Partial'
                 ELSE 'Pending'
             END
-            WHERE charge_type = 'MONTHLY_FEE'
+            WHERE fr.charge_type = 'MONTHLY_FEE' AND {$eligiblePeriod}
         ");
         $stmt->execute();
         return $stmt->rowCount();
     }
 
     public function getFinancialSummary() {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
         $stmt = $this->db->query("
             SELECT 
                 COALESCE(SUM(amount + additional_charges - discount), 0) AS total_billed,
                 COALESCE(SUM(paid_amount), 0) AS total_collected,
                 COALESCE(SUM(CASE WHEN status IN ('Pending','Partial','Overdue') THEN GREATEST(0, amount + additional_charges - discount - paid_amount) ELSE 0 END), 0) AS total_outstanding,
                 COALESCE(SUM(CASE WHEN status = 'Overdue' THEN GREATEST(0, amount + additional_charges - discount - paid_amount) ELSE 0 END), 0) AS total_overdue
-            FROM fee_records 
-            WHERE charge_type = 'MONTHLY_FEE'
-              AND (billing_year < YEAR(CURDATE()) OR (billing_year = YEAR(CURDATE()) AND billing_month <= MONTH(CURDATE())))
+                        FROM fee_records fr
+                        WHERE fr.charge_type = 'MONTHLY_FEE' AND {$eligiblePeriod}
         ");
         return $stmt->fetch();
     }
 
     public function updateOverdueStatuses($studentId = null, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $sql = "UPDATE fee_records SET status = 'Overdue' WHERE status IN ('Pending', 'Partial') AND due_date < CURDATE() AND (amount + additional_charges - discount) > paid_amount";
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
+        $sql = "UPDATE fee_records fr SET status = 'Overdue' WHERE fr.status IN ('Pending', 'Partial') AND fr.due_date < CURDATE() AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount AND {$eligiblePeriod}";
         $params = [];
         if ($studentId !== null) {
-            $sql .= " AND student_id = ?";
+            $sql .= " AND fr.student_id = ?";
             $params[] = (int)$studentId;
         }
         $stmt = $db->prepare($sql);
@@ -1063,13 +1077,14 @@ class FeeRepository {
 
     public function findOverdueInvoices($studentId = null, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $sql = "SELECT * FROM fee_records WHERE due_date < CURDATE() AND (amount + additional_charges - discount) > paid_amount";
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
+        $sql = "SELECT fr.* FROM fee_records fr WHERE fr.due_date < CURDATE() AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount AND {$eligiblePeriod}";
         $params = [];
         if ($studentId !== null) {
-            $sql .= " AND student_id = ?";
+            $sql .= " AND fr.student_id = ?";
             $params[] = (int)$studentId;
         }
-        $sql .= " ORDER BY due_date ASC, id ASC";
+        $sql .= " ORDER BY fr.due_date ASC, fr.id ASC";
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
@@ -1096,7 +1111,8 @@ class FeeRepository {
 
     public function getStudentArrearsSummary($studentId, $pdo = null) {
         $db = $pdo ?? $this->db;
-        $stmt = $db->prepare("SELECT COALESCE(SUM((amount + additional_charges - discount) - paid_amount), 0) AS outstanding_balance, COALESCE(SUM(CASE WHEN due_date < CURDATE() AND (amount + additional_charges - discount) > paid_amount THEN (amount + additional_charges - discount) - paid_amount ELSE 0 END), 0) AS overdue_balance FROM fee_records WHERE student_id = ? AND (amount + additional_charges - discount) > paid_amount AND (charge_type <> 'MONTHLY_FEE' OR billing_year < YEAR(CURDATE()) OR (billing_year = YEAR(CURDATE()) AND billing_month <= MONTH(CURDATE())))");
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
+        $stmt = $db->prepare("SELECT COALESCE(SUM((fr.amount + fr.additional_charges - fr.discount) - fr.paid_amount), 0) AS outstanding_balance, COALESCE(SUM(CASE WHEN fr.due_date < CURDATE() AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount THEN (fr.amount + fr.additional_charges - fr.discount) - fr.paid_amount ELSE 0 END), 0) AS overdue_balance FROM fee_records fr WHERE fr.student_id = ? AND (fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount AND {$eligiblePeriod}");
         $stmt->execute([(int)$studentId]);
         return $stmt->fetch();
     }

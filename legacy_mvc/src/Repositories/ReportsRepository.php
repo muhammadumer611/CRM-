@@ -2,6 +2,7 @@
 namespace App\Repositories;
 
 use App\Core\Database;
+use App\Services\BillingPeriodEligibility;
 use PDO;
 
 class ReportsRepository {
@@ -117,8 +118,10 @@ class ReportsRepository {
 
         $roomOccupancy = $this->getRoomOccupancy([]);
         $occupiedBeds = 0;
+        $availableBeds = 0;
         foreach ($roomOccupancy as $room) {
             $occupiedBeds += (int)$room['occupied_beds'];
+            $availableBeds += (int)$room['available_beds'];
         }
 
         $totalBeds = (int)($summary['total_beds'] ?? 0);
@@ -128,24 +131,36 @@ class ReportsRepository {
             'total_rooms' => (int)($summary['total_rooms'] ?? 0),
             'total_beds' => $totalBeds,
             'occupied_beds' => $occupiedBeds,
-            'available_beds' => max(0, $totalBeds - $occupiedBeds),
+            'available_beds' => $availableBeds,
             'occupancy_percentage' => round($occupancyPct, 2),
         ];
     }
 
     public function getRoomOccupancy(array $filters = []) {
         $query = "SELECT r.id, r.room_number, r.block, r.floor, r.total_beds,
-                         COUNT(a.id) AS occupied_beds,
-                         (r.total_beds - COUNT(a.id)) AS available_beds,
-                         ROUND((COUNT(a.id) / NULLIF(r.total_beds, 0)) * 100, 2) AS occupancy_percentage,
+                         COALESCE(occupancy.occupied_beds, 0) AS occupied_beds,
+                         GREATEST(0, r.total_beds - COALESCE(occupancy.occupied_beds, 0) - COALESCE(reservations.reserved_beds, 0)) AS available_beds,
+                         ROUND((COALESCE(occupancy.occupied_beds, 0) / NULLIF(r.total_beds, 0)) * 100, 2) AS occupancy_percentage,
                          CASE
                              WHEN r.status = 'Disabled' THEN 'Disabled'
-                             WHEN COUNT(a.id) = 0 THEN 'Available'
-                             WHEN COUNT(a.id) >= r.total_beds THEN 'Occupied'
+                             WHEN COALESCE(occupancy.occupied_beds, 0) + COALESCE(reservations.reserved_beds, 0) = 0 THEN 'Available'
+                             WHEN COALESCE(occupancy.occupied_beds, 0) + COALESCE(reservations.reserved_beds, 0) >= r.total_beds THEN 'Occupied'
                              ELSE 'Partially Occupied'
                          END AS room_status
                    FROM rooms r
-                   LEFT JOIN room_allocations a ON a.room_id = r.id AND a.status = 'Active'
+                   LEFT JOIN (
+                       SELECT ra.room_id, SUM(CASE WHEN ra.bed_number = 0 THEN rm.total_beds ELSE 1 END) AS occupied_beds
+                       FROM room_allocations ra
+                       JOIN rooms rm ON rm.id = ra.room_id
+                       WHERE ra.status = 'Active'
+                       GROUP BY ra.room_id
+                   ) occupancy ON occupancy.room_id = r.id
+                   LEFT JOIN (
+                       SELECT room_id, COUNT(DISTINCT bed_number) AS reserved_beds
+                       FROM reservations
+                       WHERE status IN ('PENDING', 'CONFIRMED')
+                       GROUP BY room_id
+                   ) reservations ON reservations.room_id = r.id
                    WHERE r.status != 'Disabled'";
 
         $params = [];
@@ -161,16 +176,11 @@ class ReportsRepository {
         }
 
         if (!empty($filters['room_status'])) {
-            $query .= ' AND CASE
-                            WHEN r.status = "Disabled" THEN "Disabled"
-                            WHEN COUNT(a.id) = 0 THEN "Available"
-                            WHEN COUNT(a.id) >= r.total_beds THEN "Occupied"
-                            ELSE "Partially Occupied"
-                        END = :room_status';
+            $query .= ' HAVING room_status = :room_status';
             $params['room_status'] = $filters['room_status'];
         }
 
-        $query .= ' GROUP BY r.id, r.room_number, r.block, r.floor, r.total_beds, r.status ORDER BY r.block ASC, r.room_number ASC';
+        $query .= ' ORDER BY r.block ASC, r.room_number ASC';
 
         $stmt = $this->db->prepare($query);
         $stmt->execute($params);
@@ -303,7 +313,7 @@ class ReportsRepository {
     }
 
     private function buildInvoiceWhere(array $filters, $allowYearFallback = false) {
-        $sql = '';
+        $sql = ' AND ' . BillingPeriodEligibility::sqlPredicate('f');
         $params = [];
 
         $dateInfo = $this->buildDateClause('f.invoice_date', $filters, $allowYearFallback ? ($filters['year'] ?? date('Y')) : null);

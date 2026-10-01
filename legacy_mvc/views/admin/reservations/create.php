@@ -7,10 +7,6 @@
 
     <form method="POST" action="<?php echo $config['base_url']; ?>/reservations/store">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-        <div class="form-group">
-            <label class="form-label">Reserved By *</label>
-            <input type="text" name="reserved_by_name" class="form-control" required>
-        </div>
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
@@ -20,8 +16,8 @@
             </div>
             <div class="col-md-6">
                 <div class="form-group">
-                    <label class="form-label">CNIC / ID Card Number *</label>
-                    <input type="text" name="cnic" class="form-control" maxlength="15" required>
+                    <label class="form-label">CNIC / ID Card Number</label>
+                    <input type="text" name="cnic" class="form-control" maxlength="15">
                 </div>
             </div>
             <div class="col-md-6">
@@ -30,13 +26,6 @@
                     <input type="text" name="phone" class="form-control" required>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label class="form-label">District *</label>
-                    <input type="text" name="district" class="form-control" required>
-                </div>
-            </div>
-
             <div class="col-md-6">
                 <div class="form-group">
                     <label class="form-label">Room *</label>

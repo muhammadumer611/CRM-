@@ -47,7 +47,7 @@ class BillingService
         $date = new DateTimeImmutable($joiningDate);
         $daysInMonth = (int)$date->format('t');
         $joiningDay = (int)$date->format('j');
-        $mode = strtolower(trim((string)($input['first_month_billing_mode'] ?? 'automatic')));
+        $mode = strtolower(trim((string)($input['first_month_billing_mode'] ?? 'full')));
         $cutoff = max(1, min(31, (int)$settings['late_joining_cutoff_day']));
         $enabled = $settings['late_joining_enabled'] === '1';
         $discount = 0.0;
@@ -59,9 +59,12 @@ class BillingService
             if ($settings['manual_first_month_discount_enabled'] !== '1') {
                 throw new \InvalidArgumentException('Manual first-month adjustment is disabled in Fee & Billing Settings.');
             }
-            $discount = max(0.0, (float)($input['first_month_discount'] ?? 0));
+            $discount = (float)($input['first_month_discount'] ?? 0);
             $reason = trim((string)($input['first_month_discount_reason'] ?? ''));
-            if ($discount > $monthlyFee + 0.01) {
+            if ($discount < 0) {
+                throw new \InvalidArgumentException('First-month adjustment cannot be negative.');
+            }
+            if ($discount > $monthlyFee) {
                 throw new \InvalidArgumentException('First-month adjustment cannot exceed the monthly fee.');
             }
             if ($discount > 0 && $reason === '') {
@@ -105,6 +108,10 @@ class BillingService
     public function createFirstMonthInvoice(int $studentId, float $monthlyFee, string $joiningDate, array $input = []): array
     {
         $calculation = $this->calculate($monthlyFee, $joiningDate, $input);
+        $eligibilityError = BillingPeriodEligibility::validate($calculation['billing_month'], $calculation['billing_year']);
+        if ($eligibilityError !== null) {
+            throw new \InvalidArgumentException($eligibilityError);
+        }
         $invoiceNumber = 'INV-' . strtoupper(substr(bin2hex(random_bytes(8)), 0, 12));
         $stmt = $this->db->prepare('INSERT INTO fee_records (invoice_number, student_id, billing_month, billing_year, invoice_date, amount, additional_charges, discount, paid_amount, due_date, status, charge_type, remarks) VALUES (?, ?, ?, ?, CURDATE(), ?, 0, ?, 0, ?, ?, \'MONTHLY_FEE\', ?)');
         $status = $calculation['net_payable'] <= 0 ? 'Paid' : 'Pending';

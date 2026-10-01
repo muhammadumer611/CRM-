@@ -211,8 +211,8 @@ class FeeService {
 
         $month = isset($data['billing_month']) ? (int)$data['billing_month'] : (int)date('n');
         $year = isset($data['billing_year']) ? (int)$data['billing_year'] : (int)date('Y');
-        $billingMonth = max(1, min(12, $month));
-        $billingYear = max(2026, $year);
+        $billingMonth = $month;
+        $billingYear = $year;
         $eligibilityError = BillingPeriodEligibility::validate($billingMonth, $billingYear);
         if ($eligibilityError !== null) {
             return ['success' => false, 'error' => $eligibilityError];
@@ -286,7 +286,7 @@ class FeeService {
     public static function getBillingDueDate(int $month, int $year, $dueDay = null): string {
         $day = $dueDay !== null ? (int)$dueDay : self::getConfiguredBillingDueDay();
         $month = max(1, min(12, $month));
-        $year = max(2025, (int)$year);
+        $year = max(1, (int)$year);
         $day = max(1, min(28, $day));
         return date('Y-m-d', mktime(0, 0, 0, $month, $day, $year));
     }
@@ -294,8 +294,8 @@ class FeeService {
     public function generateRecurringMonthlyBillingForActiveResidents($data = []) {
         $month = isset($data['billing_month']) ? (int)$data['billing_month'] : (int)date('n');
         $year = isset($data['billing_year']) ? (int)$data['billing_year'] : (int)date('Y');
-        $billingMonth = max(1, min(12, $month));
-        $billingYear = max(2026, $year);
+        $billingMonth = $month;
+        $billingYear = $year;
         $eligibilityError = BillingPeriodEligibility::validate($billingMonth, $billingYear);
         if ($eligibilityError !== null) {
             return ['success' => false, 'error' => $eligibilityError, 'generated' => []];
@@ -357,7 +357,8 @@ class FeeService {
         $db->beginTransaction();
 
         try {
-            $invoiceRows = $db->prepare("SELECT * FROM fee_records WHERE student_id = ? AND ((amount + additional_charges - discount) > paid_amount) ORDER BY due_date ASC, id ASC FOR UPDATE");
+            $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('fr');
+            $invoiceRows = $db->prepare("SELECT fr.* FROM fee_records fr WHERE fr.student_id = ? AND ((fr.amount + fr.additional_charges - fr.discount) > fr.paid_amount) AND {$eligiblePeriod} ORDER BY fr.due_date ASC, fr.id ASC FOR UPDATE");
             $invoiceRows->execute([$studentId]);
             $invoices = $invoiceRows->fetchAll();
 

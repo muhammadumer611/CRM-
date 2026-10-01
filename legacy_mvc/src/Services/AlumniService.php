@@ -85,7 +85,7 @@ class AlumniService {
             $stmtCloseAlloc = $this->db->prepare("UPDATE room_allocations SET status = 'Closed', leaving_date = ? WHERE id = ?");
             $stmtCloseAlloc->execute([$leavingDate, $alloc['id']]);
 
-            $countStmt = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+            $countStmt = $this->db->prepare("SELECT COALESCE(SUM(CASE WHEN ra.bed_number = 0 THEN r.total_beds ELSE 1 END), 0) FROM room_allocations ra JOIN rooms r ON r.id = ra.room_id WHERE ra.room_id = ? AND ra.status = 'Active'");
             $countStmt->execute([$prevRoomId]);
             $activeCountAfterRelease = (int)$countStmt->fetchColumn();
 

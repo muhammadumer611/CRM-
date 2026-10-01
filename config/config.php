@@ -1,8 +1,10 @@
 <?php
+$environment = strtolower((string)(getenv('HMS_ENV') ?: 'production'));
+
 return [
     'app_name' => 'Hostel Management System',
-    'env' => 'development', // change to 'production' on cPanel
-    'debug' => true,
+    'env' => $environment,
+    'debug' => $environment === 'development',
     'timezone' => 'Asia/Karachi',
-    'upload_max_size' => 5 * 1024 * 1024, // 5MB
+    'upload_max_size' => 5 * 1024 * 1024,
 ];

@@ -198,8 +198,8 @@ class AllocationService {
             $stmtClose->execute([$date, $allocationId]);
 
             // Reconcile Room Occupancy
-            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
-            $stmtCount->execute([$alloc['room_id']]);
+            $stmtCount = $this->db->prepare("SELECT COALESCE(SUM(CASE WHEN bed_number = 0 THEN ? ELSE 1 END), 0) FROM room_allocations WHERE room_id = ? AND status = 'Active'");
+            $stmtCount->execute([(int)$room['total_beds'], $alloc['room_id']]);
             $newOccupied = (int)$stmtCount->fetchColumn();
 
             $newStatus = $room['status'];

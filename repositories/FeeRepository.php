@@ -2,6 +2,7 @@
 namespace Repositories;
 
 use Core\Database;
+use Helpers\BillingPeriodEligibility;
 use PDO;
 
 class FeeRepository {
@@ -39,6 +40,7 @@ class FeeRepository {
     }
 
     public function findById($id) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->prepare("
             SELECT f.*, s.full_name, s.student_id_str, r.room_number, r.block,
                    (f.amount + f.additional_charges - f.discount) AS total_amount
@@ -46,7 +48,7 @@ class FeeRepository {
             JOIN students s ON f.student_id = s.id
             LEFT JOIN room_allocations ra ON ra.student_id = s.id AND ra.status = 'Active'
             LEFT JOIN rooms r ON r.id = ra.room_id
-            WHERE f.id = :id
+            WHERE f.id = :id AND {$eligiblePeriod}
         ");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
@@ -68,11 +70,12 @@ class FeeRepository {
     }
 
     public function search($filters) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $query = "SELECT f.*, s.full_name, s.student_id_str,
                   (f.amount + f.additional_charges - f.discount) AS total_amount
                   FROM fee_records f 
                   JOIN students s ON f.student_id = s.id 
-                  WHERE 1=1";
+                  WHERE {$eligiblePeriod}";
         $params = [];
 
         if (!empty($filters['status'])) {
@@ -119,6 +122,7 @@ class FeeRepository {
     }
 
     public function getStatistics() {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->query("
             SELECT 
                 COUNT(*) as total_fee_records,
@@ -129,12 +133,14 @@ class FeeRepository {
                 SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_records,
                 SUM(CASE WHEN status = 'Partial' THEN 1 ELSE 0 END) as partial_records,
                 SUM(CASE WHEN status = 'Overdue' THEN 1 ELSE 0 END) as overdue_records
-            FROM fee_records
+            FROM fee_records f
+            WHERE {$eligiblePeriod}
         ");
         return $stmt->fetch();
     }
 
     public function getStudentFeeSummary($studentId) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->prepare("
             SELECT 
                 s.id as student_id,
@@ -148,7 +154,7 @@ class FeeRepository {
                 SUM(CASE WHEN f.status = 'Overdue' THEN 1 ELSE 0 END) as overdue_records,
                 MAX(f.payment_date) as latest_payment_date
             FROM students s
-            LEFT JOIN fee_records f ON s.id = f.student_id
+            LEFT JOIN fee_records f ON s.id = f.student_id AND {$eligiblePeriod}
             WHERE s.id = :id
             GROUP BY s.id, s.full_name
         ");
@@ -169,12 +175,14 @@ class FeeRepository {
     }
 
     public function getRecentPayments($limit = 5) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->prepare("
             SELECT p.*, f.invoice_number, s.full_name, s.student_id_str, a.username AS admin_username
             FROM fee_payments p
             JOIN fee_records f ON f.id = p.invoice_id
             JOIN students s ON s.id = f.student_id
             LEFT JOIN admins a ON a.id = p.received_by_admin
+            WHERE {$eligiblePeriod}
             ORDER BY p.payment_date DESC, p.id DESC
             LIMIT :limit
         ");
@@ -184,11 +192,13 @@ class FeeRepository {
     }
 
     public function getRecentInvoices($limit = 5) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->prepare("
             SELECT f.*, s.full_name, s.student_id_str,
                    (f.amount + f.additional_charges - f.discount) AS total_amount
             FROM fee_records f
             JOIN students s ON s.id = f.student_id
+            WHERE {$eligiblePeriod}
             ORDER BY f.invoice_date DESC, f.id DESC
             LIMIT :limit
         ");
@@ -198,12 +208,13 @@ class FeeRepository {
     }
 
     public function getOverdueInvoices($limit = 10) {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->prepare("
             SELECT f.*, s.full_name, s.student_id_str,
                    (f.amount + f.additional_charges - f.discount) AS total_amount
             FROM fee_records f
             JOIN students s ON s.id = f.student_id
-            WHERE f.status = 'Overdue' OR (f.status != 'Paid' AND f.due_date < CURDATE())
+            WHERE {$eligiblePeriod} AND (f.status = 'Overdue' OR (f.status != 'Paid' AND f.due_date < CURDATE()))
             ORDER BY f.due_date ASC, f.id ASC
             LIMIT :limit
         ");
@@ -213,13 +224,15 @@ class FeeRepository {
     }
 
     public function getDashboardSummary() {
+        $eligiblePeriod = BillingPeriodEligibility::sqlPredicate('f');
         $stmt = $this->db->query("
             SELECT
                 COALESCE(SUM(amount + additional_charges - discount), 0) AS total_invoiced,
                 COALESCE(SUM(paid_amount), 0) AS total_collected,
                 COALESCE(SUM(CASE WHEN status IN ('Pending', 'Partial', 'Overdue') THEN (amount + additional_charges - discount) - paid_amount ELSE 0 END), 0) AS total_pending,
                 COALESCE(SUM(CASE WHEN status = 'Overdue' THEN (amount + additional_charges - discount) - paid_amount ELSE 0 END), 0) AS total_overdue
-            FROM fee_records
+            FROM fee_records f
+            WHERE {$eligiblePeriod}
         ");
         return $stmt->fetch();
     }

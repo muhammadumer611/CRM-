@@ -1,4 +1,15 @@
-<?php $config = require APP_ROOT . '/config/app.php'; ?>
+<?php
+$config = require APP_ROOT . '/config/app.php';
+$oldInput = is_array($oldInput ?? null) ? $oldInput : [];
+$formErrors = is_array($formErrors ?? null) ? $formErrors : [];
+$oldValue = static function (string $field, string $default = '') use ($oldInput): string {
+    $value = $oldInput[$field] ?? $default;
+    return htmlspecialchars(is_scalar($value) ? (string)$value : $default, ENT_QUOTES, 'UTF-8');
+};
+$oldIsSelected = static function (string $field, string $value, string $default = '') use ($oldInput): string {
+    return (string)($oldInput[$field] ?? $default) === $value ? ' selected' : '';
+};
+?>
 <?php
 $roomRepository = new \App\Repositories\RoomRepository();
 $roomCatalog = [];
@@ -20,8 +31,9 @@ foreach ($roomRepository->findAllWithAvailability() as $room) {
         'status' => $room['status'] ?? 'Available'
     ];
 }
-$singlePersonRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room['available_beds'] > 0));
-$fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room['available_beds'] > 0));
+$oldRoomId = (int)($oldInput['room_id'] ?? 0);
+$singlePersonRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room['available_beds'] > 0 || (int)$room['id'] === $oldRoomId));
+$fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room['available_beds'] > 0 || (int)$room['id'] === $oldRoomId));
 ?>
 <div class="card">
     <div class="card-header">
@@ -33,24 +45,29 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
 
     <form action="<?php echo $config['base_url']; ?>/students/store" method="POST" id="studentOnboardForm">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-
-        <div class="form-group">
-            <label class="form-label">Added By *</label>
-            <input type="text" name="added_by_name" class="form-control" required>
-        </div>
+        <?php if (!empty($formErrors)): ?>
+            <div class="alert alert-error" role="alert" aria-labelledby="onboardingErrorTitle">
+                <strong id="onboardingErrorTitle">Please review these fields:</strong>
+                <ul class="onboarding-error-list">
+                    <?php foreach ($formErrors as $field => $message): ?>
+                        <li><button type="button" class="onboarding-error-link" data-focus-field="<?php echo htmlspecialchars((string)$field, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$message); ?></button></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <div style="background:var(--surface-muted);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;">
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-house-user"></i> Accommodation Type</h4>
             <div class="row">
                 <div class="col-md-6">
                     <label class="choice-card">
-                        <input type="radio" name="accommodation_type" value="single" class="accommodation-option">
+                        <input type="radio" name="accommodation_type" value="single" class="accommodation-option"<?php echo ($oldInput['accommodation_type'] ?? '') === 'single' ? ' checked' : ''; ?>>
                         <span>Single Person</span>
                     </label>
                 </div>
                 <div class="col-md-6">
                     <label class="choice-card">
-                        <input type="radio" name="accommodation_type" value="full_room" class="accommodation-option">
+                        <input type="radio" name="accommodation_type" value="full_room" class="accommodation-option"<?php echo in_array($oldInput['accommodation_type'] ?? '', ['full_room', 'full'], true) ? ' checked' : ''; ?>>
                         <span>Full Room</span>
                     </label>
                 </div>
@@ -64,11 +81,11 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">Select Room *</label>
-                            <select id="singleRoomSelect" name="room_id" class="form-control">
+                            <select id="singleRoomSelect" name="room_id" class="form-control" required>
                                 <option value="">Select available room</option>
                                 <?php foreach ($singlePersonRooms as $room): ?>
-                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
-                                        Room <?php echo htmlspecialchars($room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
+                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>"<?php echo (int)$room['id'] === $oldRoomId ? ' selected' : ''; ?>>
+                                        Room <?php echo htmlspecialchars($room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available<?php echo (int)$room['available_beds'] === 0 ? ' — choose another room' : ''; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -77,7 +94,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">Joining Date *</label>
-                            <input type="date" name="joining_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                            <input type="date" name="joining_date" class="form-control" value="<?php echo $oldValue('joining_date', date('Y-m-d')); ?>" required>
                         </div>
                     </div>
                 </div>
@@ -93,9 +110,10 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
 
                 <div id="singleBedSection" style="display:none;">
                     <label class="form-label">Select Bed *</label>
-                    <select id="singleBedSelect" name="bed_number" class="form-control">
+                    <select id="singleBedSelect" name="bed_number" class="form-control" required>
                         <option value="">Select available bed</option>
                     </select>
+                    <div id="singleBedAvailabilityMessage" class="field-help" role="status" style="display:none;"></div>
                 </div>
             </div>
         </div>
@@ -107,11 +125,11 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">Select Room *</label>
-                            <select id="fullRoomSelect" name="room_id" class="form-control">
+                            <select id="fullRoomSelect" name="room_id" class="form-control" required>
                                 <option value="">Select room</option>
                                 <?php foreach ($fullRoomRooms as $room): ?>
-                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>">
-                                        Room <?php echo htmlspecialchars($room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available
+                                    <option value="<?php echo (int)$room['id']; ?>" data-room-number="<?php echo htmlspecialchars($room['room_number']); ?>" data-floor="<?php echo htmlspecialchars($room['floor']); ?>" data-type="<?php echo htmlspecialchars($room['room_type']); ?>" data-total="<?php echo (int)$room['total_beds']; ?>" data-occupied="<?php echo (int)$room['occupied_beds']; ?>" data-available="<?php echo (int)$room['available_beds']; ?>"<?php echo (int)$room['id'] === $oldRoomId ? ' selected' : ''; ?>>
+                                        Room <?php echo htmlspecialchars($room['room_number']); ?> | <?php echo htmlspecialchars($room['room_type']); ?> | <?php echo (int)$room['available_beds']; ?> Available<?php echo (int)$room['available_beds'] === 0 ? ' — choose another room' : ''; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -120,7 +138,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">Joining Date *</label>
-                            <input type="date" name="joining_date" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                            <input type="date" name="joining_date" class="form-control" value="<?php echo $oldValue('joining_date', date('Y-m-d')); ?>" required>
                         </div>
                     </div>
                 </div>
@@ -152,25 +170,36 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Full Name *</label>
-                        <input type="text" name="full_name" class="form-control" placeholder="e.g. Muhammad Ali Khan">
+                        <input type="text" name="full_name" class="form-control" placeholder="e.g. Muhammad Ali Khan" value="<?php echo $oldValue('full_name'); ?>" required>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">CNIC *</label>
-                        <input type="text" name="cnic" class="form-control" maxlength="15" placeholder="e.g. 12345-1234567-1">
+                        <input type="text" name="cnic" class="form-control" maxlength="15" placeholder="e.g. 12345-1234567-1" value="<?php echo $oldValue('cnic'); ?>" required>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Phone Number *</label>
-                        <input type="text" name="phone" class="form-control" placeholder="e.g. 03001234567">
+                        <input type="text" name="phone" class="form-control" maxlength="12" placeholder="e.g. 03001234567" value="<?php echo $oldValue('phone'); ?>" required>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Address *</label>
-                        <input type="text" name="address" class="form-control" placeholder="Full address">
+                        <input type="text" name="address" class="form-control" placeholder="Full address" value="<?php echo $oldValue('address'); ?>" required>
+                    </div>
+                </div>
+                <div class="col-md-6" id="bloodGroupWrapper">
+                    <div class="form-group">
+                        <label class="form-label" for="bloodGroup">Blood Group (Optional)</label>
+                        <select name="blood_group" id="bloodGroup" class="form-control">
+                            <option value="">Select Blood Group</option>
+                            <?php foreach (['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as $group): ?>
+                                <option value="<?php echo $group; ?>"<?php echo $oldIsSelected('blood_group', $group); ?>><?php echo $group; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -181,7 +210,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">Guardian Name *</label>
-                            <input type="text" name="guardian_name" class="form-control" placeholder="Guardian name">
+                            <input type="text" name="guardian_name" class="form-control" placeholder="Guardian name" value="<?php echo $oldValue('guardian_name'); ?>" required>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -190,7 +219,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                             <select name="relation" class="form-control">
                                 <option value="">Select...</option>
                                 <?php foreach(['Father','Mother','Brother','Sister','Uncle','Aunt','Spouse','Other'] as $rel): ?>
-                                    <option value="<?php echo $rel; ?>"><?php echo $rel; ?></option>
+                                    <option value="<?php echo $rel; ?>"<?php echo $oldIsSelected('relation', $rel); ?>><?php echo $rel; ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -198,7 +227,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">Guardian Phone *</label>
-                            <input type="text" name="guardian_phone" class="form-control" placeholder="e.g. 03001234567">
+                            <input type="text" name="guardian_phone" class="form-control" maxlength="12" placeholder="e.g. 03001234567" value="<?php echo $oldValue('guardian_phone'); ?>" required>
                         </div>
                     </div>
                 </div>
@@ -212,21 +241,21 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                     <div class="form-group">
                         <label class="form-label">Resident Type *</label>
                         <select name="resident_type" id="residentType" class="form-control">
-                            <option value="Student">Student</option>
-                            <option value="Job / Working">Job / Working</option>
+                            <option value="Student"<?php echo $oldIsSelected('resident_type', 'Student', 'Student'); ?>>Student</option>
+                            <option value="Job / Working"<?php echo $oldIsSelected('resident_type', 'Job / Working', 'Student'); ?>>Job / Working</option>
                         </select>
                     </div>
                 </div>
                 <div class="col-md-6" id="collegeUniversityWrapper">
                     <div class="form-group">
                         <label class="form-label">College / University Name</label>
-                        <input type="text" name="college_university" id="collegeUniversity" class="form-control" placeholder="e.g. University of Lahore">
+                        <input type="text" name="college_university" id="collegeUniversity" class="form-control" placeholder="e.g. University of Lahore" value="<?php echo $oldValue('college_university'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6" id="jobWorkplaceWrapper" style="display:none;">
                     <div class="form-group">
                         <label class="form-label">Job / Workplace</label>
-                        <input type="text" name="job_workplace" id="jobWorkplace" class="form-control" placeholder="e.g. XYZ Company">
+                        <input type="text" name="job_workplace" id="jobWorkplace" class="form-control" placeholder="e.g. XYZ Company" value="<?php echo $oldValue('job_workplace'); ?>">
                     </div>
                 </div>
             </div>
@@ -238,7 +267,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Vehicle Number</label>
-                        <input type="text" name="vehicle_number" class="form-control" placeholder="e.g. ABC-123">
+                        <input type="text" name="vehicle_number" class="form-control" placeholder="e.g. ABC-123" value="<?php echo $oldValue('vehicle_number'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -246,17 +275,17 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                         <label class="form-label">Vehicle Type</label>
                         <select name="vehicle_type" id="vehicleType" class="form-control">
                             <option value="">Select...</option>
-                            <option value="Motorcycle / Bike">Motorcycle / Bike</option>
-                            <option value="Car">Car</option>
-                            <option value="Nill">Nill</option>
-                            <option value="Other">Other</option>
+                            <option value="Motorcycle / Bike"<?php echo $oldIsSelected('vehicle_type', 'Motorcycle / Bike'); ?>>Motorcycle / Bike</option>
+                            <option value="Car"<?php echo $oldIsSelected('vehicle_type', 'Car'); ?>>Car</option>
+                            <option value="Nill"<?php echo $oldIsSelected('vehicle_type', 'Nill'); ?>>Nill</option>
+                            <option value="Other"<?php echo $oldIsSelected('vehicle_type', 'Other'); ?>>Other</option>
                         </select>
                     </div>
                 </div>
                 <div class="col-md-6" id="vehicleTypeOtherWrapper" style="display:none;">
                     <div class="form-group">
                         <label class="form-label">Vehicle Type (Other)</label>
-                        <input type="text" name="vehicle_type_other" class="form-control" placeholder="Describe vehicle type">
+                        <input type="text" name="vehicle_type_other" class="form-control" placeholder="Describe vehicle type" value="<?php echo $oldValue('vehicle_type_other'); ?>">
                     </div>
                 </div>
             </div>
@@ -266,7 +295,7 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
             <h4 style="color:var(--primary);margin-bottom:1.25rem;"><i class="fas fa-sticky-note"></i> Note</h4>
             <div class="form-group">
                 <label class="form-label">Note</label>
-                <textarea name="note" class="form-control" rows="4" placeholder="Optional additional information for the resident"></textarea>
+                <textarea name="note" class="form-control" rows="4" placeholder="Optional additional information for the resident"><?php echo $oldValue('note'); ?></textarea>
             </div>
         </div>
 
@@ -276,29 +305,27 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label" id="monthlyFeeLabel">Monthly Fee (Rs.) *</label>
-                        <input type="number" id="monthlyFeeInput" name="monthly_fee" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        <input type="number" id="monthlyFeeInput" name="<?php echo in_array($oldInput['accommodation_type'] ?? '', ['full_room', 'full'], true) ? 'monthly_room_fee' : 'monthly_fee'; ?>" class="form-control" step="0.01" min="0" placeholder="0.00" value="<?php echo $oldValue(in_array($oldInput['accommodation_type'] ?? '', ['full_room', 'full'], true) ? 'monthly_room_fee' : 'monthly_fee'); ?>" required>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">Security Deposit (Rs.)</label>
-                        <input type="number" name="security_deposit" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        <input type="number" name="security_deposit" class="form-control" step="0.01" min="0" placeholder="0.00" value="<?php echo $oldValue('security_deposit'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">First Month Billing</label>
                         <select name="first_month_billing_mode" id="firstMonthBillingMode" class="form-control">
-                            <option value="automatic">Automatic policy</option>
-                            <option value="full">Full monthly fee</option>
-                            <option value="proration">Daily proration</option>
-                            <option value="manual">Manual adjustment</option>
+                            <option value="full"<?php echo $oldIsSelected('first_month_billing_mode', 'full', 'full'); ?>>Full Monthly Fee</option>
+                            <option value="manual"<?php echo $oldIsSelected('first_month_billing_mode', 'manual', 'full'); ?>>Manual Adjustment</option>
                         </select>
                     </div>
                 </div>
                 <div class="col-md-6" id="manualAdjustmentFields" style="display:none;">
-                    <div class="form-group"><label class="form-label">First Month Adjustment (Rs.)</label><input type="number" name="first_month_discount" id="firstMonthDiscount" class="form-control" min="0" step="0.01" value="0"></div>
-                    <div class="form-group"><label class="form-label">Reason</label><input type="text" name="first_month_discount_reason" id="firstMonthDiscountReason" class="form-control" placeholder="e.g. Late joining discount"></div>
+                    <div class="form-group"><label class="form-label">First Month Adjustment (Rs.)</label><input type="number" name="first_month_discount" id="firstMonthDiscount" class="form-control" min="0" step="0.01" value="<?php echo $oldValue('first_month_discount', '0'); ?>"></div>
+                    <div class="form-group"><label class="form-label">Reason</label><input type="text" name="first_month_discount_reason" id="firstMonthDiscountReason" class="form-control" placeholder="e.g. Late joining discount" value="<?php echo $oldValue('first_month_discount_reason'); ?>"></div>
                 </div>
             </div>
             <div id="firstMonthPreview" style="margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);display:none;"></div>
@@ -330,6 +357,9 @@ $fullRoomRooms = array_values(array_filter($roomCatalog, fn($room) => (int)$room
 .occupant-card { border:1px solid var(--border); border-radius:8px; padding:1rem; background:var(--surface); margin-bottom:1rem; }
 .occupant-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
 .remove-occupant-btn { background: rgba(239,68,68,0.1); color: var(--danger); border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:0.35rem 0.7rem; cursor:pointer; }
+.onboarding-error-list { margin:0.6rem 0 0 1.25rem; display:grid; gap:0.35rem; }
+.onboarding-error-link { border:0; padding:0; background:transparent; color:inherit; text-align:left; text-decoration:underline; cursor:pointer; font:inherit; }
+.form-control.onboarding-invalid { border-color:var(--danger); box-shadow:0 0 0 3px rgba(239,68,68,.14); }
 </style>
 
 <script>
@@ -346,23 +376,29 @@ const monthlyFeeLabel = document.getElementById('monthlyFeeLabel');
 const firstMonthMode = document.getElementById('firstMonthBillingMode');
 const firstMonthDiscount = document.getElementById('firstMonthDiscount');
 const firstMonthPreview = document.getElementById('firstMonthPreview');
+const preservedOccupants = <?php echo json_encode(array_values($oldInput['occupants'] ?? []), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+const preservedRoomId = <?php echo (int)$oldRoomId; ?>;
+const preservedBedNumber = <?php echo json_encode((string)($oldInput['bed_number'] ?? '')); ?>;
+
+function escapeFormValue(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function(character) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[character];
+    });
+}
 
 function updateFirstMonthPreview() {
     const fee = parseFloat(document.getElementById('monthlyFeeInput').value || '0');
     const dateInput = Array.from(document.querySelectorAll('input[name="joining_date"]')).find((field) => !field.disabled);
     const dateValue = dateInput ? dateInput.value : '';
-    const mode = firstMonthMode ? firstMonthMode.value : 'automatic';
+    const mode = firstMonthMode ? firstMonthMode.value : 'full';
     if (!fee || !dateValue || !firstMonthPreview) { if (firstMonthPreview) firstMonthPreview.style.display = 'none'; return; }
     const date = new Date(dateValue + 'T00:00:00');
-    const days = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-    const payableDays = days - date.getDate() + 1;
     let discount = 0;
-    if (mode === 'proration') discount = fee - (fee / days * payableDays);
-    if (mode === 'manual') discount = Math.min(fee, Math.max(0, parseFloat(firstMonthDiscount.value || '0')));
+    if (mode === 'manual') discount = Math.max(0, parseFloat(firstMonthDiscount.value || '0'));
     const net = Math.max(0, fee - discount);
     firstMonthPreview.style.display = 'block';
     firstMonthPreview.innerHTML = '<strong>First Month Preview</strong><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-top:.75rem;">' +
-        '<span>Actual fee<br><b>Rs. ' + fee.toLocaleString() + '</b></span><span>Billing period<br><b>' + date.toLocaleString(undefined, {month:'long', year:'numeric'}) + '</b></span><span>Payable days<br><b>' + (mode === 'full' ? days : payableDays) + '</b></span><span>Adjustment<br><b>Rs. ' + Math.round(discount).toLocaleString() + '</b></span><span>Final payable<br><b>Rs. ' + Math.round(net).toLocaleString() + '</b></span></div>';
+        '<span>Monthly Fee<br><b>Rs. ' + fee.toLocaleString() + '</b></span><span>Billing Month<br><b>' + date.toLocaleString(undefined, {month:'long', year:'numeric'}) + '</b></span><span>Adjustment/Discount<br><b>Rs. ' + discount.toLocaleString() + '</b></span><span>First Month Payable<br><b>Rs. ' + net.toLocaleString() + '</b></span></div>';
 }
 
 function setAccomodationMode(mode) {
@@ -376,12 +412,28 @@ function setAccomodationMode(mode) {
     document.querySelectorAll('#fullRoomSection select, #fullRoomSection input').forEach((field) => {
         field.disabled = !fullVisible;
     });
-    document.getElementById('studentInfoSection').style.display = 'block';
-    document.getElementById('residentInfoSection').style.display = 'block';
-    document.getElementById('vehicleInfoSection').style.display = 'block';
-    document.getElementById('noteSection').style.display = 'block';
-    document.getElementById('financialSection').style.display = 'block';
-    financialSection.style.display = 'block';
+    document.getElementById('studentInfoSection').style.display = singleVisible ? 'block' : 'none';
+    document.getElementById('residentInfoSection').style.display = singleVisible ? 'block' : 'none';
+    document.getElementById('vehicleInfoSection').style.display = singleVisible ? 'block' : 'none';
+    document.getElementById('noteSection').style.display = singleVisible ? 'block' : 'none';
+    financialSection.style.display = singleVisible || fullVisible ? 'block' : 'none';
+    const singleOnlyFields = document.querySelectorAll('#studentInfoSection input, #studentInfoSection select, #residentInfoSection input, #residentInfoSection select, #vehicleInfoSection input, #vehicleInfoSection select, #noteSection textarea');
+    singleOnlyFields.forEach((field) => {
+        field.disabled = !singleVisible;
+        if (['full_name', 'cnic', 'phone', 'address', 'guardian_name', 'guardian_phone', 'relation'].includes(field.name)) {
+            field.required = singleVisible;
+        }
+    });
+    document.getElementById('monthlyFeeInput').disabled = !singleVisible && !fullVisible;
+    document.getElementById('monthlyFeeInput').required = singleVisible || fullVisible;
+    document.querySelector('[name="security_deposit"]').disabled = !singleVisible && !fullVisible;
+    document.getElementById('firstMonthBillingMode').disabled = !singleVisible && !fullVisible;
+    document.getElementById('firstMonthDiscount').disabled = !singleVisible && !fullVisible;
+    document.getElementById('firstMonthDiscountReason').disabled = !singleVisible && !fullVisible;
+    const bloodGroupWrapper = document.getElementById('bloodGroupWrapper');
+    const bloodGroupSelect = document.getElementById('bloodGroup');
+    bloodGroupWrapper.style.display = singleVisible ? 'block' : 'none';
+    bloodGroupSelect.disabled = !singleVisible;
     updateResidentFields();
     if (singleVisible) {
         monthlyFeeLabel.textContent = 'Monthly Fee (Rs.) *';
@@ -397,6 +449,12 @@ function setAccomodationMode(mode) {
             const card = r.closest('.choice-card');
             if (card) card.classList.toggle('selected', r.checked);
         });
+    }
+    if (singleVisible && singleRoomSelect.value) {
+        populateSingleRoomSummary(singleRoomSelect);
+    }
+    if (fullVisible && fullRoomSelect.value) {
+        renderFullRoomSummary(fullRoomSelect);
     }
 }
 
@@ -424,12 +482,15 @@ function populateSingleRoomSummary(roomSelect) {
 
 function loadAvailableBeds(roomId) {
     const singleBedSelect = document.getElementById('singleBedSelect');
+    const bedAvailabilityMessage = document.getElementById('singleBedAvailabilityMessage');
     if (!roomId) {
         singleBedSection.style.display = 'none';
+        bedAvailabilityMessage.style.display = 'none';
         return;
     }
 
     singleBedSection.style.display = 'block';
+    bedAvailabilityMessage.style.display = 'none';
     singleBedSelect.innerHTML = '<option value="">Loading available beds...</option>';
 
     fetch('<?php echo $config['base_url']; ?>/api/allocations/available-beds/' + roomId)
@@ -454,12 +515,22 @@ function loadAvailableBeds(roomId) {
                 singleBedSelect.appendChild(option);
             });
 
+            const requestedBed = String(roomId) === String(preservedRoomId) ? String(preservedBedNumber) : '';
+            if (requestedBed && beds.map(String).includes(requestedBed)) {
+                singleBedSelect.value = requestedBed;
+            } else if (requestedBed) {
+                bedAvailabilityMessage.textContent = 'The previously selected bed is no longer available. Select another available bed.';
+                bedAvailabilityMessage.style.display = 'block';
+            }
+
             if (beds.length === 0) {
                 singleBedSelect.innerHTML = '<option value="">No available beds</option>';
             }
         })
-        .catch(() => {
+            .catch(() => {
             singleBedSelect.innerHTML = '<option value="">No available beds</option>';
+                bedAvailabilityMessage.textContent = 'Could not refresh available beds. Select another room or try again.';
+                bedAvailabilityMessage.style.display = 'block';
         });
 }
 
@@ -478,7 +549,13 @@ function renderFullRoomSummary(roomSelect) {
     document.getElementById('fullRoomAvailable').textContent = selected.dataset.available || '0';
     fullRoomSummary.style.display = 'block';
     fullRoomOccupants.style.display = 'block';
-    addOccupantRow();
+    if (occupantList.querySelectorAll('.occupant-card').length === 0) {
+        if (String(selected.value) === String(preservedRoomId) && preservedOccupants.length) {
+            preservedOccupants.forEach((occupant) => addOccupantRow(occupant, true));
+        } else {
+            addOccupantRow();
+        }
+    }
 }
 
 function getRoomCapacity(roomSelect) {
@@ -487,12 +564,12 @@ function getRoomCapacity(roomSelect) {
     return parseInt(selected.dataset.available || '0', 10);
 }
 
-function addOccupantRow() {
+function addOccupantRow(initialValues = {}, restoring = false) {
     const roomSelect = document.getElementById('fullRoomSelect');
     const capacity = getRoomCapacity(roomSelect);
     const currentCount = occupantList.querySelectorAll('.occupant-card').length;
 
-    if (capacity <= 0 || currentCount >= capacity) {
+    if (!restoring && (capacity <= 0 || currentCount >= capacity)) {
         addOccupantBtn.disabled = true;
         addOccupantBtn.textContent = 'Room capacity reached.';
         return;
@@ -501,33 +578,35 @@ function addOccupantRow() {
     addOccupantBtn.disabled = false;
     addOccupantBtn.textContent = '+ Add Another Person';
 
-    if (currentCount >= capacity) {
+    if (!restoring && currentCount >= capacity) {
         return;
     }
 
-    const index = currentCount + 1;
+    const index = currentCount;
+    const bloodGroups = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
     const occupantCard = document.createElement('div');
     occupantCard.className = 'occupant-card';
     occupantCard.innerHTML = `
         <div class="occupant-header">
-            <strong>Person ${index}</strong>
-            <button type="button" class="remove-occupant-btn" data-index="${index - 1}">Remove</button>
+            <strong>Person ${index + 1}</strong>
+            <button type="button" class="remove-occupant-btn" data-index="${index}">Remove</button>
         </div>
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
                     <label class="form-label">Full Name *</label>
-                    <input type="text" name="occupants[${index - 1}][full_name]" class="form-control" required>
+                    <input type="text" name="occupants[${index}][full_name]" class="form-control" value="${escapeFormValue(initialValues.full_name)}" required>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
                     <label class="form-label">CNIC *</label>
-                    <input type="text" name="occupants[${index - 1}][cnic]" class="form-control" maxlength="15" required>
+                    <input type="text" name="occupants[${index}][cnic]" class="form-control" maxlength="15" value="${escapeFormValue(initialValues.cnic)}" required>
                 </div>
             </div>
-            <div class="col-md-6"><div class="form-group"><label class="form-label">Phone *</label><input type="text" name="occupants[${index - 1}][phone]" class="form-control" maxlength="12" required></div></div>
-            <div class="col-md-6"><div class="form-group"><label class="form-label">Guardian Phone *</label><input type="text" name="occupants[${index - 1}][guardian_phone]" class="form-control" maxlength="12" required></div></div>
+            <div class="col-md-6"><div class="form-group"><label class="form-label">Phone *</label><input type="text" name="occupants[${index}][phone]" class="form-control" maxlength="12" value="${escapeFormValue(initialValues.phone)}" required></div></div>
+            <div class="col-md-6"><div class="form-group"><label class="form-label">Guardian Phone *</label><input type="text" name="occupants[${index}][guardian_phone]" class="form-control" maxlength="12" value="${escapeFormValue(initialValues.guardian_phone)}" required></div></div>
+            <div class="col-md-6"><div class="form-group"><label class="form-label">Blood Group (Optional)</label><select name="occupants[${index}][blood_group]" class="form-control">${bloodGroups.map((group) => `<option value="${group}"${group === initialValues.blood_group ? ' selected' : ''}>${group || 'Select Blood Group'}</option>`).join('')}</select></div></div>
         </div>
     `;
 
@@ -630,20 +709,6 @@ function updateResidentFields() {
     const jobWrap = document.getElementById('jobWorkplaceWrapper');
     const vehicleType = document.getElementById('vehicleType');
     const vehicleOtherWrap = document.getElementById('vehicleTypeOtherWrapper');
-    const residentInfoSection = document.getElementById('residentInfoSection');
-    const vehicleInfoSection = document.getElementById('vehicleInfoSection');
-    const noteSection = document.getElementById('noteSection');
-
-    if (residentType && residentInfoSection) {
-        residentInfoSection.style.display = 'block';
-    }
-    if (vehicleType && vehicleInfoSection) {
-        vehicleInfoSection.style.display = 'block';
-    }
-    if (noteSection) {
-        noteSection.style.display = 'block';
-    }
-
     if (collegeWrap && jobWrap) {
         const type = residentType ? residentType.value : 'Student';
         collegeWrap.style.display = type === 'Student' ? 'block' : 'none';
@@ -666,6 +731,19 @@ function bindResidentAndVehicleToggles() {
     }
 }
 
+function focusOnboardingField(fieldName) {
+    const field = Array.from(document.getElementsByName(fieldName)).find((candidate) => !candidate.disabled);
+    if (!field) return;
+    field.classList.add('onboarding-invalid');
+    field.setAttribute('aria-invalid', 'true');
+    field.focus({preventScroll: true});
+    field.scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+document.querySelectorAll('.onboarding-error-link').forEach((button) => {
+    button.addEventListener('click', () => focusOnboardingField(button.dataset.focusField));
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const baseUrl = '<?php echo $config['base_url']; ?>';
     document.body.dataset.baseUrl = baseUrl;
@@ -676,10 +754,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     bindResidentAndVehicleToggles();
-    fullRoomSelect.value = '';
-    singleRoomSelect.value = '';
-    setAccomodationMode('');
+    const selectedMode = document.querySelector('input[name="accommodation_type"]:checked');
+    setAccomodationMode(selectedMode ? selectedMode.value : '');
     updateResidentFields();
+    document.getElementById('manualAdjustmentFields').style.display = firstMonthMode.value === 'manual' ? 'block' : 'none';
 
     const urlParams = new URLSearchParams(window.location.search);
     const prefillRoomId = urlParams.get('room_id');
@@ -704,6 +782,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => clearInterval(checkBeds), 3000);
                 }
             }
+        }
+    }
+
+    const firstError = document.querySelector('.onboarding-error-link');
+    if (firstError) {
+        const firstField = firstError.dataset.focusField;
+        const field = Array.from(document.getElementsByName(firstField)).find((candidate) => !candidate.disabled);
+        if (field) {
+            field.classList.add('onboarding-invalid');
+            field.setAttribute('aria-invalid', 'true');
+            field.focus({preventScroll: true});
+            field.scrollIntoView({behavior: 'smooth', block: 'center'});
         }
     }
 });

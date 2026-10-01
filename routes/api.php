@@ -118,4 +118,4 @@ $router->add('GET', '/api/student-history/event/{event_type}', function($params)
 $router->add('GET', '/api/student-history/admin/{admin_id}', function($params) { (new StudentHistoryController())->byAdmin($params); });
 
 // Execute Router
-$router->dispatch($_SERVER['REQUEST_METHOD'], parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+$router->dispatch($_SERVER['REQUEST_METHOD'], $routeUri);

@@ -38,9 +38,9 @@ class ReservationService {
 
     public function createReservation(array $data) {
         $fullName = trim((string)($data['full_name'] ?? ''));
-        $cnic = preg_replace('/[^0-9]/', '', (string)($data['cnic'] ?? ''));
+        $cnicInput = trim((string)($data['cnic'] ?? ''));
+        $cnic = $cnicInput === '' ? null : preg_replace('/[^0-9]/', '', $cnicInput);
         $phone = preg_replace('/[^0-9]/', '', (string)($data['phone'] ?? ''));
-        $district = trim((string)($data['district'] ?? ''));
         $roomId = (int)($data['room_id'] ?? 0);
         $bedNumber = (int)($data['bed_number'] ?? 0);
         $reservationAmount = isset($data['reservation_amount']) && $data['reservation_amount'] !== '' ? (float)$data['reservation_amount'] : 0.0;
@@ -48,17 +48,12 @@ class ReservationService {
         $expectedArrivalDate = !empty($data['expected_arrival_date']) ? $data['expected_arrival_date'] : $reservationDate;
         $status = strtoupper(trim((string)($data['status'] ?? 'PENDING')));
         $notes = trim((string)($data['notes'] ?? ''));
-        $reservedByName = trim((string)($data['reserved_by_name'] ?? ''));
 
-        if ($fullName === '' || $cnic === '' || $phone === '' || $district === '' || $roomId <= 0 || $bedNumber <= 0) {
+        if ($fullName === '' || $phone === '' || $roomId <= 0 || $bedNumber <= 0) {
             return ['success' => false, 'error' => 'Please fill in all required reservation fields.'];
         }
 
-        if ($reservedByName === '') {
-            return ['success' => false, 'error' => 'Reserved By is required. Please enter the staff member name.'];
-        }
-
-        if (strlen($cnic) !== 13) {
+        if ($cnic !== null && strlen($cnic) !== 13) {
             return ['success' => false, 'error' => 'Please enter a valid 13-digit CNIC.'];
         }
         if (!preg_match('/^03[0-9]{9}$/', $phone)) {
@@ -84,10 +79,12 @@ class ReservationService {
                 throw new Exception('Selected bed is invalid for this room.');
             }
 
-            $existingStudentStmt = $this->db->prepare("SELECT id FROM students WHERE cnic = ? AND status = 'Active' LIMIT 1 FOR UPDATE");
-            $existingStudentStmt->execute([$cnic]);
-            if ($existingStudentStmt->fetch()) {
-                throw new Exception('A student with this CNIC already exists in the active student list. Please review the existing student before creating a reservation.');
+            if ($cnic !== null) {
+                $existingStudentStmt = $this->db->prepare("SELECT id FROM students WHERE cnic = ? AND status = 'Active' LIMIT 1 FOR UPDATE");
+                $existingStudentStmt->execute([$cnic]);
+                if ($existingStudentStmt->fetch()) {
+                    throw new Exception('A student with this CNIC already exists in the active student list. Please review the existing student before creating a reservation.');
+                }
             }
 
             $duplicateStmt = $this->db->prepare("SELECT id FROM reservations WHERE room_id = ? AND bed_number = ? AND status IN ('PENDING', 'CONFIRMED') FOR UPDATE");
@@ -110,7 +107,7 @@ class ReservationService {
                 'full_name' => $fullName,
                 'cnic' => $cnic,
                 'phone' => $phone,
-                'district' => $district,
+                'district' => null,
                 'room_id' => $roomId,
                 'bed_number' => $bedNumber,
                 'reservation_amount' => number_format((float)$reservationAmount, 2, '.', ''),
@@ -118,7 +115,7 @@ class ReservationService {
                 'expected_arrival_date' => $expectedArrivalDate,
                 'status' => $status,
                 'notes' => $notes,
-                'reserved_by_name' => $reservedByName,
+                'reserved_by_name' => null,
             ]);
 
             if ($reservationAmount > 0) {
