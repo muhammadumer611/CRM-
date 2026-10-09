@@ -140,7 +140,7 @@ class DashboardService {
         $digitLike = '%' . $cleanDigits . '%';
         $eligibleFeePeriod = \App\Services\BillingPeriodEligibility::sqlPredicate('fr');
         $sql = "
-            SELECT s.id, s.full_name, s.student_id_str, s.cnic, s.phone, s.address, s.status,
+            SELECT DISTINCT s.id, s.full_name, s.student_id_str, s.cnic, s.phone, s.address, s.status,
                    ra.bed_number, r.room_number,
                    latest.status AS fee_status,
                    latest.pending_amount
@@ -158,7 +158,17 @@ class DashboardService {
                     GROUP BY student_id
                 ) current_fee ON current_fee.latest_id = fr.id
             ) latest ON latest.student_id = s.id
-                        WHERE s.status = 'Active'
+                        WHERE (
+                              s.status = 'Active'
+                              OR (
+                                  s.status = 'Inactive'
+                                  AND EXISTS (
+                                      SELECT 1
+                                      FROM alumni a
+                                      WHERE a.original_student_id = s.student_id_str
+                                  )
+                              )
+                        )
                             AND (s.full_name LIKE ?
                OR s.cnic LIKE ?
                OR s.cnic LIKE ?

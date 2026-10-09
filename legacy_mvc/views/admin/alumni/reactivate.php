@@ -3,7 +3,8 @@ $config = require APP_ROOT . '/config/app.php';
 $alumni = $data['alumni'];
 $student = $data['student'];
 $previousStay = $data['previous_stay'];
-$securityDeposit = $data['security_deposit'];
+$securityDeposits = $data['security_deposits'] ?? [];
+$securityTransactions = $data['security_transactions'] ?? [];
 $rooms = $data['rooms'];
 $billingSettings = $data['billing_settings'];
 $oldInput = $oldInput ?? [];
@@ -13,8 +14,9 @@ $escape = static function ($value) {
 $joiningDate = $oldInput['joining_date'] ?? date('Y-m-d');
 $selectedRoomId = (string)($oldInput['room_id'] ?? '');
 $selectedBed = (string)($oldInput['bed_number'] ?? '');
+$monthlyFeeInput = (string)($oldInput['monthly_fee'] ?? '');
 $billingMode = $oldInput['first_month_billing_mode'] ?? 'full';
-$securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD'));
+$securityOption = (string)($oldInput['security_option'] ?? '');
 ?>
 <style>
     .readmit-shell { max-width: 1080px; margin: 0 auto; }
@@ -48,6 +50,11 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
     .billing-preview small { display: block; color: var(--text-muted); font-size: .69rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
     .billing-preview strong { display: block; margin-top: .25rem; font-size: 1rem; }
     .billing-preview .total strong { color: var(--primary); font-size: 1.2rem; }
+    .billing-preview .preview-error { grid-column: 1 / -1; color: var(--danger); }
+    .security-history { display: grid; gap: .75rem; margin-bottom: 1rem; }
+    .security-history-item { padding: .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-muted); }
+    .security-transactions { width: 100%; margin-top: .75rem; border-collapse: collapse; font-size: .78rem; }
+    .security-transactions th, .security-transactions td { padding: .45rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
     .readmit-review { padding: 1rem; margin-top: 1rem; border: 1px solid rgba(16,185,129,.25); border-radius: 12px; background: rgba(16,185,129,.06); }
     .readmit-review label { display: flex; align-items: flex-start; gap: .65rem; line-height: 1.5; font-size: .85rem; }
     .readmit-actions { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: 1.25rem; }
@@ -103,25 +110,106 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
             </section>
 
             <section class="readmit-card readmit-card-full">
-                <h3><i class="fa-solid fa-shield-halved"></i> Existing security deposit</h3>
-                <?php if ($securityDeposit): ?>
-                    <div class="readmit-details" style="margin-bottom:1rem;">
-                        <div class="readmit-detail"><span class="label">Original security</span><span class="value">Rs. <?php echo number_format((float)$securityDeposit['original_amount'], 2); ?></span></div>
-                        <div class="readmit-detail"><span class="label">Current balance</span><span class="value">Rs. <?php echo number_format((float)$securityDeposit['remaining_amount'], 2); ?></span></div>
-                        <div class="readmit-detail"><span class="label">Ledger status</span><span class="value"><?php echo $escape($securityStatus); ?></span></div>
-                        <div class="readmit-detail"><span class="label">Expected payment date</span><span class="value"><?php echo $escape($securityDeposit['expected_payment_date'] ?: '—'); ?></span></div>
+                <h3><i class="fa-solid fa-shield-halved"></i> Previous security balances &amp; history</h3>
+                <?php if ($securityDeposits): ?>
+                    <div class="security-history">
+                        <?php foreach ($securityDeposits as $deposit): ?>
+                            <article class="security-history-item">
+                                <div class="readmit-details">
+                                    <div class="readmit-detail"><span class="label">Deposit #<?php echo (int)$deposit['id']; ?> · Original</span><span class="value">Rs. <?php echo number_format((float)$deposit['original_amount'], 2); ?></span></div>
+                                    <div class="readmit-detail"><span class="label">Remaining / refundable balance</span><span class="value">Rs. <?php echo number_format((float)$deposit['remaining_amount'], 2); ?></span></div>
+                                    <div class="readmit-detail"><span class="label">Status</span><span class="value"><?php echo $escape($deposit['status']); ?></span></div>
+                                    <div class="readmit-detail"><span class="label">Expected payment date</span><span class="value"><?php echo $escape($deposit['expected_payment_date'] ?: '—'); ?></span></div>
+                                </div>
+                                <?php if (!empty($deposit['transactions'])): ?>
+                                    <div class="table-responsive">
+                                        <table class="security-transactions">
+                                            <thead><tr><th>Transaction</th><th>Amount</th><th>Payment details / reason</th><th>Date / processed by</th></tr></thead>
+                                            <tbody>
+                                                <?php foreach ($deposit['transactions'] as $transaction): ?>
+                                                    <tr>
+                                                        <td><?php echo $escape($transaction['transaction_type']); ?></td>
+                                                        <td>Rs. <?php echo number_format((float)$transaction['amount'], 2); ?></td>
+                                                        <td><?php echo $escape(trim(($transaction['payment_method'] ?? '') . ' ' . ($transaction['reference_number'] ?? '') . ' ' . ($transaction['reason'] ?? ''))); ?></td>
+                                                        <td><?php echo $escape($transaction['payment_date'] ?? '—'); ?><?php if (!empty($transaction['processed_by_name'])): ?><br><?php echo $escape($transaction['processed_by_name']); ?><?php endif; ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
+                            </article>
+                        <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <div class="readmit-details" style="margin-bottom:1rem;"><div class="readmit-detail"><span class="label">Ledger status</span><span class="value">No security deposit record</span></div></div>
+                    <div class="readmit-details" style="margin-bottom:1rem;"><div class="readmit-detail"><span class="label">Previous ledger status</span><span class="value">No security deposit record</span></div></div>
                 <?php endif; ?>
                 <div class="readmit-callout security">
                     <i class="fa-solid fa-lock"></i>
-                    <div>The previous security deposit and its transaction history will not be changed or reused. Re-admission does not create a new security deposit automatically.</div>
+                    <div>Previous pending, waived, paid, returned, or held deposits remain separate and unchanged. Any remaining old balance must be settled through the existing Alumni security-return workflow.</div>
                 </div>
             </section>
 
             <section class="readmit-card readmit-card-full">
-                <h3><i class="fa-solid fa-bed"></i> New stay details</h3>
+                <h3><i class="fa-solid fa-vault"></i> New security deposit for this stay</h3>
+                <div class="readmit-form-grid">
+                    <div class="form-group form-group-full">
+                        <label class="form-label" for="securityOption">Security decision</label>
+                        <select class="form-control" id="securityOption" name="security_option">
+                            <option value="" <?php echo $securityOption === '' ? 'selected' : ''; ?>>No new deposit (leave previous balances unchanged)</option>
+                            <option value="NO_SECURITY" <?php echo $securityOption === 'NO_SECURITY' ? 'selected' : ''; ?>>Waive new deposit</option>
+                            <option value="SECURITY_LATER" <?php echo $securityOption === 'SECURITY_LATER' ? 'selected' : ''; ?>>Record new deposit as pending payment</option>
+                            <option value="PAY_NOW" <?php echo $securityOption === 'PAY_NOW' ? 'selected' : ''; ?>>Record new deposit received now</option>
+                        </select>
+                        <div class="readmit-help">A new deposit is optional. A pending or waived record is not recorded as money received; a HOLD transaction is created only for a confirmed payment.</div>
+                    </div>
+                    <div class="form-group" id="newSecurityAmountGroup" style="display:none;">
+                        <label class="form-label" for="newSecurityAmount">New security amount (Rs.) *</label>
+                        <input class="form-control" type="number" id="newSecurityAmount" name="security_amount" min="0.01" step="0.01"
+                               value="<?php echo $escape($oldInput['security_amount'] ?? ''); ?>">
+                    </div>
+                    <div class="form-group" id="securityExpectedDateGroup" style="display:none;">
+                        <label class="form-label" for="securityExpectedDate">Expected payment date *</label>
+                        <input class="form-control" type="date" id="securityExpectedDate" name="security_expected_payment_date"
+                               value="<?php echo $escape($oldInput['security_expected_payment_date'] ?? ''); ?>">
+                    </div>
+                    <div class="form-group form-group-full" id="securityPendingNoteGroup" style="display:none;">
+                        <label class="form-label" for="securityLaterNote">Pending security note / reason *</label>
+                        <textarea class="form-control" id="securityLaterNote" name="security_later_note" rows="2"><?php echo $escape($oldInput['security_later_note'] ?? ''); ?></textarea>
+                    </div>
+                    <div class="form-group form-group-full" id="securityWaiverReasonGroup" style="display:none;">
+                        <label class="form-label" for="securityWaiverReason">Waiver reason *</label>
+                        <textarea class="form-control" id="securityWaiverReason" name="security_waiver_reason" rows="2"><?php echo $escape($oldInput['security_waiver_reason'] ?? ''); ?></textarea>
+                    </div>
+                    <div class="form-group" id="securityPaymentDateGroup" style="display:none;">
+                        <label class="form-label" for="securityPaymentDate">Date received *</label>
+                        <input class="form-control" type="date" id="securityPaymentDate" name="security_payment_date" max="<?php echo date('Y-m-d'); ?>"
+                               value="<?php echo $escape($oldInput['security_payment_date'] ?? date('Y-m-d')); ?>">
+                    </div>
+                    <div class="form-group" id="securityPaymentMethodGroup" style="display:none;">
+                        <label class="form-label" for="securityPaymentMethod">Payment method *</label>
+                        <select class="form-control" id="securityPaymentMethod" name="security_payment_method">
+                            <option value="">Select payment method</option>
+                            <?php foreach (['Cash', 'Bank Transfer', 'Online', 'Card', 'JazzCash', 'EasyPaisa', 'Other'] as $method): ?>
+                                <option value="<?php echo $escape($method); ?>" <?php echo ($oldInput['security_payment_method'] ?? '') === $method ? 'selected' : ''; ?>><?php echo $escape($method); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group" id="securityReferenceGroup" style="display:none;">
+                        <label class="form-label" for="securityReference">Reference number (optional)</label>
+                        <input class="form-control" type="text" id="securityReference" name="security_reference_number" maxlength="100"
+                               value="<?php echo $escape($oldInput['security_reference_number'] ?? ''); ?>">
+                    </div>
+                    <div class="form-group form-group-full" id="securityPaymentNoteGroup" style="display:none;">
+                        <label class="form-label" for="securityPaymentNote">Payment note / remarks</label>
+                        <textarea class="form-control" id="securityPaymentNote" name="security_payment_note" rows="2"><?php echo $escape($oldInput['security_payment_note'] ?? ''); ?></textarea>
+                    </div>
+                    <div class="form-group form-group-full readmit-help">Processed by: <?php echo $escape($processed_by_name); ?> (authenticated admin)</div>
+                </div>
+            </section>
+
+            <section class="readmit-card readmit-card-full">
+                <h3><i class="fa-solid fa-calendar-check"></i> New re-admission details</h3>
                 <div class="readmit-form-grid">
                     <div class="form-group">
                         <label class="form-label" for="joiningDate">Return / admission date *</label>
@@ -142,7 +230,6 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
                             <option value="">Choose an available room</option>
                             <?php foreach ($rooms as $room): ?>
                                 <option value="<?php echo (int)$room['id']; ?>"
-                                        data-fee="<?php echo $escape(number_format((float)$room['monthly_fee'], 2, '.', '')); ?>"
                                         data-label="<?php echo $escape($room['block'] . '-' . $room['room_number']); ?>"
                                         <?php echo $selectedRoomId === (string)$room['id'] ? 'selected' : ''; ?>>
                                     <?php echo $escape('Block ' . $room['block'] . ' · Room ' . $room['room_number'] . ' · ' . $room['available_beds'] . ' of ' . $room['total_beds'] . ' beds free'); ?>
@@ -159,9 +246,10 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
                         <div id="bedFeedback" role="status"></div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="monthlyFee">Current applicable monthly fee</label>
-                        <input class="form-control" type="text" id="monthlyFee" readonly value="Select a room">
-                        <div class="readmit-help">Uses the selected room's current monthly rate for future calendar-month billing.</div>
+                        <label class="form-label" for="monthlyFee">Monthly fee for this stay (Rs.) *</label>
+                        <input class="form-control" type="number" id="monthlyFee" name="monthly_fee" min="0.01" step="0.01"
+                               value="<?php echo $escape($monthlyFeeInput); ?>" required disabled>
+                        <div class="readmit-help" id="roomRateHelp" role="status">Choose a room to retrieve its current database rate. If no room rate is configured, enter the agreed student fee as in normal admission.</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="billingMode">First-month billing *</label>
@@ -191,8 +279,9 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
 
                 <div class="billing-preview" aria-live="polite">
                     <div><small>Billing period</small><strong id="billingPeriod">—</strong></div>
-                    <div><small>Monthly fee</small><strong id="previewFee">Rs. 0.00</strong></div>
-                    <div class="total"><small>First-month amount</small><strong id="previewTotal">Rs. 0.00</strong></div>
+                    <div><small>Monthly fee</small><strong id="previewFee">—</strong></div>
+                    <div class="total"><small>First-month amount</small><strong id="previewTotal">—</strong></div>
+                    <div id="previewError" class="preview-error" role="alert"></div>
                 </div>
                 <div class="readmit-help" id="billingNote">Any existing invoice in this calendar month is preserved; a duplicate invoice will not be created.</div>
 
@@ -206,7 +295,7 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
                 <div class="readmit-actions">
                     <a class="btn" href="<?php echo $escape($config['base_url']); ?>/alumni" style="background:#334155;color:#fff;"><i class="fa-solid fa-arrow-left"></i> Back to Alumni</a>
                     <div class="action-right">
-                        <button class="btn btn-primary" type="submit" id="confirmReadmission" <?php echo empty($rooms) ? 'disabled' : ''; ?>>
+                        <button class="btn btn-primary" type="submit" id="confirmReadmission" disabled>
                             <i class="fa-solid fa-user-check"></i> Confirm Re-Admission
                         </button>
                     </div>
@@ -231,93 +320,202 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
     const discountReasonGroup = document.getElementById('discountReasonGroup');
     const form = document.getElementById('readmissionForm');
     const confirmButton = document.getElementById('confirmReadmission');
+    const securityOption = document.getElementById('securityOption');
     const priorBed = <?php echo json_encode($selectedBed); ?>;
-    const billingSettings = <?php echo json_encode([
-        'rounding_method' => $billingSettings['rounding_method'] ?? 'nearest_rupee',
-        'maximum_first_month_discount' => (float)($billingSettings['maximum_first_month_discount'] ?? 100)
-    ]); ?>;
-    let activeRequest = null;
+    const priorRoomId = <?php echo json_encode($selectedRoomId); ?>;
+    let currentRoomRate = null;
+    let loadedRateRoomId = '';
+    let roomRequest = null;
+    let previewRequest = null;
+    let previewValid = false;
+    let submitting = false;
 
-    function selectedRoomFee() {
-        const option = roomSelect.options[roomSelect.selectedIndex];
-        return option && option.value ? Number(option.dataset.fee || 0) : 0;
+    function setMoneyText(elementId, amount) {
+        document.getElementById(elementId).textContent = `Rs. ${Number(amount).toFixed(2)}`;
     }
 
-    function updateBillingPreview() {
-        const fee = selectedRoomFee();
-        const dateValue = joiningDate.value;
-        const period = dateValue
-            ? new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(dateValue + 'T00:00:00Z'))
-            : 'Select return date';
-        let discount = 0;
-        if (modeSelect.value === 'manual' && discountInput) {
-            const entered = Number(discountInput.value || 0);
-            const maxPercent = Math.max(0, Math.min(100, Number(billingSettings.maximum_first_month_discount || 0)));
-            discount = Math.min(Math.max(0, entered), fee, fee * maxPercent / 100);
-            discount = billingSettings.rounding_method === 'nearest_rupee' ? Math.round(discount) : Math.round(discount * 100) / 100;
-        }
-        document.getElementById('billingPeriod').textContent = period;
-        document.getElementById('previewFee').textContent = `Rs. ${fee.toFixed(2)}`;
-        document.getElementById('previewTotal').textContent = `Rs. ${Math.max(0, fee - discount).toFixed(2)}`;
-        discountGroup.style.display = modeSelect.value === 'manual' ? 'block' : 'none';
-        discountReasonGroup.style.display = modeSelect.value === 'manual' ? 'block' : 'none';
-        if (discountInput) {
-            discountInput.max = fee.toFixed(2);
-            discountInput.required = modeSelect.value === 'manual';
-        }
-        if (discountReason) discountReason.required = modeSelect.value === 'manual' && discount > 0;
+    function updateSubmitState() {
+        confirmButton.disabled = submitting || !loadedRateRoomId || loadedRateRoomId !== roomSelect.value
+            || !previewValid || !bedSelect.value || !monthlyFee.value;
     }
 
-    async function loadBeds(preserveSelection) {
+    async function updateBillingPreview() {
+        if (previewRequest) previewRequest.abort();
+        previewRequest = null;
+        previewValid = false;
+        document.getElementById('billingPeriod').textContent = '—';
+        document.getElementById('previewFee').textContent = '—';
+        document.getElementById('previewTotal').textContent = '—';
+        const errorOutput = document.getElementById('previewError');
+        errorOutput.textContent = '';
+
+        const mode = modeSelect.value;
+        const manual = mode === 'manual';
+        discountGroup.style.display = manual ? 'block' : 'none';
+        discountReasonGroup.style.display = manual ? 'block' : 'none';
+        discountInput.required = manual;
+        const discount = Number(discountInput.value || 0);
+        discountReason.required = manual && discount > 0;
+        const fee = Number(monthlyFee.value);
+        if (!loadedRateRoomId || loadedRateRoomId !== roomSelect.value || !Number.isFinite(fee) || fee <= 0) {
+            errorOutput.textContent = 'Choose a room and load its valid current rate to calculate the first-month amount.';
+            updateSubmitState();
+            return;
+        }
+        if (!joiningDate.value) {
+            errorOutput.textContent = 'Enter a return date to calculate the first-month amount.';
+            updateSubmitState();
+            return;
+        }
+        const params = new URLSearchParams({
+            monthly_fee: monthlyFee.value,
+            joining_date: joiningDate.value,
+            first_month_billing_mode: mode,
+            first_month_discount: discountInput.value || '0',
+            first_month_discount_reason: discountReason.value || ''
+        });
+        previewRequest = new AbortController();
+        errorOutput.textContent = 'Calculating with the admission billing rules…';
+        try {
+            const response = await fetch(`${baseUrl}/api/alumni/readmit/billing-preview?${params}`, {
+                credentials: 'same-origin',
+                signal: previewRequest.signal
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success || !result.data) {
+                throw new Error(result.message || 'Could not calculate the first-month amount.');
+            }
+            const calculation = result.data;
+            const monthDate = new Date(Date.UTC(calculation.billing_year, calculation.billing_month - 1, 1));
+            document.getElementById('billingPeriod').textContent = new Intl.DateTimeFormat(undefined, {
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'UTC'
+            }).format(monthDate);
+            setMoneyText('previewFee', calculation.monthly_fee);
+            setMoneyText('previewTotal', calculation.net_payable);
+            errorOutput.textContent = '';
+            previewValid = true;
+        } catch (error) {
+            if (error.name !== 'AbortError') errorOutput.textContent = error.message || 'Billing calculation failed; confirmation is disabled.';
+        } finally {
+            updateSubmitState();
+        }
+    }
+
+    async function loadRoomData(preserveSelection) {
         const roomId = roomSelect.value;
+        if (roomRequest) roomRequest.abort();
+        currentRoomRate = null;
+        loadedRateRoomId = '';
+        monthlyFee.value = '';
+        monthlyFee.disabled = true;
         bedSelect.innerHTML = '<option value="">Select an available bed</option>';
         bedSelect.disabled = true;
         bedFeedback.textContent = '';
-        monthlyFee.value = selectedRoomFee() > 0 ? `Rs. ${selectedRoomFee().toFixed(2)}` : 'Select a room';
+        bedFeedback.style.color = 'var(--text-muted)';
+        document.getElementById('roomRateHelp').textContent = roomId
+            ? 'Loading current room rate and live bed availability…'
+            : 'Choose a room to retrieve its current database rate. If no room rate is configured, enter the agreed student fee as in normal admission.';
         updateBillingPreview();
         if (!roomId) return;
 
-        if (activeRequest) activeRequest.abort();
-        activeRequest = new AbortController();
-        bedFeedback.textContent = 'Checking live bed availability…';
+        roomRequest = new AbortController();
+        bedFeedback.textContent = 'Loading current room rate and checking live bed availability…';
         try {
-            const response = await fetch(`${baseUrl}/api/allocations/available-beds/${encodeURIComponent(roomId)}`, {
+            const response = await fetch(`${baseUrl}/api/alumni/readmit/room/${encodeURIComponent(roomId)}`, {
                 credentials: 'same-origin',
-                signal: activeRequest.signal
+                signal: roomRequest.signal
             });
             const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.message || 'Could not load bed availability.');
-            const beds = result.data.available_bed_numbers || [];
-            beds.forEach((bed) => {
+            if (!response.ok || !result.success || !result.data) {
+                throw new Error(result.message || 'Could not retrieve the selected room’s current rate.');
+            }
+            if (roomSelect.value !== roomId) return;
+            const rate = result.data.monthly_fee === null ? null : Number(result.data.monthly_fee);
+            if (rate !== null && (!Number.isFinite(rate) || rate <= 0)) {
+                throw new Error('The selected room rate could not be retrieved. Refresh or choose another room.');
+            }
+            currentRoomRate = rate;
+            loadedRateRoomId = roomId;
+            const existingFee = preserveSelection && roomId === priorRoomId ? Number(<?php echo json_encode($monthlyFeeInput); ?>) : NaN;
+            monthlyFee.value = Number.isFinite(existingFee) && existingFee > 0
+                ? existingFee.toFixed(2)
+                : (rate !== null ? rate.toFixed(2) : '');
+            monthlyFee.disabled = false;
+            document.getElementById('roomRateHelp').textContent = rate !== null
+                ? `Current database room rate: Rs. ${rate.toFixed(2)}. You may enter a stay-specific rate, as permitted by the existing admin admission flow. The selected amount is saved with this stay’s first-month invoice and history.`
+                : 'This room has no monthly rate configured (database value is Rs. 0.00). Enter the agreed student fee using the existing normal-admission convention; the room rate will not be changed.';
+            (result.data.available_bed_numbers || []).forEach((bed) => {
                 const option = document.createElement('option');
                 option.value = String(bed);
                 option.textContent = `Bed ${bed} · Available`;
-                if (preserveSelection && String(bed) === priorBed) option.selected = true;
+                if (preserveSelection && roomId === priorRoomId && String(bed) === priorBed) option.selected = true;
                 bedSelect.appendChild(option);
             });
-            bedSelect.disabled = beds.length === 0;
-            bedFeedback.textContent = beds.length ? `${beds.length} available bed${beds.length === 1 ? '' : 's'}. Availability is rechecked when you confirm.` : 'No beds are currently available in this room.';
+            bedSelect.disabled = !(result.data.available_bed_numbers || []).length;
+            bedFeedback.textContent = bedSelect.disabled
+                ? 'No beds are currently available in this room.'
+                : `${result.data.available_bed_numbers.length} available bed${result.data.available_bed_numbers.length === 1 ? '' : 's'}. Availability is rechecked when you confirm.`;
+            await updateBillingPreview();
         } catch (error) {
             if (error.name === 'AbortError') return;
-            bedFeedback.textContent = error.message || 'Failed to check bed availability.';
+            currentRoomRate = null;
+            loadedRateRoomId = '';
+            monthlyFee.value = '';
+            monthlyFee.disabled = true;
+            bedFeedback.textContent = error.message || 'Could not retrieve the room rate or bed availability.';
             bedFeedback.style.color = 'var(--danger)';
+            document.getElementById('roomRateHelp').textContent = 'Room rate unavailable. Confirmation is blocked until a valid rate is retrieved.';
+            document.getElementById('previewError').textContent = error.message || 'Room rate unavailable; first-month billing cannot be calculated.';
+            updateSubmitState();
         }
     }
 
-    roomSelect.addEventListener('change', () => loadBeds(false));
+    function updateSecurityFields() {
+        const option = securityOption.value;
+        const sections = [
+            ['newSecurityAmountGroup', ['newSecurityAmount'], ['SECURITY_LATER', 'PAY_NOW']],
+            ['securityExpectedDateGroup', ['securityExpectedDate'], ['SECURITY_LATER']],
+            ['securityPendingNoteGroup', ['securityLaterNote'], ['SECURITY_LATER']],
+            ['securityWaiverReasonGroup', ['securityWaiverReason'], ['NO_SECURITY']],
+            ['securityPaymentDateGroup', ['securityPaymentDate'], ['PAY_NOW']],
+            ['securityPaymentMethodGroup', ['securityPaymentMethod'], ['PAY_NOW']],
+            ['securityReferenceGroup', ['securityReference'], ['PAY_NOW']],
+            ['securityPaymentNoteGroup', ['securityPaymentNote'], ['PAY_NOW']]
+        ];
+        sections.forEach(([groupId, fieldIds, allowed]) => {
+            const visible = allowed.includes(option);
+            document.getElementById(groupId).style.display = visible ? 'block' : 'none';
+            fieldIds.forEach((fieldId) => {
+                const field = document.getElementById(fieldId);
+                field.disabled = !visible;
+                field.required = visible && !['securityReference', 'securityPaymentNote'].includes(fieldId);
+            });
+        });
+    }
+
+    roomSelect.addEventListener('change', () => loadRoomData(false));
+    bedSelect.addEventListener('change', updateSubmitState);
+    monthlyFee.addEventListener('input', updateBillingPreview);
     joiningDate.addEventListener('change', updateBillingPreview);
     modeSelect.addEventListener('change', updateBillingPreview);
-    if (discountInput) discountInput.addEventListener('input', updateBillingPreview);
-    if (discountReason) discountReason.addEventListener('input', updateBillingPreview);
-    updateBillingPreview();
-    if (roomSelect.value) loadBeds(true);
+    discountInput.addEventListener('input', updateBillingPreview);
+    discountReason.addEventListener('input', updateBillingPreview);
+    securityOption.addEventListener('change', updateSecurityFields);
+    updateSecurityFields();
+    if (roomSelect.value) loadRoomData(true);
+    else updateBillingPreview();
 
     form.addEventListener('submit', (event) => {
-        if (!bedSelect.value) {
+        const fee = Number(monthlyFee.value);
+        if (!bedSelect.value || !loadedRateRoomId || loadedRateRoomId !== roomSelect.value
+            || !Number.isFinite(fee) || fee <= 0 || !previewValid) {
             event.preventDefault();
-            bedFeedback.textContent = 'Select an available bed before continuing.';
+            bedFeedback.textContent = 'A valid room rate, billing preview, and available bed are required before confirming.';
             bedFeedback.style.color = 'var(--danger)';
-            bedSelect.focus();
+            if (!bedSelect.value) bedSelect.focus();
+            else monthlyFee.focus();
             return;
         }
         if (modeSelect.value === 'manual' && Number(discountInput.value || 0) > 0 && !discountReason.value.trim()) {
@@ -332,10 +530,9 @@ $securityStatus = strtoupper((string)($securityDeposit['status'] ?? 'NO RECORD')
             event.preventDefault();
             return;
         }
-        if (confirmButton) {
-            confirmButton.disabled = true;
-            confirmButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing re-admission…';
-        }
+        submitting = true;
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing re-admission…';
     });
 })();
 </script>

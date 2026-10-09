@@ -75,6 +75,8 @@ $router->add('POST', '/account-settings/billing', 'AdminSettingsController', 'up
 $router->add('GET', '/alumni', 'AlumniController', 'index');
 $router->add('GET', '/alumni/readmit/{id}', 'AlumniController', 'reactivateForm');
 $router->add('POST', '/alumni/readmit/{id}', 'AlumniController', 'reactivate');
+$router->add('GET', '/api/alumni/readmit/room/{id}', 'AlumniController', 'apiReactivationRoom');
+$router->add('GET', '/api/alumni/readmit/billing-preview', 'AlumniController', 'apiReactivationBillingPreview');
 $router->add('GET', '/api/alumni', 'AlumniController', 'apiGetAll');
 $router->add('POST', '/api/alumni/transfer', 'AlumniController', 'apiTransfer');
 $router->add('POST', '/api/alumni/{id}/security-return', 'AlumniController', 'apiSecurityReturn');

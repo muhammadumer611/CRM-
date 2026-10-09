@@ -235,7 +235,7 @@ class StudentService {
         ]];
     }
 
-    private function recordOnboardingSecurityDeposit(int $studentId, array $security): void {
+    private function recordOnboardingSecurityDeposit(int $studentId, array $security, bool $includeAttribution = false): void {
         if ($security['status'] === null) {
             return;
         }
@@ -244,31 +244,97 @@ class StudentService {
         }
         $amount = (float)$security['amount'];
         $remaining = $security['status'] === 'HELD' ? $amount : 0.0;
-        $stmt = $this->db->prepare(
-            'INSERT INTO security_deposits (student_id, original_amount, remaining_amount, status, expected_payment_date, note) VALUES (?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([
+        $depositSql = $includeAttribution
+            ? 'INSERT INTO security_deposits (student_id, original_amount, remaining_amount, status, expected_payment_date, note, processed_by_name, processed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            : 'INSERT INTO security_deposits (student_id, original_amount, remaining_amount, status, expected_payment_date, note) VALUES (?, ?, ?, ?, ?, ?)';
+        $stmt = $this->db->prepare($depositSql);
+        $depositValues = [
             $studentId,
             $amount,
             $remaining,
             $security['status'],
             $security['expected_payment_date'],
             $security['note'],
-        ]);
+        ];
+        if ($includeAttribution) {
+            $depositValues[] = $security['processed_by_name'] ?? null;
+            $depositValues[] = $security['processed_at'] ?? null;
+        }
+        $stmt->execute($depositValues);
 
         if ($security['status'] === 'HELD') {
-            $stmtTransaction = $this->db->prepare(
-                "INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, reference_number, payment_method, created_by_admin, processed_at) VALUES (?, 'HOLD', ?, ?, ?, ?, ?, NOW())"
-            );
-            $stmtTransaction->execute([
-                (int)$this->db->lastInsertId(),
-                $amount,
-                $security['note'],
-                $security['reference_number'],
-                $security['payment_method'],
-                Session::get('admin_id') ?: null,
-            ]);
+            $depositId = (int)$this->db->lastInsertId();
+            if ($includeAttribution) {
+                $stmtTransaction = $this->db->prepare(
+                    "INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, reference_number, payment_method, created_by_admin, processed_by_name, processed_at) VALUES (?, 'HOLD', ?, ?, ?, ?, ?, ?, ?)"
+                );
+                $stmtTransaction->execute([
+                    $depositId,
+                    $amount,
+                    $security['note'],
+                    $security['reference_number'],
+                    $security['payment_method'],
+                    Session::get('admin_id') ?: null,
+                    $security['processed_by_name'] ?? null,
+                    $security['processed_at'] ?? date('Y-m-d H:i:s'),
+                ]);
+            } else {
+                $stmtTransaction = $this->db->prepare(
+                    "INSERT INTO security_deposit_transactions (security_deposit_id, transaction_type, amount, reason, reference_number, payment_method, created_by_admin, processed_at) VALUES (?, 'HOLD', ?, ?, ?, ?, ?, NOW())"
+                );
+                $stmtTransaction->execute([
+                    $depositId,
+                    $amount,
+                    $security['note'],
+                    $security['reference_number'],
+                    $security['payment_method'],
+                    Session::get('admin_id') ?: null,
+                ]);
+            }
         }
+    }
+
+    public function recordReadmissionSecurityDeposit(int $studentId, array $data): ?array {
+        if (!isset($data['security_option']) || !is_scalar($data['security_option'])
+            || trim((string)$data['security_option']) === '') {
+            return null;
+        }
+        if (!$this->db->inTransaction()) {
+            throw new Exception('Re-admission security deposits require an active database transaction.');
+        }
+
+        $result = $this->normalizeOnboardingSecurity($data);
+        if (!$result['success']) {
+            throw new Exception($result['error']);
+        }
+        $security = $result['record'];
+        if (!is_scalar($data['processed_by_name'] ?? null) || trim((string)$data['processed_by_name']) === '') {
+            throw new Exception('Processed By is required for the new security record.');
+        }
+        $security['processed_by_name'] = trim((string)$data['processed_by_name']);
+
+        if ($security['status'] === 'HELD') {
+            $paymentDate = $data['security_payment_date'] ?? date('Y-m-d');
+            if (!is_string($paymentDate)) {
+                throw new Exception('Enter a valid security payment date.');
+            }
+            $parsedDate = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($paymentDate));
+            $dateErrors = \DateTimeImmutable::getLastErrors();
+            if (!$parsedDate
+                || ($dateErrors !== false && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0))
+                || $parsedDate->format('Y-m-d') !== trim($paymentDate)
+                || trim($paymentDate) > date('Y-m-d')) {
+                throw new Exception('Enter a valid security payment date that is not in the future.');
+            }
+            $security['processed_at'] = trim($paymentDate) . ' 12:00:00';
+        }
+
+        $this->recordOnboardingSecurityDeposit($studentId, $security, true);
+        return [
+            'status' => $security['status'],
+            'amount' => (float)$security['amount'],
+            'recorded_as_received' => $security['status'] === 'HELD',
+        ];
     }
 
     public function onboardStudent($data) {

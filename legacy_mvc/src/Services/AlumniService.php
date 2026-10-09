@@ -58,9 +58,23 @@ class AlumniService {
             throw new Exception('This student already has an active room allocation.');
         }
 
-        $securityStmt = $this->db->prepare('SELECT * FROM security_deposits WHERE student_id = ? ORDER BY id DESC LIMIT 1');
+        $securityStmt = $this->db->prepare('SELECT * FROM security_deposits WHERE student_id = ? ORDER BY id DESC');
         $securityStmt->execute([(int)$student['id']]);
-        $securityDeposit = $securityStmt->fetch() ?: null;
+        $securityDeposits = $securityStmt->fetchAll();
+        if ($securityDeposits) {
+            $transactionStmt = $this->db->prepare("
+                SELECT sdt.*, COALESCE(sdt.processed_at, sdt.created_at) AS payment_date, a.username AS admin_username
+                FROM security_deposit_transactions sdt
+                LEFT JOIN admins a ON a.id = sdt.created_by_admin
+                WHERE sdt.security_deposit_id = ?
+                ORDER BY sdt.id ASC
+            ");
+            foreach ($securityDeposits as &$deposit) {
+                $transactionStmt->execute([(int)$deposit['id']]);
+                $deposit['transactions'] = $transactionStmt->fetchAll();
+            }
+            unset($deposit);
+        }
 
         $roomRepo = new \App\Repositories\RoomRepository();
         $rooms = $roomRepo->findAvailableRoomsForAdmission('BED');
@@ -70,15 +84,37 @@ class AlumniService {
             'alumni' => $alumni,
             'student' => $student,
             'previous_stay' => $previousStay,
-            'security_deposit' => $securityDeposit,
+            'security_deposits' => $securityDeposits,
             'rooms' => $rooms,
             'billing_settings' => $billingSettings
+        ];
+    }
+
+    public function getReactivationRoomData(int $roomId): array {
+        $stmt = $this->db->prepare('SELECT id, block, room_number, total_beds, monthly_fee, status FROM rooms WHERE id = ?');
+        $stmt->execute([$roomId]);
+        $room = $stmt->fetch();
+        if (!$room || $room['status'] === 'Disabled') {
+            throw new Exception('Selected room is not available for re-admission.');
+        }
+        $monthlyFee = (float)$room['monthly_fee'];
+        if (!is_finite($monthlyFee) || $monthlyFee < 0) {
+            throw new Exception('The selected room monthly rate could not be retrieved.');
+        }
+        $availableBeds = (new \App\Repositories\RoomRepository())->getAvailableBedsForRoom($roomId);
+        return [
+            'room_id' => (int)$room['id'],
+            'label' => $room['block'] . '-' . $room['room_number'],
+            'monthly_fee' => $monthlyFee > 0 ? round($monthlyFee, 2) : null,
+            'has_monthly_rate' => $monthlyFee > 0,
+            'available_bed_numbers' => array_values(array_map('intval', $availableBeds))
         ];
     }
 
     public function reactivateAlumni(int $alumniId, array $data): array {
         $roomId = filter_var($data['room_id'] ?? null, FILTER_VALIDATE_INT);
         $bedNumber = filter_var($data['bed_number'] ?? null, FILTER_VALIDATE_INT);
+        $monthlyFeeInput = $data['monthly_fee'] ?? null;
         $joiningDate = is_string($data['joining_date'] ?? null) ? trim($data['joining_date']) : '';
         $remarks = is_string($data['remarks'] ?? null) ? trim($data['remarks']) : '';
         $allocatedByName = is_string($data['allocated_by_name'] ?? null) ? trim($data['allocated_by_name']) : '';
@@ -95,6 +131,13 @@ class AlumniService {
         }
         if ($allocatedByName === '') {
             return ['success' => false, 'error' => 'Processed By is required.'];
+        }
+        if (!is_scalar($monthlyFeeInput) || !is_numeric($monthlyFeeInput) || !is_finite((float)$monthlyFeeInput)) {
+            return ['success' => false, 'error' => 'Enter a valid monthly fee for this stay.'];
+        }
+        $monthlyFeeInput = (float)$monthlyFeeInput;
+        if ($monthlyFeeInput <= 0 || abs($monthlyFeeInput - round($monthlyFeeInput, 2)) > 0.000001) {
+            return ['success' => false, 'error' => 'Monthly fee must be greater than zero and have no more than two decimal places.'];
         }
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $joiningDate);
         $dateErrors = \DateTimeImmutable::getLastErrors();
@@ -190,9 +233,10 @@ class AlumniService {
                 throw new Exception('Selected room has no available beds.');
             }
             $monthlyFee = round((float)$room['monthly_fee'], 2);
-            if ($monthlyFee <= 0) {
-                throw new Exception('Selected room does not have a valid monthly fee.');
+            if (!is_finite($monthlyFee) || $monthlyFee < 0) {
+                throw new Exception('Selected room monthly rate could not be retrieved.');
             }
+            $monthlyFee = round($monthlyFeeInput, 2);
 
             $billingService = new BillingService($this->db);
             $billingInput = [
@@ -243,6 +287,14 @@ class AlumniService {
                 throw new Exception('Student status changed during re-admission. Please reload and retry.');
             }
 
+            $studentSecurityService = new \App\Services\StudentService();
+            $securityResult = $studentSecurityService->recordReadmissionSecurityDeposit(
+                (int)$student['id'],
+                array_merge($data, [
+                    'processed_by_name' => $data['security_processed_by_name'] ?? $allocatedByName
+                ])
+            );
+
             if ($existingInvoice) {
                 $invoiceId = (int)$existingInvoice['id'];
                 $invoiceCreated = false;
@@ -273,9 +325,10 @@ class AlumniService {
                     'bed' => (int)$bedNumber,
                     'joining_date' => $joiningDate,
                     'monthly_fee' => $monthlyFee,
+                    'room_monthly_rate' => round((float)$room['monthly_fee'], 2),
                     'first_month_invoice_id' => $invoiceId,
                     'first_month_invoice_created' => $invoiceCreated,
-                    'security_deposit_unchanged' => true
+                    'new_security_deposit' => $securityResult,
                 ],
                 Session::get('admin_id'),
                 $this->db
@@ -291,6 +344,8 @@ class AlumniService {
                 'bed' => (int)$bedNumber,
                 'joining_date' => $joiningDate,
                 'monthly_fee' => $monthlyFee,
+                'room_monthly_rate' => round((float)$room['monthly_fee'], 2),
+                'security_deposit' => $securityResult,
                 'billing' => $billingCalculation
             ];
         } catch (\Throwable $e) {
