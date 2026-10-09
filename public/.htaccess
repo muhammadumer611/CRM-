@@ -1,0 +1,15 @@
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ index.php [QSA,L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+<FilesMatch "(?i)(^\.|.*\.(?:sql(?:\.err)?|log|err|bak|backup|pem|key))$">
+    Require all denied
+</FilesMatch>
+
+

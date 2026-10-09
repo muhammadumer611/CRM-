@@ -1,0 +1,13 @@
+[2026-08-30 12:18:49] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 31 closed for student 47
+[2026-08-30 12:19:08] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 37 closed for student 58
+[2026-08-30 12:39:05] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 44 closed for student 70
+[2026-08-30 12:39:56] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 51 closed for student 82
+[2026-08-30 13:23:33] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 59 closed for student 95
+[2026-08-30 19:35:37] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 67 closed for student 108
+[2026-08-30 19:38:47] [CLI] [INFO] Security deposit received for student #113: amount 3000
+[2026-08-30 19:38:47] [CLI] [INFO] Security deduction applied for student #113: amount 800 reason Damage charge
+[2026-08-30 19:38:47] [CLI] [INFO] Security refund processed for student #113: amount 2200, reference REF-REF-001
+[2026-08-30 19:52:17] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 78 closed for student 124
+[2026-08-30 19:52:59] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 86 closed for student 137
+[2026-08-30 20:11:48] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 101 closed for student 163
+[2026-08-30 20:12:09] [CLI] [INFO] ROOM_ALLOCATION_CLOSED: Allocation 108 closed for student 175
