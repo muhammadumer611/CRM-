@@ -1,7 +1,22 @@
 <?php $config = require APP_ROOT . '/config/app.php'; $student = $student ?? []; $account = $account ?? []; $invoices = $account['invoices'] ?? []; $payments = $account['payments'] ?? []; $isActiveStudent = ($student['status'] ?? '') === 'Active'; ?>
+<style>
+    .student-account-page { width: 100%; max-width: 1200px; min-width: 0; margin: 0 auto; }
+    .student-account-page .card { min-width: 0; }
+    .student-account-page .card-header { align-items: flex-start; min-width: 0; }
+    .student-account-page .account-heading,
+    .student-account-page .detail-value { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+    .student-account-page .account-metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .student-account-page .account-detail-card .row > div { min-width: 0; }
+    .student-account-page .table-responsive { max-width: 100%; }
+    @media (max-width: 480px) {
+        .student-account-page .card-header { gap: 0.75rem; }
+        .student-account-page .account-metric-grid { grid-template-columns: 1fr; }
+    }
+</style>
+<div class="student-account-page">
 <div class="card">
     <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
-        <div>
+        <div class="account-heading">
             <h3 class="card-title">Student Account Statement</h3>
             <div style="margin-top: 0.5rem; color: var(--text-muted);">
                 <?php echo htmlspecialchars($student['student_id_str'] ?? ''); ?> • <?php echo htmlspecialchars($student['full_name'] ?? ''); ?>
@@ -23,7 +38,7 @@
             <?php if ($currentFee): ?><span class="badge" style="background:<?php echo $currentFee['status'] === 'Paid' ? '#10b981' : '#f59e0b'; ?>22;color:<?php echo $currentFee['status'] === 'Paid' ? '#10b981' : '#f59e0b'; ?>;"><?php echo htmlspecialchars($currentFee['status']); ?></span><?php endif; ?>
         </div>
         <?php if ($currentFee): ?>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:1rem;">
+        <div class="account-metric-grid">
             <div><div class="form-label">Monthly Fee</div><strong>Rs. <?php echo number_format($currentTotal, 2); ?></strong></div>
             <div><div class="form-label">Paid</div><strong style="color:var(--success);">Rs. <?php echo number_format($currentPaid, 2); ?></strong></div>
             <div><div class="form-label">Pending</div><strong style="color:<?php echo $currentPending > 0 ? 'var(--danger)' : 'var(--success)'; ?>;">Rs. <?php echo number_format($currentPending, 2); ?></strong></div>
@@ -117,6 +132,7 @@
                     </table>
                 </div>
             </div>
+            </div>
         <?php endif; ?>
     </div>
 
@@ -133,7 +149,7 @@
             </div>
         </div>
         <div class="col-md-8">
-            <div class="card" style="margin-bottom: 0;">
+            <div class="card account-detail-card" style="margin-bottom: 0;">
                 <h4 style="margin-bottom: 1rem;">Student Details</h4>
                 <div class="row">
                     <div class="col-md-6"><div class="form-label">Phone</div><div class="detail-value"><?php echo htmlspecialchars($student['phone'] ?? ''); ?></div></div>
@@ -182,6 +198,7 @@
                 </div>
             </form>
         </div>
+    </div>
     </div>
 </div>
 <script>
@@ -297,4 +314,5 @@
             </tbody>
         </table>
     </div>
+</div>
 </div>

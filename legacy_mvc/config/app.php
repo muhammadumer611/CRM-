@@ -31,7 +31,7 @@ return [
     'login_attempt_limit' => 5,
     'login_attempt_window' => 300,
     'login_lockout_duration' => 300,
-    'environment' => getenv('HMS_ENV') ?: 'production', // Set HMS_ENV=development for local diagnostics.
+    'environment' => getenv('HMS_ENV') ?: 'development', // Default to local development when no explicit environment is configured.
     'session' => [
         'name' => 'HMS_SECURE_SESSION',
         'lifetime' => 7200,

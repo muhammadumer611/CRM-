@@ -23,44 +23,26 @@ $router->add('GET', '/health', function() {
 
 $router->add('GET', '/api/db-status', function() {
     $config = require __DIR__ . '/../config/database.php';
-    $requiredTables = [
-        'admins','students','rooms','room_allocations','fee_records','fee_payments',
-        'student_history','alumni','system_logs'
-    ];
-
     $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
     try {
-        $pdo = new PDO($dsn, $config['user'], $config['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $database = $pdo->query("SELECT DATABASE()")->fetchColumn();
-        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-        $present = array_flip($tables);
-        $status = [];
-        foreach ($requiredTables as $table) {
-            $status[] = [
-                'table' => $table,
-                'exists' => isset($present[$table])
-            ];
-        }
+        new PDO($dsn, $config['user'], $config['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
         echo json_encode([
             'success' => true,
             'message' => 'Database connection successful.',
             'data' => [
-                'database' => $database,
-                'server' => $config['host'],
                 'connected' => true,
-                'tables' => $status
             ]
         ]);
     } catch (Throwable $e) {
+        \Core\Logger::error(
+            'Database connection failed; exception=' . get_class($e) . '; code=' . (string)$e->getCode()
+        );
         echo json_encode([
             'success' => false,
             'message' => 'Database connection failed.',
             'data' => [
-                'database' => $config['dbname'],
-                'server' => $config['host'],
                 'connected' => false,
-                'error' => $e->getMessage()
             ]
         ]);
     }

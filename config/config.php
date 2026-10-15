@@ -1,5 +1,5 @@
 <?php
-$environment = strtolower((string)(getenv('HMS_ENV') ?: 'production'));
+$environment = strtolower((string)(getenv('HMS_ENV') ?: 'development'));
 
 return [
     'app_name' => 'Hostel Management System',

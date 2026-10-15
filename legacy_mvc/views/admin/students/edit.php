@@ -4,10 +4,30 @@
     $vehicleTypeValue = trim((string)($student['vehicle_type'] ?? ''));
     $vehicleTypeIsCustom = $vehicleTypeValue !== '' && !in_array($vehicleTypeValue, ['Motorcycle / Bike', 'Car', 'Nill'], true);
 ?>
-<div style="max-width:900px;margin:0 auto;">
+<style>
+    .student-edit-page { width: 100%; max-width: 960px; min-width: 0; margin: 0 auto; }
+    .student-edit-page .edit-page-header,
+    .student-edit-page .edit-page-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .student-edit-page .edit-page-header > div,
+    .student-edit-page .row > div { min-width: 0; }
+    .student-edit-page .form-group { min-width: 0; margin-bottom: 1rem; }
+    .student-edit-page .form-label { display: block; margin-bottom: 0.45rem; line-height: 1.4; }
+    .student-edit-page .form-control { min-height: 2.75rem; max-width: 100%; }
+    .student-edit-page textarea.form-control { min-height: 7rem; }
+    .student-edit-page .edit-section { min-width: 0; }
+    .student-edit-page .edit-field-help { display: block; margin-top: 0.45rem; color: var(--text-muted); line-height: 1.5; }
+    .student-edit-page .edit-page-actions { justify-content: flex-end; margin-top: 1.25rem; }
+    @media (max-width: 480px) {
+        .student-edit-page .edit-page-header { align-items: flex-start; }
+        .student-edit-page .edit-page-header > .btn,
+        .student-edit-page .edit-page-actions > .btn { width: 100%; justify-content: center; }
+        .student-edit-page .card { padding: 1rem; }
+    }
+</style>
+<div class="student-edit-page">
 
     <!-- Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+    <div class="edit-page-header" style="margin-bottom:1.5rem;">
         <div>
             <h2 style="margin:0;"><?php echo htmlspecialchars($student['full_name']); ?></h2>
             <span class="badge" style="background:#334155;font-size:0.85rem;margin-top:0.25rem;display:inline-block;">
@@ -47,7 +67,7 @@
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
             <input type="hidden" name="_back_url" value="<?php echo htmlspecialchars($resolvedBackUrl); ?>">
 
-            <div class="card" style="background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.25);margin-bottom:1.25rem;">
+            <div class="card edit-section" style="background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.25);margin-bottom:1.25rem;">
                 <h5 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-bed"></i> Room / Bed Allocation</h5>
                 <div class="row">
                     <div class="col-md-6">
@@ -66,6 +86,14 @@
                     </div>
                 </div>
                 <small style="color:var(--text-muted);">Only available beds are listed. The current bed remains selectable for this student.</small>
+                <?php if (!empty($student['allocation_id'])): ?>
+                    <div class="form-group" style="margin-top:1rem;margin-bottom:0;">
+                        <label class="form-label" for="joiningDateEdit">Current Allocation Joining Date *</label>
+                        <input type="date" id="joiningDateEdit" name="joining_date" class="form-control" required
+                               value="<?php echo htmlspecialchars((string)($student['allocation_date'] ?? '')); ?>">
+                        <small class="edit-field-help">This date is used when determining eligibility for future monthly billing periods. Existing invoices and payments are not recalculated. If you transfer rooms without changing this date, the new allocation starts today as usual.</small>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <!-- Personal Info -->
@@ -76,6 +104,7 @@
                         <input type="text" name="full_name" class="form-control" required value="<?php echo htmlspecialchars($student['full_name']); ?>">
                     </div>
                 </div>
+
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-label">CNIC *</label>
@@ -147,12 +176,6 @@
                     <div class="form-group">
                         <label class="form-label">Guardian Phone *</label>
                         <input type="text" name="guardian_phone" class="form-control" required value="<?php echo htmlspecialchars(\App\Services\StudentService::formatPhone($student['guardian_phone'])); ?>">
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="form-group">
-                        <label class="form-label">Guardian Address</label>
-                        <input type="text" name="guardian_address" class="form-control" value="<?php echo htmlspecialchars($student['guardian_address'] ?? ''); ?>">
                     </div>
                 </div>
             </div>
@@ -233,36 +256,52 @@
                 </div>
             </div>
 
-            <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1rem;">
+            <!-- Pending security details only; received or settled deposits remain immutable here. -->
+            <?php if ($securityDeposit): ?>
+            <div class="card edit-section" style="margin-bottom:1.25rem;border:1px solid rgba(139,92,246,0.35);">
+                <h5 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-shield-alt"></i> Security Deposit</h5>
+                <?php if (strtoupper((string)$securityDeposit['status']) === 'PENDING' && (float)$securityDeposit['remaining_amount'] === 0.0 && empty($securityDeposit['transactions'])): ?>
+                    <span class="badge badge-warning" style="display:inline-block;margin-bottom:0.75rem;">Pending — payment not recorded</span>
+                    <p class="edit-field-help" style="margin:0 0 1rem;">Only this unpaid pending commitment can be corrected here. Saving these details does not record a payment, refund, deduction, or settlement.</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label" for="securityAmountEdit">Pending Security Amount (Rs.) *</label>
+                                <input type="number" id="securityAmountEdit" name="security_amount" class="form-control" min="0.01" max="9999999999.99" step="0.01" required
+                                       value="<?php echo htmlspecialchars(number_format((float)$securityDeposit['original_amount'], 2, '.', '')); ?>">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label" for="securityExpectedDateEdit">Expected Payment Date *</label>
+                                <input type="date" id="securityExpectedDateEdit" name="security_expected_payment_date" class="form-control" required
+                                       value="<?php echo htmlspecialchars((string)($securityDeposit['expected_payment_date'] ?? '')); ?>">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label" for="securityNoteEdit">Reason / Note *</label>
+                                <textarea id="securityNoteEdit" name="security_note" class="form-control" rows="3" required><?php echo htmlspecialchars((string)($securityDeposit['note'] ?? '')); ?></textarea>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:1rem;">
+                        <div><div class="form-label">Original Amount</div><strong>Rs. <?php echo number_format((float)$securityDeposit['original_amount'], 2); ?></strong></div>
+                        <div><div class="form-label">Remaining Amount</div><strong>Rs. <?php echo number_format((float)$securityDeposit['remaining_amount'], 2); ?></strong></div>
+                        <div><div class="form-label">Status</div><strong><?php echo htmlspecialchars((string)$securityDeposit['status']); ?></strong></div>
+                    </div>
+                    <small class="edit-field-help">This deposit is paid, waived, or has transaction history. Use the existing security payment or checkout/settlement workflow to make a financial correction.</small>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+            <div class="edit-page-actions">
                 <a href="<?php echo $resolvedBackUrl; ?>" class="btn" style="background:#334155;color:white;">Cancel</a>
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
             </div>
         </form>
     </div>
-
-    <!-- Security Deposit -->
-    <?php if ($securityDeposit): ?>
-    <div class="card" style="margin-bottom:1.5rem;">
-        <h4 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-shield-alt"></i> Security Deposit</h4>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;">
-            <div>
-                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;">Original Amount</div>
-                <div style="font-weight:700;margin-top:0.25rem;">Rs. <?php echo number_format($securityDeposit['original_amount'], 2); ?></div>
-            </div>
-            <div>
-                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;">Remaining</div>
-                <div style="font-weight:700;color:#c4b5fd;margin-top:0.25rem;">Rs. <?php echo number_format($securityDeposit['remaining_amount'], 2); ?></div>
-            </div>
-            <div>
-                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;">Status</div>
-                <div style="font-weight:700;margin-top:0.25rem;"><?php echo htmlspecialchars($securityDeposit['status']); ?></div>
-            </div>
-        </div>
-        <small style="color:var(--text-muted);margin-top:0.75rem;display:block;">
-            <i class="fas fa-info-circle"></i> Security deposits are managed separately during student checkout/alumni conversion.
-        </small>
-    </div>
-    <?php endif; ?>
 
     <!-- Fee History -->
     <?php if (!empty($feeHistory)): ?>

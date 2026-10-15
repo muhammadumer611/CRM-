@@ -1,9 +1,36 @@
 <?php $config = require APP_ROOT . '/config/app.php'; ?>
 <?php $resolvedBackUrl = !empty($backUrl) ? $backUrl : $config['base_url'] . '/students'; ?>
-<div style="max-width:900px;margin:0 auto;">
+<style>
+    .student-profile-page { width: 100%; max-width: 1120px; min-width: 0; margin: 0 auto; }
+    .student-profile-page .profile-page-header,
+    .student-profile-page .profile-page-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; min-width: 0; }
+    .student-profile-page .profile-page-header { justify-content: space-between; margin-bottom: 1.5rem; }
+    .student-profile-page .profile-page-header > div,
+    .student-profile-page .row > div,
+    .student-profile-page .card { min-width: 0; }
+    .student-profile-page .profile-info-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    .student-profile-page .profile-info-table td { padding: 0.65rem 0.4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .student-profile-page .profile-info-table tr:last-child td { border-bottom: 0; }
+    .student-profile-page .profile-label { width: 35%; color: var(--text-muted); font-size: 0.85rem; }
+    .student-profile-page .profile-value { font-weight: 500; font-size: 0.9rem; overflow-wrap: anywhere; word-break: break-word; }
+    .student-profile-page .profile-allocation-strip { display: flex; gap: 1rem 2rem; flex-wrap: wrap; align-items: center; }
+    .student-profile-page .profile-value,
+    .student-profile-page .profile-allocation-strip > div { min-width: 0; }
+    .student-profile-page .profile-history-table { min-width: 680px; }
+    .student-profile-page .profile-financial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 1rem; }
+    .student-profile-page .profile-financial-grid > div { min-width: 0; overflow-wrap: anywhere; }
+    @media (max-width: 480px) {
+        .student-profile-page .profile-page-header { align-items: flex-start; }
+        .student-profile-page .profile-page-actions { width: 100%; }
+        .student-profile-page .profile-page-actions .btn { flex: 1 1 100%; justify-content: center; }
+        .student-profile-page .profile-label { width: 38%; }
+        .student-profile-page .profile-info-table td { padding: 0.55rem 0.25rem; }
+    }
+</style>
+<div class="student-profile-page">
 
     <!-- Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+    <div class="profile-page-header">
         <div>
             <h2 style="margin:0;"><?php echo htmlspecialchars($student['full_name']); ?></h2>
             <span class="badge" style="background:#334155;font-size:0.85rem;margin-top:0.25rem;display:inline-block;">
@@ -15,7 +42,7 @@
                 <span class="badge badge-danger" style="margin-left:0.5rem;">Inactive / Alumni</span>
             <?php endif; ?>
         </div>
-        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+        <div class="profile-page-actions">
             <?php if ($student['status'] === 'Active'): ?>
                 <button type="button" class="btn btn-danger" onclick="openCheckoutModal()">
                     <i class="fas fa-sign-out-alt"></i> Checkout / Mark Alumni
@@ -36,7 +63,7 @@
         <div class="col-md-6">
             <div class="card" style="margin-bottom:1rem;">
                 <h4 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-user"></i> Personal Info</h4>
-                <table style="width:100%;border-collapse:collapse;">
+                <table class="profile-info-table">
                     <?php $rows = [
                         'Phone' => $student['phone'],
                         'Email' => $student['email'] ?? '—',
@@ -47,8 +74,8 @@
                     ]; ?>
                     <?php foreach ($rows as $label => $val): ?>
                     <tr>
-                        <td style="padding:0.5rem 0;color:var(--text-muted);font-size:0.85rem;width:35%;vertical-align:top;"><?php echo $label; ?></td>
-                        <td style="padding:0.5rem 0;font-weight:500;font-size:0.9rem;"><?php echo htmlspecialchars($val); ?></td>
+                        <td class="profile-label"><?php echo $label; ?></td>
+                        <td class="profile-value"><?php echo htmlspecialchars($val); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </table>
@@ -59,7 +86,7 @@
         <div class="col-md-6">
             <div class="card" style="margin-bottom:1rem;">
                 <h4 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-users"></i> Guardian</h4>
-                <table style="width:100%;border-collapse:collapse;">
+                <table class="profile-info-table">
                     <?php $rows2 = [
                         'Name' => $student['guardian_name'],
                         'Relation' => $student['relation'],
@@ -68,8 +95,8 @@
                     ]; ?>
                     <?php foreach ($rows2 as $label => $val): ?>
                     <tr>
-                        <td style="padding:0.5rem 0;color:var(--text-muted);font-size:0.85rem;width:35%;vertical-align:top;"><?php echo $label; ?></td>
-                        <td style="padding:0.5rem 0;font-weight:500;font-size:0.9rem;"><?php echo htmlspecialchars($val); ?></td>
+                        <td class="profile-label"><?php echo $label; ?></td>
+                        <td class="profile-value"><?php echo htmlspecialchars($val); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </table>
@@ -77,7 +104,7 @@
 
             <div class="card" style="margin-bottom:1rem;">
                 <h4 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-user-tie"></i> Resident Details</h4>
-                <table style="width:100%;border-collapse:collapse;">
+                <table class="profile-info-table">
                     <?php
                         $vehicleNumber = trim((string)($student['vehicle_number'] ?? ''));
                         $vehicleType = trim((string)($student['vehicle_type'] ?? ''));
@@ -93,8 +120,8 @@
                     ]; ?>
                     <?php foreach ($residentRows as $label => $val): ?>
                     <tr>
-                        <td style="padding:0.5rem 0;color:var(--text-muted);font-size:0.85rem;width:35%;vertical-align:top;"><?php echo $label; ?></td>
-                        <td style="padding:0.5rem 0;font-weight:500;font-size:0.9rem;white-space:pre-wrap;"><?php echo htmlspecialchars($val); ?></td>
+                        <td class="profile-label"><?php echo $label; ?></td>
+                        <td class="profile-value" style="white-space:pre-wrap;"><?php echo htmlspecialchars($val); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </table>
@@ -103,7 +130,7 @@
             <!-- Financial Summary -->
             <div class="card">
                 <h4 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-rupee-sign"></i> Financial</h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div class="profile-financial-grid">
                     <div>
                         <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;">Monthly Fee</div>
                         <div style="font-weight:700;color:var(--primary);margin-top:0.25rem;">
@@ -178,7 +205,7 @@
     <?php if (!empty($student['room_number'])): ?>
     <div class="card" style="margin-top:1rem;">
         <h4 style="color:var(--primary);margin-bottom:1rem;"><i class="fas fa-bed"></i> Current Room Allocation</h4>
-        <div style="display:flex;gap:2rem;flex-wrap:wrap;">
+        <div class="profile-allocation-strip">
             <div><span style="color:var(--text-muted);font-size:0.85rem;">Room</span><br><strong><?php echo htmlspecialchars($student['block'] . '-' . $student['room_number']); ?></strong></div>
             <div><span style="color:var(--text-muted);font-size:0.85rem;">Bed</span><br><strong><?php echo (int)$student['bed_number']; ?></strong></div>
             <div><span style="color:var(--text-muted);font-size:0.85rem;">Type</span><br><strong><?php echo htmlspecialchars($student['room_type'] ?? '—'); ?></strong></div>
@@ -195,7 +222,7 @@
             <h4 style="color:var(--primary);margin:0;"><i class="fas fa-file-invoice-dollar"></i> Fee History</h4>
         </div>
         <div class="table-responsive">
-            <table>
+            <table class="profile-history-table">
                 <thead>
                     <tr>
                         <th>Invoice</th><th>Period</th><th>Amount</th><th>Paid</th><th>Status</th><th></th>
@@ -338,7 +365,6 @@ function closeCheckoutModal() {
     const m = document.getElementById('checkoutModal');
     m.style.display = 'none';
 }
-
 const checkoutForm = document.getElementById('checkoutForm');
 if (checkoutForm) {
     const settlement = document.getElementById('checkoutSecuritySettlement');

@@ -324,7 +324,6 @@ class AlumniController {
         }
         exit;
     }
-
     public function apiSecurityReturn($id) {
         Auth::checkAPI();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

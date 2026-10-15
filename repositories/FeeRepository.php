@@ -3,6 +3,7 @@ namespace Repositories;
 
 use Core\Database;
 use Helpers\BillingPeriodEligibility;
+use Exception;
 use PDO;
 
 class FeeRepository {

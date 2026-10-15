@@ -195,8 +195,8 @@ class RoomService {
             'floor' => trim($data['floor']),
             'room_type' => trim($data['room_type']),
             'total_beds' => $totalBeds,
-            'monthly_fee' => 0.00,
-            'security_deposit' => 0.00,
+            'monthly_fee' => $room['monthly_fee'],
+            'security_deposit' => $room['security_deposit'],
             'status' => $status
         ];
 

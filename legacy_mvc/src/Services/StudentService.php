@@ -710,6 +710,57 @@ class StudentService {
         $student = $this->studentRepo->findById($id);
         if (!$student) return ['success' => false, 'error' => 'Student not found.'];
 
+        $requestedJoiningDate = null;
+        $joiningDateChanged = false;
+        if (array_key_exists('joining_date', $data)) {
+            if (!is_scalar($data['joining_date']) || trim((string)$data['joining_date']) === '') {
+                return ['success' => false, 'error' => 'Joining date is required and must be a valid date.'];
+            }
+            $requestedJoiningDate = trim((string)$data['joining_date']);
+            $parsedJoiningDate = \DateTime::createFromFormat('!Y-m-d', $requestedJoiningDate);
+            if (!$parsedJoiningDate || $parsedJoiningDate->format('Y-m-d') !== $requestedJoiningDate) {
+                return ['success' => false, 'error' => 'Joining date must be a valid date in YYYY-MM-DD format.'];
+            }
+            if (empty($student['allocation_id'])) {
+                return ['success' => false, 'error' => 'There is no active room allocation whose joining date can be changed.'];
+            }
+            $joiningDateChanged = ($student['allocation_date'] ?? null) !== $requestedJoiningDate;
+        }
+
+        $securityFields = ['security_amount', 'security_expected_payment_date', 'security_note'];
+        $securityEditRequested = count(array_intersect($securityFields, array_keys($data))) > 0;
+        $securityValues = null;
+        if ($securityEditRequested) {
+            if (!is_scalar($data['security_amount'] ?? null) || trim((string)$data['security_amount']) === ''
+                || !is_scalar($data['security_expected_payment_date'] ?? null)
+                || !is_scalar($data['security_note'] ?? null)) {
+                return ['success' => false, 'error' => 'Enter a valid pending security amount, expected payment date, and note.'];
+            }
+            $securityAmountValue = trim((string)$data['security_amount']);
+            if (!is_numeric($securityAmountValue) || !is_finite((float)$securityAmountValue)) {
+                return ['success' => false, 'error' => 'Security amount must be a valid number.'];
+            }
+            $securityAmount = (float)$securityAmountValue;
+            if ($securityAmount <= 0 || $securityAmount > 9999999999.99
+                || abs($securityAmount - round($securityAmount, 2)) > 0.000001) {
+                return ['success' => false, 'error' => 'Security amount must be greater than zero, no more than Rs. 9,999,999,999.99, and have no more than two decimal places.'];
+            }
+            $expectedPaymentDate = trim((string)$data['security_expected_payment_date']);
+            $parsedExpectedDate = \DateTime::createFromFormat('!Y-m-d', $expectedPaymentDate);
+            if (!$parsedExpectedDate || $parsedExpectedDate->format('Y-m-d') !== $expectedPaymentDate) {
+                return ['success' => false, 'error' => 'Expected security payment date must be a valid date in YYYY-MM-DD format.'];
+            }
+            $securityNote = trim((string)$data['security_note']);
+            if ($securityNote === '') {
+                return ['success' => false, 'error' => 'A note or reason is required for pending security.'];
+            }
+            $securityValues = [
+                'original_amount' => number_format($securityAmount, 2, '.', ''),
+                'expected_payment_date' => $expectedPaymentDate,
+                'note' => $securityNote,
+            ];
+        }
+
         $residentType = self::normalizeResidentType($data['resident_type'] ?? 'Student');
         $collegeUniversity = trim((string)($data['college_university'] ?? ''));
         $jobWorkplace = trim((string)($data['job_workplace'] ?? ''));
@@ -763,7 +814,6 @@ class StudentService {
             'address'            => trim($data['address']),
             'guardian_name'      => trim($data['guardian_name']),
             'guardian_phone'     => $guardianPhone,
-            'guardian_address'   => empty($data['guardian_address']) ? null : trim($data['guardian_address']),
             'relation'           => trim($data['relation']),
             'resident_type'      => $residentType,
             'college_university' => $residentType === 'Student' ? ($collegeUniversity !== '' ? $collegeUniversity : null) : null,
@@ -773,6 +823,10 @@ class StudentService {
             'note'               => $note !== '' ? $note : null,
             'status'             => $data['status'] ?? 'Active'
         ];
+
+        if (array_key_exists('guardian_address', $data)) {
+            $dbData['guardian_address'] = empty($data['guardian_address']) ? null : trim($data['guardian_address']);
+        }
 
         // Update monthly_fee if provided explicitly
         if (isset($data['monthly_fee']) && $data['monthly_fee'] !== '') {
@@ -789,6 +843,42 @@ class StudentService {
             $studentLock->execute([(int)$id]);
             if (!$studentLock->fetch()) {
                 throw new Exception('Student not found.');
+            }
+
+            $additionalChanges = [];
+            $additionalOldValues = [];
+            if ($securityEditRequested) {
+                $securityLock = $this->db->prepare('SELECT * FROM security_deposits WHERE student_id = ? ORDER BY id DESC LIMIT 1 FOR UPDATE');
+                $securityLock->execute([(int)$id]);
+                $deposit = $securityLock->fetch();
+                if (!$deposit || $deposit['status'] !== 'PENDING' || (float)$deposit['remaining_amount'] !== 0.0) {
+                    throw new Exception('Only an unpaid pending security deposit can be edited here. Paid, waived, or settled deposits must use the security settlement workflow.');
+                }
+
+                $transactionCount = $this->db->prepare('SELECT COUNT(*) FROM security_deposit_transactions WHERE security_deposit_id = ?');
+                $transactionCount->execute([(int)$deposit['id']]);
+                if ((int)$transactionCount->fetchColumn() > 0) {
+                    throw new Exception('This pending security deposit has transaction history and cannot be edited. Use the security correction workflow.');
+                }
+
+                foreach ($securityValues as $field => $value) {
+                    $isDifferent = $field === 'original_amount'
+                        ? round((float)$deposit[$field], 2) !== round((float)$value, 2)
+                        : (string)($deposit[$field] ?? '') !== (string)$value;
+                    if ($isDifferent) {
+                        $additionalChanges['security_' . $field] = $value;
+                        $additionalOldValues['security_' . $field] = $deposit[$field];
+                    }
+                }
+                if ($additionalChanges) {
+                    $securityUpdate = $this->db->prepare('UPDATE security_deposits SET original_amount = ?, expected_payment_date = ?, note = ? WHERE id = ? AND status = \'PENDING\' AND remaining_amount = 0');
+                    $securityUpdate->execute([
+                        $securityValues['original_amount'],
+                        $securityValues['expected_payment_date'],
+                        $securityValues['note'],
+                        (int)$deposit['id'],
+                    ]);
+                }
             }
 
             if ($allocationChanged) {
@@ -827,7 +917,23 @@ class StudentService {
                 $closeStmt = $this->db->prepare("UPDATE room_allocations SET status = 'Closed', leaving_date = ? WHERE id = ?");
                 $closeStmt->execute([date('Y-m-d'), (int)$currentAllocation['id']]);
                 $newAllocationStmt = $this->db->prepare("INSERT INTO room_allocations (student_id, room_id, bed_number, joining_date, status) VALUES (?, ?, ?, ?, 'Active')");
-                $newAllocationStmt->execute([(int)$id, $targetRoomId, $targetBedNumber, date('Y-m-d')]);
+                $newAllocationDate = $joiningDateChanged ? $requestedJoiningDate : date('Y-m-d');
+                $newAllocationStmt->execute([(int)$id, $targetRoomId, $targetBedNumber, $newAllocationDate]);
+                if ($joiningDateChanged) {
+                    $additionalChanges['allocation_joining_date'] = $newAllocationDate;
+                    $additionalOldValues['allocation_joining_date'] = $student['allocation_date'] ?? null;
+                }
+            } elseif ($joiningDateChanged) {
+                $allocationLock = $this->db->prepare("SELECT id, joining_date FROM room_allocations WHERE student_id = ? AND status = 'Active' FOR UPDATE");
+                $allocationLock->execute([(int)$id]);
+                $activeAllocation = $allocationLock->fetch();
+                if (!$activeAllocation) {
+                    throw new Exception('There is no active room allocation whose joining date can be changed.');
+                }
+                $updateAllocationDate = $this->db->prepare("UPDATE room_allocations SET joining_date = ? WHERE id = ? AND status = 'Active'");
+                $updateAllocationDate->execute([$requestedJoiningDate, (int)$activeAllocation['id']]);
+                $additionalChanges['allocation_joining_date'] = $requestedJoiningDate;
+                $additionalOldValues['allocation_joining_date'] = $activeAllocation['joining_date'];
             }
 
             if (!$this->studentRepo->update($id, $dbData, $this->db)) {
@@ -859,10 +965,20 @@ class StudentService {
                     $oldValues[$key] = $student[$key];
                 }
             }
+            $changes = array_merge($changes, $additionalChanges);
+            $oldValues = array_merge($oldValues, $additionalOldValues);
 
             if ($allocationChanged) {
-                $changes['room_allocation'] = ['room_id' => $targetRoomId, 'bed_number' => $targetBedNumber];
-                $oldValues['room_allocation'] = ['room_id' => $currentRoomId, 'bed_number' => $currentBedNumber];
+                $changes['room_allocation'] = [
+                    'room_id' => $targetRoomId,
+                    'bed_number' => $targetBedNumber,
+                    'joining_date' => $joiningDateChanged ? $requestedJoiningDate : date('Y-m-d'),
+                ];
+                $oldValues['room_allocation'] = [
+                    'room_id' => $currentRoomId,
+                    'bed_number' => $currentBedNumber,
+                    'joining_date' => $student['allocation_date'] ?? null,
+                ];
             }
 
             if (!empty($changes)) {

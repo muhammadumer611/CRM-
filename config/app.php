@@ -1,6 +1,6 @@
 <?php
 return [
-    'env' => getenv('HMS_ENV') ?: 'production',
+    'env' => getenv('HMS_ENV') ?: 'development',
     'debug' => false,
     'base_url' => 'http://localhost/CRM',
     'timezone' => 'Asia/Karachi',

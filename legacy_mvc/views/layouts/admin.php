@@ -168,8 +168,10 @@
         }
 
         @media (max-width: 480px) {
-            .topbar { align-items: center; padding:0.75rem; }
-            .topbar-title { max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .topbar { align-items: center; padding:0.75rem; gap:0.5rem; }
+            .topbar > div:first-child { flex:1 1 auto; min-width:0; }
+            .topbar-title { flex:1 1 auto; min-width:0; max-width:none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .user-menu { flex:0 0 auto; margin-left:auto; }
             .content { padding:0.75rem; }
             .card { padding:0.875rem; margin-bottom:1rem; }
             .card-header { align-items:flex-start; }

@@ -565,7 +565,6 @@ function setAccomodationMode(mode) {
             if (card) card.classList.toggle('selected', r.checked);
         });
     }
-
     if (singleVisible && singleRoomSelect.value) {
         populateSingleRoomSummary(singleRoomSelect);
     }

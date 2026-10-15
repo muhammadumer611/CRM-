@@ -30,14 +30,6 @@
                 <label class="form-label">Total Beds * (Occupied: <?php echo $room['occupied_beds']; ?>)</label>
                 <input type="number" name="total_beds" class="form-control" min="<?php echo $room['occupied_beds'] > 0 ? $room['occupied_beds'] : 1; ?>" max="10" value="<?php echo $room['total_beds']; ?>" required>
             </div>
-            <div class="col-md-4 form-group">
-                <label class="form-label">Monthly Fee (Rs.) *</label>
-                <input type="number" name="monthly_fee" class="form-control" step="0.01" min="0" value="<?php echo htmlspecialchars($room['monthly_fee']); ?>" required>
-            </div>
-            <div class="col-md-4 form-group">
-                <label class="form-label">Security Deposit (Rs.) *</label>
-                <input type="number" name="security_deposit" class="form-control" step="0.01" min="0" value="<?php echo htmlspecialchars($room['security_deposit']); ?>" required>
-            </div>
             <div class="col-md-6 form-group">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-control">
@@ -85,4 +77,3 @@
         </div>
     <?php endif; ?>
 </div>
-

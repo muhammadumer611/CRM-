@@ -1,5 +1,5 @@
 <?php
-$environment = strtolower((string)(getenv('HMS_ENV') ?: 'production'));
+$environment = strtolower((string)(getenv('HMS_ENV') ?: 'development'));
 $host = getenv('HMS_DB_HOST');
 $database = getenv('HMS_DB_NAME');
 $username = getenv('HMS_DB_USER');

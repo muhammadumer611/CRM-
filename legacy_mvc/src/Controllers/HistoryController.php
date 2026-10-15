@@ -53,11 +53,11 @@ class HistoryController {
         exit;
     }
 
-    public function apiGetStudent($studentId) {
+    public function apiGetStudent($id) {
         Auth::checkAPI();
         header('Content-Type: application/json');
         try {
-            $data = $this->historyService->searchHistory(['student_id' => $studentId], 1, 100);
+            $data = $this->historyService->searchHistory(['student_id' => $id], 1, 100);
             echo json_encode([
                 'success' => true,
                 'message' => 'Student history retrieved successfully.',

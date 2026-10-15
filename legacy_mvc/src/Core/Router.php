@@ -5,7 +5,7 @@ class Router {
     private $routes = [];
 
     public function add($method, $path, $controller, $action) {
-        $path = preg_replace('/\{([a-zA-Z0-9_]+)\}/', '(?P<$1>[a-zA-Z0-9_]+)', $path);
+        $path = preg_replace('/\{([a-zA-Z0-9_]+)\}/', '(?P<$1>[a-zA-Z0-9_-]+)', $path);
         $this->routes[] = [
             'method' => strtoupper($method),
             'path' => '#^' . $path . '$#',

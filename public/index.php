@@ -13,7 +13,7 @@ if ($routeUri === '/') {
 date_default_timezone_set($appConfig['timezone'] ?? 'Asia/Karachi');
 
 // Legacy MVC UI endpoints are owned by the legacy MVC module.
-if (preg_match('#^/api/(?:alumni(?:/[^/]+)?|allocations/available-beds(?:/[^/]+)?)$#', $routeUri)) {
+if (preg_match('#^/api/(?:alumni(?:/.*)?|allocations/available-beds(?:/[^/]+)?)$#', $routeUri)) {
     require_once __DIR__ . '/../legacy_mvc/public/index.php';
     exit;
 }

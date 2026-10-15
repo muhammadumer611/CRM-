@@ -131,6 +131,7 @@ Stack trace:
 #7 D:\CRM--main (4)\CRM--main\public\index.php(62): require_once('D:\\CRM--main (4...')
 #8 D:\CRM--main (4)\CRM--main\router.php(18): require('D:\\CRM--main (4...')
 #9 {main}
+<<<<<<< HEAD
 [2026-10-08 12:30:22] Uncaught Exception RuntimeException: "Production database credentials must be provided through HMS_DB_HOST, HMS_DB_NAME, HMS_DB_USER, and HMS_DB_PASSWORD." in D:\Kings Hostel Management\Kings\legacy_mvc\config\database.php on line 10
 Stack trace:
 #0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Database.php(12): require()
@@ -173,3 +174,211 @@ Stack trace:
 #5 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\AuthController->__construct()
 #6 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/login')
 #7 {main}
+=======
+>>>>>>> 6a8822327ff4cafd9ac527de54e79e267e78dfa5
+[2026-10-10 07:14:10] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting end of file" in D:\Kings Hostel Management\Kings\legacy_mvc\src\routes.php on line 22
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\public\index.php(62): require_once()
+#1 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#2 {main}
+[2026-10-10 07:15:10] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting end of file" in D:\Kings Hostel Management\Kings\legacy_mvc\src\routes.php on line 22
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\public\index.php(62): require_once()
+#1 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#2 {main}
+[2026-10-10 07:16:37] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting end of file" in D:\Kings Hostel Management\Kings\legacy_mvc\src\routes.php on line 22
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\public\index.php(62): require_once()
+#1 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#2 {main}
+[10-Oct-2026 07:19:02 Asia/Karachi] Monthly billing generation failed: syntax error, unexpected token "<<", expecting "function" or "const"
+[2026-10-10 07:19:02] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "]"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\DashboardService.php on line 35
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\DashboardController.php(17): {closure}('App\\Services\\Da...')
+#1 [internal function]: App\Controllers\DashboardController->index()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#3 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/dashboard')
+#4 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#5 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#6 {main}
+[10-Oct-2026 07:19:54 Asia/Karachi] Monthly billing generation failed: syntax error, unexpected token "<<", expecting "function" or "const"
+[2026-10-10 07:19:54] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "]"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\DashboardService.php on line 35
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\DashboardController.php(17): {closure}('App\\Services\\Da...')
+#1 [internal function]: App\Controllers\DashboardController->index()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#3 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/dashboard')
+#4 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#5 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#6 {main}
+[10-Oct-2026 07:20:43 Asia/Karachi] Monthly billing generation failed: syntax error, unexpected token "<<", expecting "function" or "const"
+[2026-10-10 07:20:43] Uncaught Exception ParseError: "syntax error, unexpected end of file, expecting "elseif" or "else" or "endif"" in D:\Kings Hostel Management\Kings\legacy_mvc\views\admin\dashboard.php on line 267
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\DashboardController.php(23): App\Core\View::render('admin/dashboard', Array, 'admin')
+#1 [internal function]: App\Controllers\DashboardController->index()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#3 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/dashboard')
+#4 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#5 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#6 {main}
+[10-Oct-2026 07:20:46 Asia/Karachi] Monthly billing generation failed: syntax error, unexpected token "<<", expecting "function" or "const"
+[2026-10-10 07:20:46] Uncaught Exception ParseError: "syntax error, unexpected end of file, expecting "elseif" or "else" or "endif"" in D:\Kings Hostel Management\Kings\legacy_mvc\views\admin\dashboard.php on line 267
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\DashboardController.php(23): App\Core\View::render('admin/dashboard', Array, 'admin')
+#1 [internal function]: App\Controllers\DashboardController->index()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#3 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/dashboard')
+#4 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#5 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#6 {main}
+[10-Oct-2026 07:23:05 Asia/Karachi] Monthly billing generation failed: syntax error, unexpected token "<<", expecting "function" or "const"
+[2026-10-10 07:23:11] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "function" or "const"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php on line 608
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): {closure}('App\\Services\\Fe...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/security-...')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:25:05] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "function" or "const"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php on line 608
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): {closure}('App\\Services\\Fe...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/security-...')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:25:07] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "function" or "const"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php on line 608
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): {closure}('App\\Services\\Fe...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/security-...')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[10-Oct-2026 07:25:25 Asia/Karachi] Monthly billing generation failed: syntax error, unexpected token "<<", expecting "function" or "const"
+[2026-10-10 07:25:29] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "function" or "const"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php on line 608
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): {closure}('App\\Services\\Fe...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/pending')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:27:07] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "function" or "const"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php on line 608
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): {closure}('App\\Services\\Fe...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/pending')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:28:02] Uncaught Exception ParseError: "syntax error, unexpected token "<<"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Repositories\FeeRepository.php on line 1267
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php(19): {closure}('App\\Repositorie...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): App\Services\FeeService->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#3 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/pending')
+#4 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#5 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#6 {main}
+[2026-10-10 07:28:13] Uncaught Exception ParseError: "syntax error, unexpected token "<<"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Repositories\FeeRepository.php on line 1267
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php(19): {closure}('App\\Repositorie...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): App\Services\FeeService->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#3 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/pending')
+#4 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#5 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#6 {main}
+[2026-10-10 07:28:15] Uncaught Exception ParseError: "syntax error, unexpected token "<<"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Repositories\FeeRepository.php on line 1267
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\FeeService.php(19): {closure}('App\\Repositorie...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\FeeController.php(15): App\Services\FeeService->__construct()
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(44): App\Controllers\FeeController->__construct()
+#3 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/pending')
+#4 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#5 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#6 {main}
+[2026-10-10 07:28:39] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "]"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\StudentController.php on line 189
+Stack trace:
+#0 [internal function]: {closure}('App\\Controllers...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(43): class_exists('\\App\\Controller...')
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/students')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:30:04] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "function" or "const"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Services\StudentService.php on line 104
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\views\admin\dashboard.php(67): {closure}('App\\Services\\St...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\View.php(14): require('D:\\Kings Hostel...')
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\DashboardController.php(23): App\Core\View::render('admin/dashboard', Array, 'admin')
+#3 [internal function]: App\Controllers\DashboardController->index()
+#4 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#5 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/dashboard')
+#6 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#7 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#8 {main}
+[2026-10-10 07:31:10] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "]"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\StudentController.php on line 189
+Stack trace:
+#0 [internal function]: {closure}('App\\Controllers...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(43): class_exists('\\App\\Controller...')
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/students/activ...')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:33:50] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "]"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\StudentController.php on line 189
+Stack trace:
+#0 [internal function]: {closure}('App\\Controllers...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(43): class_exists('\\App\\Controller...')
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/students/activ...')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:34:00] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "]"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\StudentController.php on line 189
+Stack trace:
+#0 [internal function]: {closure}('App\\Controllers...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(43): class_exists('\\App\\Controller...')
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/students/creat...')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:35:03] Uncaught Exception ParseError: "syntax error, unexpected token "<<", expecting "]"" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Controllers\AlumniController.php on line 18
+Stack trace:
+#0 [internal function]: {closure}('App\\Controllers...')
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(43): class_exists('\\App\\Controller...')
+#2 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/alumni')
+#3 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#4 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#5 {main}
+[2026-10-10 07:50:30] Uncaught Exception Error: "Unknown named parameter $id" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/receipt/1')
+#2 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#3 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#4 {main}
+[2026-10-10 07:50:33] Uncaught Exception Error: "Unknown named parameter $id" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/student-histor...')
+#2 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#3 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#4 {main}
+[2026-10-10 07:51:07] Uncaught Exception Error: "Unknown named parameter $id" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/fees/receipt/1')
+#2 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#3 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#4 {main}
+[2026-10-10 07:51:10] Uncaught Exception Error: "Unknown named parameter $id" in D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php on line 47
+Stack trace:
+#0 D:\Kings Hostel Management\Kings\legacy_mvc\src\Core\Router.php(47): call_user_func_array(Array, Array)
+#1 D:\Kings Hostel Management\Kings\legacy_mvc\public\index.php(108): App\Core\Router->dispatch('/student-histor...')
+#2 D:\Kings Hostel Management\Kings\public\index.php(62): require_once('D:\\Kings Hostel...')
+#3 D:\Kings Hostel Management\Kings\router.php(18): require('D:\\Kings Hostel...')
+#4 {main}
+[15-Oct-2026 10:06:24 Asia/Karachi] Database connection failed: could not find driver
+[15-Oct-2026 10:07:57 Asia/Karachi] Database connection failed: could not find driver
+[15-Oct-2026 10:11:09 Asia/Karachi] Database connection failed: could not find driver

@@ -324,19 +324,27 @@ CREATE TABLE `security_deposits` (
   `student_id` int(11) NOT NULL,
   `original_amount` decimal(12,2) NOT NULL,
   `remaining_amount` decimal(12,2) NOT NULL,
+<<<<<<< HEAD
   `status` enum('PENDING','PAID','WAIVED','RETURNED','HELD','ADJUSTED','PARTIALLY_REFUNDED','REFUNDED','FORFEITED') NOT NULL DEFAULT 'HELD',
   `expected_payment_date` date DEFAULT NULL,
   `note` text DEFAULT NULL,
+=======
+  `status` enum('HELD','ADJUSTED','PARTIALLY_REFUNDED','REFUNDED','FORFEITED') NOT NULL DEFAULT 'HELD',
+>>>>>>> 6a8822327ff4cafd9ac527de54e79e267e78dfa5
   `processed_by_name` varchar(100) DEFAULT NULL,
   `processed_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_security_deposits_student` (`student_id`),
+<<<<<<< HEAD
   KEY `idx_security_deposits_status_due` (`status`,`expected_payment_date`),
   CONSTRAINT `security_deposits_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
   CONSTRAINT `chk_security_deposits_waived` CHECK (`status` <> 'WAIVED' OR (`original_amount` = 0 AND `remaining_amount` = 0 AND `note` IS NOT NULL AND CHAR_LENGTH(TRIM(`note`)) > 0)),
   CONSTRAINT `chk_security_deposits_pending` CHECK (`status` <> 'PENDING' OR (`original_amount` > 0 AND `remaining_amount` = 0 AND `expected_payment_date` IS NOT NULL AND `note` IS NOT NULL AND CHAR_LENGTH(TRIM(`note`)) > 0))
+=======
+  CONSTRAINT `security_deposits_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE
+>>>>>>> 6a8822327ff4cafd9ac527de54e79e267e78dfa5
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -346,11 +354,18 @@ DROP TABLE IF EXISTS `security_deposit_transactions`;
 CREATE TABLE `security_deposit_transactions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `security_deposit_id` int(11) NOT NULL,
+<<<<<<< HEAD
   `transaction_type` enum('ADJUSTMENT','REFUND','FORFEIT','HOLD','PENDING','PAYMENT','WAIVER','RETURN') NOT NULL,
   `amount` decimal(12,2) NOT NULL,
   `reason` text NOT NULL,
   `reference_number` varchar(100) DEFAULT NULL,
   `payment_method` enum('Cash','Bank Transfer','Online','Card','JazzCash','EasyPaisa','Other') DEFAULT NULL,
+=======
+  `transaction_type` enum('ADJUSTMENT','REFUND','FORFEIT','HOLD') NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `reason` text NOT NULL,
+  `reference_number` varchar(100) DEFAULT NULL,
+>>>>>>> 6a8822327ff4cafd9ac527de54e79e267e78dfa5
   `created_by_admin` int(11) DEFAULT NULL,
   `processed_by_name` varchar(100) DEFAULT NULL,
   `processed_at` timestamp NULL DEFAULT NULL,
@@ -359,9 +374,13 @@ CREATE TABLE `security_deposit_transactions` (
   KEY `security_deposit_id` (`security_deposit_id`),
   KEY `created_by_admin` (`created_by_admin`),
   CONSTRAINT `security_deposit_transactions_ibfk_1` FOREIGN KEY (`security_deposit_id`) REFERENCES `security_deposits` (`id`) ON DELETE CASCADE,
+<<<<<<< HEAD
   CONSTRAINT `security_deposit_transactions_ibfk_2` FOREIGN KEY (`created_by_admin`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
   CONSTRAINT `chk_security_deposit_transactions_amount` CHECK (`amount` >= 0),
   CONSTRAINT `chk_security_deposit_transactions_reason` CHECK (CHAR_LENGTH(TRIM(`reason`)) > 0)
+=======
+  CONSTRAINT `security_deposit_transactions_ibfk_2` FOREIGN KEY (`created_by_admin`) REFERENCES `admins` (`id`) ON DELETE SET NULL
+>>>>>>> 6a8822327ff4cafd9ac527de54e79e267e78dfa5
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -519,6 +538,7 @@ INSERT INTO `hostel_settings` (`setting_key`, `setting_value`) VALUES
 ('maximum_first_month_discount', '100');
 
 SET FOREIGN_KEY_CHECKS = 1;
+<<<<<<< HEAD
 
 DELIMITER //
 CREATE TRIGGER `trg_security_deposits_validate_insert`
@@ -599,3 +619,5 @@ BEGIN
   END IF;
 END//
 DELIMITER ;
+=======
+>>>>>>> 6a8822327ff4cafd9ac527de54e79e267e78dfa5
